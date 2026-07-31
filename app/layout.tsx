@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Archivo, IBM_Plex_Mono, Noto_Sans_Ethiopic } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/AppShell';
+import { SyncProvider } from '@/components/SyncProvider';
 import { I18nProvider } from '@/lib/i18n';
 import { am } from '@/lib/i18n/am';
 import './globals.css';
@@ -51,7 +52,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     >
       <body className="min-h-dvh antialiased">
         <I18nProvider>
-          <AppShell>{children}</AppShell>
+          <SyncProvider>
+            <AppShell>{children}</AppShell>
+          </SyncProvider>
         </I18nProvider>
       </body>
     </html>

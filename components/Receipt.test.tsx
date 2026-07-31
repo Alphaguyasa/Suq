@@ -48,6 +48,7 @@ const items: SaleItem[] = [
     unit_price: 3500,
     qty: 2,
     line_total: 7000,
+    created_at: '2026-07-31T10:15:00.000Z',
   },
   {
     id: 'item-2',
@@ -58,6 +59,7 @@ const items: SaleItem[] = [
     unit_price: 7000,
     qty: 1,
     line_total: 7000,
+    created_at: '2026-07-31T10:15:00.000Z',
   },
 ];
 

@@ -1,7 +1,15 @@
 import type { EntityTable } from 'dexie';
 import { nowIso } from './id';
 import { db } from './schema';
-import type { OutboxEntry, Product, Sale, SaleItem, StockMovement, SyncedTable } from './schema';
+import type {
+  OutboxEntry,
+  Product,
+  Sale,
+  SaleItem,
+  StockMovement,
+  SuqDatabase,
+  SyncedTable,
+} from './schema';
 
 /**
  * ============================================================================
@@ -38,8 +46,28 @@ type RowFor<T extends SyncedTable> = T extends 'products'
  * narrow from the generic alone. The cast is safe because RowFor<T> is defined
  * as exactly the row type of table T.
  */
-function tableFor<T extends SyncedTable>(table: T): EntityTable<RowFor<T>, 'id'> {
-  return db[table] as unknown as EntityTable<RowFor<T>, 'id'>;
+function tableFor<T extends SyncedTable>(
+  database: SuqDatabase,
+  table: T,
+): EntityTable<RowFor<T>, 'id'> {
+  return database[table] as unknown as EntityTable<RowFor<T>, 'id'>;
+}
+
+/**
+ * Push fires immediately after any write (BUILD_GUIDE 4.1). Rather than have
+ * the db layer import the sync engine, writes announce themselves and the
+ * engine subscribes.
+ */
+type WriteListener = () => void;
+const writeListeners = new Set<WriteListener>();
+
+export function onLocalWrite(listener: WriteListener): () => void {
+  writeListeners.add(listener);
+  return () => writeListeners.delete(listener);
+}
+
+function announceWrite(): void {
+  for (const listener of writeListeners) listener();
 }
 
 function outboxEntry(table: SyncedTable, row: { id: string }): OutboxEntry {
@@ -51,15 +79,28 @@ function outboxEntry(table: SyncedTable, row: { id: string }): OutboxEntry {
     created_at: nowIso(),
     attempts: 0,
     last_error: null,
+    last_tried_at: null,
   };
 }
 
-/** Write one domain row and queue it for push, atomically. */
-export async function localWrite<T extends SyncedTable>(table: T, row: RowFor<T>): Promise<void> {
-  await db.transaction('rw', db[table], db.outbox, async () => {
-    await tableFor(table).put(row);
-    await db.outbox.add(outboxEntry(table, row));
+/**
+ * Write one domain row and queue it for push, atomically.
+ *
+ * `database` defaults to the singleton. It is a parameter so the sync tests
+ * can drive a second replica through this same path rather than hand-rolling
+ * rows that only resemble what the app writes.
+ */
+export async function localWrite<T extends SyncedTable>(
+  table: T,
+  row: RowFor<T>,
+  database: SuqDatabase = db,
+): Promise<void> {
+  await database.transaction('rw', database[table], database.outbox, async () => {
+    await tableFor(database, table).put(row);
+    await database.outbox.add(outboxEntry(table, row));
   });
+
+  announceWrite();
 }
 
 /**
@@ -69,11 +110,14 @@ export async function localWrite<T extends SyncedTable>(table: T, row: RowFor<T>
 export async function localWriteMany<T extends SyncedTable>(
   table: T,
   rows: RowFor<T>[],
+  database: SuqDatabase = db,
 ): Promise<void> {
   if (rows.length === 0) return;
 
-  await db.transaction('rw', db[table], db.outbox, async () => {
-    await tableFor(table).bulkPut(rows);
-    await db.outbox.bulkAdd(rows.map((row) => outboxEntry(table, row)));
+  await database.transaction('rw', database[table], database.outbox, async () => {
+    await tableFor(database, table).bulkPut(rows);
+    await database.outbox.bulkAdd(rows.map((row) => outboxEntry(table, row)));
   });
+
+  announceWrite();
 }

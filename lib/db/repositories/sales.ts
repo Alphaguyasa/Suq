@@ -94,6 +94,7 @@ export async function create(cart: CartLine[], payment: PaymentInput): Promise<S
     unit_price: line.unit_price,
     qty: line.qty,
     line_total: lineTotal(line),
+    created_at,
   }));
 
   // One movement per cart line, carrying the whole quantity.
@@ -245,6 +246,7 @@ export async function voidSale(saleId: string, reason: string): Promise<Sale> {
     unit_price: item.unit_price,
     qty: -item.qty,
     line_total: -item.line_total,
+    created_at,
   }));
 
   const movements = originalItems.map((item) =>

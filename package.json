@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "seed": "node scripts/seed.mts",
+    "check:bundle": "node scripts/check-bundle.mts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

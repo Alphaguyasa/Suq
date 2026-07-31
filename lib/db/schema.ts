@@ -90,6 +90,8 @@ export interface SaleItem {
   unit_price: number;
   qty: number;
   line_total: number;
+  /** Copied from the parent sale. It is the watermark pull filters by. */
+  created_at: string;
 }
 
 export interface StockMovement {
@@ -115,6 +117,8 @@ export interface OutboxEntry {
   created_at: string;
   attempts: number;
   last_error: string | null;
+  /** When the last push attempt ran, for exponential backoff. */
+  last_tried_at: string | null;
 }
 
 /** Local only. One row, keyed by DEVICE_META_ID. */
@@ -190,7 +194,7 @@ export class SuqDatabase extends Dexie {
     this.version(1).stores({
       products: 'id, barcode, name, name_am, updated_at',
       sales: 'id, created_at, receipt_no, synced_at, voids_sale_id',
-      sale_items: 'id, sale_id, product_id',
+      sale_items: 'id, sale_id, product_id, created_at',
       stock_movements: 'id, product_id, created_at, [product_id+created_at], ref_id',
       outbox: '++id, table, row_id, created_at',
       device_meta: 'id',
