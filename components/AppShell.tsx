@@ -30,7 +30,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <SyncPill state="synced" pending={0} />
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">{children}</main>
+      {/* Wide enough for the sale screen's two panes on a 1024px tablet. */}
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
 
       <BottomNav />
     </div>

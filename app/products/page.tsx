@@ -89,7 +89,7 @@ export default function ProductsPage() {
       ) : sorted.length === 0 ? (
         <p className="ethiopic py-8 text-center text-sm text-muted">{t.products.noResults}</p>
       ) : (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {sorted.map((product) => (
             <li key={product.id} className="flex">
               <ProductCard product={product} onHand={onHand?.get(product.id) ?? 0} />

@@ -164,6 +164,27 @@ export async function isVoided(saleId: string): Promise<boolean> {
   return (await findVoidOf(saleId)) !== null;
 }
 
+/**
+ * Product ids in recency order, most recently sold first. Feeds the sale
+ * screen's tile order: someone ringing up the same twelve items every morning
+ * should find them without hunting.
+ */
+export async function recentProductIds(limit = 12): Promise<string[]> {
+  const recent = await db.sales.orderBy('created_at').reverse().limit(40).toArray();
+  const ids: string[] = [];
+
+  for (const sale of recent) {
+    if (sale.voids_sale_id !== null) continue;
+
+    for (const item of await itemsFor(sale.id)) {
+      if (!ids.includes(item.product_id)) ids.push(item.product_id);
+      if (ids.length >= limit) return ids;
+    }
+  }
+
+  return ids;
+}
+
 export interface SaleListOptions {
   limit?: number;
   /** Hide void rows themselves from the list. */
