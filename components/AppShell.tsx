@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { ensureDevice } from '@/lib/db';
 import { useT } from '@/lib/i18n';
 import { BottomNav } from './BottomNav';
 import { SyncPill } from './SyncPill';
@@ -14,6 +16,12 @@ import { SyncPill } from './SyncPill';
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const t = useT();
+
+  // Every write needs a registered till. Session 8 replaces this with the
+  // real first-run flow; until then the app registers a default one.
+  useEffect(() => {
+    void ensureDevice();
+  }, []);
 
   return (
     <div className="flex min-h-dvh flex-col">

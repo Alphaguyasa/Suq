@@ -57,6 +57,16 @@ export function useT(): Dict {
   return useI18n().t;
 }
 
+/**
+ * Both dictionaries at once, for form labels that show the primary language
+ * with the other underneath in --muted. Amharic first by default, because
+ * that is who is standing at the counter.
+ */
+export function useBilingual(): { t: Dict; other: Dict } {
+  const { lang } = useI18n();
+  return { t: dictionaries[lang], other: lang === 'am' ? en : am };
+}
+
 export function useLang(): Omit<I18nValue, 't'> {
   const { lang, setLang, toggleLang } = useI18n();
   return { lang, setLang, toggleLang };

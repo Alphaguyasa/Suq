@@ -2,7 +2,9 @@
   "name": "suq-pos",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
+    "seed": "node scripts/seed.mts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

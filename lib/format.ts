@@ -25,6 +25,26 @@ export function formatETB(cents: number): string {
 }
 
 /**
+ * Fixed format rather than Intl, deliberately: toLocaleString under an Amharic
+ * locale can render Ge'ez numerals or Ethiopian calendar dates, which is not
+ * what a shopkeeper reading a movement log expects to see.
+ */
+export function formatDateTime(iso: string): string {
+  const date = new Date(iso);
+  const pad = (value: number) => String(value).padStart(2, '0');
+
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    ` ${pad(date.getHours())}:${pad(date.getMinutes())}`
+  );
+}
+
+/** Quantities are not money: show them plainly, trimming a pointless ".00". */
+export function formatQty(qty: number): string {
+  return Number.isInteger(qty) ? String(qty) : qty.toFixed(2).replace(/\.?0+$/, '');
+}
+
+/**
  * Parse a price the cashier typed into integer cents: "12.35" -> 1235.
  * Accepts thousands separators and up to two decimal places. Throws on
  * anything else rather than silently rounding — a wrong price is worse
