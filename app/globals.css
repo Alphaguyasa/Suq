@@ -1,0 +1,77 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens — BUILD_GUIDE.md section 5.1.
+ * Colour means exactly one thing here:
+ *   birr  = money, confirm, complete, synced
+ *   ochre = offline, pending, low stock — attention, not error
+ *   alarm = destructive only (void, delete). Twice in the whole app.
+ */
+@theme {
+  --color-ink: #16181d;
+  --color-paper: #fbfaf7;
+  --color-rule: #e2dfd8;
+  --color-birr: #1b7a5a;
+  --color-ochre: #c9760e;
+  --color-alarm: #b3261e;
+  --color-muted: #6b7280;
+
+  --font-ui: var(--font-archivo), system-ui, sans-serif;
+  --font-ethiopic: var(--font-noto-ethiopic), sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+
+  /* Section 5.3 — fingertip on a bagging counter, not a mouse. */
+  --spacing-touch: 3.5rem; /* 56px minimum target */
+  --spacing-pay: 4rem; /* 64px pay button */
+}
+
+/* Aliases under the exact names documented in CLAUDE.md. */
+:root {
+  --ink: var(--color-ink);
+  --paper: var(--color-paper);
+  --rule: var(--color-rule);
+  --birr: var(--color-birr);
+  --ochre: var(--color-ochre);
+  --alarm: var(--color-alarm);
+  --muted: var(--color-muted);
+}
+
+/* Every price, quantity, total and receipt number wears this. */
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Amharic always renders in Noto Sans Ethiopic — never a fallback. */
+@utility ethiopic {
+  font-family: var(--font-ethiopic);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-ui);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

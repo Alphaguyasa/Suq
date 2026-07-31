@@ -1,0 +1,42 @@
+#!/bin/sh
+# Blocks commits that carry secrets. Enabled via:
+#   git config core.hooksPath .githooks
+#
+# The service_role key in particular must never reach the repo or the browser
+# bundle — it bypasses every RLS policy written in session 5.
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+fail=0
+
+# Written as a variable so this file does not trip its own scan.
+secret_pattern='service_role|SERVICE_ROLE_KEY|BEGIN [A-Z ]*PRIVATE KEY|eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.|sk-[A-Za-z0-9]{24,}|xox[baprs]-[A-Za-z0-9-]{10,}'
+
+for file in $staged; do
+  case "$file" in
+    .githooks/pre-commit) continue ;;
+    .env.example|*.env.example) continue ;;
+    .env|.env.*|*/.env|*/.env.*)
+      echo "pre-commit: refusing to commit env file '$file'"
+      fail=1
+      continue
+      ;;
+  esac
+
+  # Scan the staged blob, not the working tree.
+  if git show ":$file" 2>/dev/null | grep -nEq "$secret_pattern"; then
+    echo "pre-commit: possible secret in '$file':"
+    git show ":$file" | grep -nE "$secret_pattern" | cut -c1-120 | sed 's/^/    /'
+    fail=1
+  fi
+done
+
+if [ "$fail" -ne 0 ]; then
+  echo ""
+  echo "Commit blocked. Move the value into an environment variable."
+  echo "If this is a false positive: git commit --no-verify"
+  exit 1
+fi
+
+exit 0
