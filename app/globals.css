@@ -71,9 +71,16 @@ body {
   overscroll-behavior: none;
 }
 
+/*
+ * Two-tone ring: a paper halo immediately outside the control, then the ink
+ * outline beyond it. A single ink ring disappears against the ink-filled
+ * buttons (pay, primary actions, the active nav tab), which are exactly the
+ * controls a keyboard user most needs to see focus on.
+ */
 :focus-visible {
   outline: 2px solid var(--color-ink);
   outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--color-paper);
 }
 
 /*

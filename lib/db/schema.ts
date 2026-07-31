@@ -167,6 +167,21 @@ export interface ShopSettings {
   updated_at: string;
 }
 
+/**
+ * Local only. A cashier's PIN identifies who rang up a sale — it is not a
+ * security boundary and is not built as one. It is stored in plain text
+ * deliberately: hashing would imply a protection it cannot provide, since
+ * anyone holding the tablet already holds the whole database. Its job is to
+ * stop the wrong name landing on a receipt, not to keep anybody out.
+ */
+export interface Cashier {
+  id: string;
+  name: string;
+  /** Exactly four digits. */
+  pin: string;
+  created_at: string;
+}
+
 export class SuqDatabase extends Dexie {
   products!: EntityTable<Product, 'id'>;
   sales!: EntityTable<Sale, 'id'>;
@@ -176,6 +191,7 @@ export class SuqDatabase extends Dexie {
   device_meta!: EntityTable<DeviceMeta, 'id'>;
   stock_cache!: EntityTable<StockCacheEntry, 'product_id'>;
   shop_settings!: EntityTable<ShopSettings, 'id'>;
+  cashiers!: EntityTable<Cashier, 'id'>;
 
   constructor(name = 'suq') {
     super(name);
@@ -204,6 +220,11 @@ export class SuqDatabase extends Dexie {
     // v2 adds shop settings. Dexie carries the v1 stores forward untouched.
     this.version(2).stores({
       shop_settings: 'id',
+    });
+
+    // v3 adds cashiers for the PIN lock.
+    this.version(3).stores({
+      cashiers: 'id, name',
     });
   }
 }
