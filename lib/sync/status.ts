@@ -12,7 +12,17 @@ export const MAX_ATTEMPTS = 5;
 
 export interface SyncStatus {
   state: SyncState;
+  /** Every queued row: sales, their lines, their movements, product edits. */
   pending: number;
+  /**
+   * Queued SALES only — what the pill shows.
+   *
+   * A three-line sale queues seven rows, so counting the outbox made the pill
+   * read "21 saved" after three offline sales. Honest about the machinery,
+   * wrong about the thing a shopkeeper is being reassured about. They are
+   * counting sales, so the pill counts sales.
+   */
+  pendingSales: number;
   lastSyncAt: string | null;
   lastError: string | null;
   authed: boolean;
@@ -63,6 +73,11 @@ export function useSyncStatus(): SyncStatus {
   const engine = useSyncExternalStore(subscribeToEngine, getEngineState, getEngineState);
 
   const pending = useLiveQuery(() => db.outbox.count(), [], 0);
+  const pendingSales = useLiveQuery(
+    () => db.outbox.where('table').equals('sales').count(),
+    [],
+    0,
+  );
   const maxAttempts = useLiveQuery(
     async () => {
       const worst = await db.outbox.orderBy('id').toArray();
@@ -81,6 +96,7 @@ export function useSyncStatus(): SyncStatus {
       maxAttempts: maxAttempts ?? 0,
     }),
     pending: pending ?? 0,
+    pendingSales: pendingSales ?? 0,
     lastSyncAt: engine.lastSyncAt,
     lastError: engine.lastError,
     authed: engine.authed,

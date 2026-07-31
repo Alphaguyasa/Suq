@@ -64,7 +64,7 @@ export async function loadDemoData(): Promise<LoadDemoResult> {
     try {
       await addCashier(cashier.name, cashier.pin);
     } catch {
-      // Already present from a previous load.
+      // DuplicateCashierError — already present from setup or a previous load.
     }
   }
 

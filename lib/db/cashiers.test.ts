@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { addCashier, anyCashiers, isValidPin, listCashiers, removeCashier, verifyPin } from './cashiers';
+import {
+  DuplicateCashierError,
+  addCashier,
+  anyCashiers,
+  isValidPin,
+  listCashiers,
+  removeCashier,
+  verifyPin,
+} from './cashiers';
 import { freshDatabase } from './test-helpers';
 
 beforeEach(async () => {
@@ -32,6 +40,18 @@ describe('cashiers', () => {
   it('refuses a nameless cashier or a bad PIN', async () => {
     await expect(addCashier('   ', '1234')).rejects.toThrow();
     await expect(addCashier('ሰላም', '12')).rejects.toThrow();
+  });
+
+  it('refuses a duplicate name, so the lock screen never shows two of one person', async () => {
+    await addCashier('መሠረት', '1234');
+
+    await expect(addCashier('መሠረት', '9999')).rejects.toThrow(DuplicateCashierError);
+    await expect(addCashier('  መሠረት  ', '9999')).rejects.toThrow(DuplicateCashierError);
+
+    expect(await listCashiers()).toHaveLength(1);
+    // And the original PIN is untouched.
+    const [only] = await listCashiers();
+    expect((await verifyPin(only?.id ?? '', '1234'))?.name).toBe('መሠረት');
   });
 
   it('verifies a PIN and returns null rather than throwing on a wrong one', async () => {

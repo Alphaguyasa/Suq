@@ -172,7 +172,7 @@ export const en: Dict = {
   },
   syncSheet: {
     title: 'Sync',
-    pending: 'Waiting',
+    pending: 'Waiting sales / rows',
     lastSync: 'Last sync',
     lastError: 'Last error',
     syncNow: 'Sync now',
@@ -237,6 +237,7 @@ export const en: Dict = {
     removeCashier: 'Remove',
     noCashiers: 'No cashiers yet',
     pinHint: 'Four digits',
+    duplicateCashier: 'That name is already taken',
     dangerSection: 'Reset device',
     resetWarning:
       'Every product, sale and movement on this device will be erased. Anything not yet synced cannot be recovered.',

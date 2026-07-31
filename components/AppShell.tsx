@@ -66,9 +66,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <span className="ethiopic text-xl font-semibold tracking-tight">{t.app.name}</span>
 
+        {/* Sales, not rows: "3 ተቀምጧል" is the promise being made. */}
         <SyncPill
           state={status.state}
-          pending={status.pending}
+          pending={status.pendingSales}
           onClick={() => setSheetOpen((open) => !open)}
         />
 

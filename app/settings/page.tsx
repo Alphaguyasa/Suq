@@ -7,6 +7,7 @@ import type { FormEvent } from 'react';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Field, Select, TextInput } from '@/components/ui/Field';
 import {
+  DuplicateCashierError,
   addCashier,
   getDevice,
   getSettings,
@@ -232,7 +233,19 @@ function CashierSection({ cashiers }: { cashiers: { id: string; name: string }[]
     if (!isValidPin(pin)) return setError(t.settings.pinHint);
 
     setError(undefined);
-    await addCashier(name, pin);
+    try {
+      await addCashier(name, pin);
+    } catch (cause) {
+      setError(
+        cause instanceof DuplicateCashierError
+          ? t.settings.duplicateCashier
+          : cause instanceof Error
+            ? cause.message
+            : String(cause),
+      );
+      return;
+    }
+
     setName('');
     setPin('');
   }

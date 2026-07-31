@@ -113,6 +113,28 @@ describe('1. two-device concurrent sale', () => {
 
 /* ------------------------------------------------------------------ 2 ---- */
 
+describe('what the pill counts', () => {
+  it('counts sales, not outbox rows', async () => {
+    // "Three sales saved" is the promise. A three-line sale queues seven rows,
+    // so counting the outbox made the pill read 21 and the demo line fell flat.
+    const a = await replica('suq-pill-count', 'A1');
+    const water = makeProduct();
+    const soap = makeProduct({ name: 'Abay Soap', barcode: '600999' });
+    await localWrite('products', water, a.db);
+    await localWrite('products', soap, a.db);
+
+    for (let i = 0; i < 3; i += 1) {
+      await sellOn(a, { productId: water.id, qty: 1 });
+    }
+
+    const rows = await a.db.outbox.count();
+    const sales = await a.db.outbox.where('table').equals('sales').count();
+
+    expect(sales, 'what the pill shows').toBe(3);
+    expect(rows, 'what is actually queued').toBeGreaterThan(sales);
+  });
+});
+
 describe('2. interrupted push', () => {
   it('drains to empty with zero duplicates after the network drops mid-drain', async () => {
     const server = new FakeServer();

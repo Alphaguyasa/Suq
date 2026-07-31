@@ -177,7 +177,7 @@ export const am = {
   },
   syncSheet: {
     title: 'ማመሳሰል',
-    pending: 'የሚጠብቁ',
+    pending: 'የሚጠብቁ ሽያጮች / መዝገቦች',
     lastSync: 'መጨረሻ ማመሳሰል',
     lastError: 'የመጨረሻ ስህተት',
     syncNow: 'አሁን አመሳስል',
@@ -242,6 +242,7 @@ export const am = {
     removeCashier: 'አስወግድ',
     noCashiers: 'ገና ሻጭ አልተጨመረም',
     pinHint: 'አራት አሃዝ',
+    duplicateCashier: 'ይህ ስም ቀድሞ ተይዟል',
     dangerSection: 'መሣሪያውን አጽዳ',
     resetWarning: 'ሁሉም ምርቶች፣ ሽያጮችና ክምችት ከዚህ መሣሪያ ይጠፋሉ። ያልተመሳሰለ መረጃ አይመለስም።',
     resetConfirmLabel: 'ለማረጋገጥ የሱቁን ስም ይተይቡ',

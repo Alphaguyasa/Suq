@@ -44,7 +44,19 @@ export function SyncSheet({ status, onClose }: { status: SyncStatus; onClose: ()
       </div>
 
       <dl className="flex flex-col gap-2 text-sm">
-        <Row label={t.syncSheet.pending} value={<span className="num">{status.pending}</span>} />
+        {/* The pill shows sales; the detail view shows the machinery too, so
+            the two numbers never look like a contradiction. */}
+        <Row
+          label={t.syncSheet.pending}
+          value={
+            <span className="num">
+              {status.pendingSales}
+              {status.pending !== status.pendingSales ? (
+                <span className="text-muted"> / {status.pending}</span>
+              ) : null}
+            </span>
+          }
+        />
         <Row
           label={t.syncSheet.lastSync}
           value={
