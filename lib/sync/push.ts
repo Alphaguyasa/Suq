@@ -72,7 +72,26 @@ export async function pushOnce(
       );
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
-      await recordFailure(db, entries, message);
+
+      /*
+       * Back off the WHOLE remainder of the batch, not just the table that
+       * failed.
+       *
+       * Marking only the failing table meant the next drain skipped it (still
+       * in backoff) and pushed the tables after it instead — so sale_items and
+       * stock_movements landed in the cloud while their parent sale did not.
+       * There are no foreign keys to catch that (deliberately, see the init
+       * migration), so the owner dashboard would show stock moving with no
+       * sale to explain it. Found rehearsing step 5 against the real project.
+       *
+       * Parent-first ordering is only a guarantee if a failure holds the whole
+       * batch back.
+       */
+      const remainder = TABLE_ORDER.slice(TABLE_ORDER.indexOf(table)).flatMap(
+        (later) => byTable.get(later) ?? [],
+      );
+
+      await recordFailure(db, remainder, message);
       return { pushed: 0, remaining: true, error: message };
     }
 

@@ -152,6 +152,44 @@ describe('2. interrupted push', () => {
     expect(server.count('products')).toBe(1);
   });
 
+  it('never lands a child row in the cloud without its parent sale', async () => {
+    // Regression, found rehearsing step 5 against the real project.
+    //
+    // A failure used to back off only the table that failed, so the very next
+    // drain skipped it (still in backoff) and pushed the tables AFTER it —
+    // sale_items and stock_movements arriving without their sale. There are no
+    // foreign keys to catch that, so the owner dashboard would have shown
+    // stock moving with no sale to explain it.
+    const server = new FakeServer();
+    const client = server.client();
+
+    const a = await replica('suq-orphan', 'A1');
+    const product = makeProduct();
+    await localWrite('products', product, a.db);
+    await drainOutbox(client, a.db);
+
+    await sellOn(a, { productId: product.id, qty: 2 });
+
+    // Fail on the sales upsert specifically.
+    server.failUpsertsRemaining = 1;
+    await drainOutbox(client, a.db);
+
+    expect(server.count('sales'), 'the sale did not land').toBe(0);
+    expect(server.count('sale_items'), 'so its items must not either').toBe(0);
+    expect(server.count('stock_movements'), 'nor its movements').toBe(0);
+    expect(await a.db.outbox.count(), 'all three still queued').toBe(3);
+
+    // Once the backoff expires the whole batch goes together, in order.
+    vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 3000);
+    await drainOutbox(client, a.db);
+    vi.restoreAllMocks();
+
+    expect(server.count('sales')).toBe(1);
+    expect(server.count('sale_items')).toBe(1);
+    expect(server.count('stock_movements')).toBe(1);
+    expect(await a.db.outbox.count()).toBe(0);
+  });
+
   it('records the failure on the row rather than losing it', async () => {
     const server = new FakeServer();
     const client = server.client();
