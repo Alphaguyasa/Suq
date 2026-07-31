@@ -16,6 +16,16 @@
   --color-alarm: #b3261e;
   --color-muted: #6b7280;
 
+  /*
+   * Chart fills only. --birr (#1B7A5A) fails the chroma floor as a data fill —
+   * at 0.1 chroma it reads gray in a bar — so charts use the nearest step of
+   * the same hue that passes all six checks against --paper:
+   *   lightness PASS · chroma PASS · CVD ΔE 8.7 protan PASS · normal 23.3 PASS
+   *   · contrast PASS
+   * --birr itself is untouched, and stays the colour of money in the UI.
+   */
+  --color-birr-data: #0e7a50;
+
   --font-ui: var(--font-archivo), system-ui, sans-serif;
   --font-ethiopic: var(--font-noto-ethiopic), sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;
