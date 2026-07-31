@@ -19,7 +19,7 @@ export const am = {
     synced: 'ተመሳስሏል',
     syncing: 'በማመሳሰል ላይ',
     offline: 'ከመስመር ውጭ',
-    blocked: 'ማመሳሰል ተስኗል',
+    blocked: 'ማመሳሰል አልተሳካም',
     /** Rendered after the state, e.g. "ከመስመር ውጭ · 12 ተቀምጧል" */
     pending: (count: number) => `${count} ተቀምጧል`,
     /** Same phrase with the count split out, so digits can use tabular-nums. */

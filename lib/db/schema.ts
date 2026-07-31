@@ -1,0 +1,174 @@
+import Dexie from 'dexie';
+import type { EntityTable } from 'dexie';
+
+/**
+ * IndexedDB is the source of truth. Supabase is a replica.
+ * BUILD_GUIDE section 3.2 defines these shapes; they are mirrored exactly in
+ * Postgres in session 5, so do not rename a column casually.
+ *
+ * Tier rules (BUILD_GUIDE 3.1):
+ *   append-only   sales, sale_items, stock_movements  — immutable, no conflict rule needed
+ *   last-write-wins  products                          — higher updated_at wins
+ *   local only    outbox, device_meta, stock_cache     — machinery, never syncs
+ */
+
+export type Unit = 'pcs' | 'kg' | 'l' | 'pack';
+export type PaymentMethod = 'cash' | 'telebirr' | 'card' | 'credit';
+export type MovementReason =
+  | 'sale'
+  | 'purchase'
+  | 'adjustment'
+  | 'return'
+  | 'damage'
+  | 'opening';
+
+/** Tables that replicate to Supabase, and therefore the only ones with an outbox. */
+export type SyncedTable = 'products' | 'sales' | 'sale_items' | 'stock_movements';
+
+export interface Product {
+  id: string;
+  shop_id: string;
+  name: string;
+  name_am: string;
+  barcode: string | null;
+  unit: Unit;
+  /** integer cents */
+  cost_price: number;
+  /** integer cents */
+  sell_price: number;
+  reorder_level: number;
+  is_active: boolean;
+  /** ISO string — the last-write-wins key */
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface Sale {
+  id: string;
+  shop_id: string;
+  device_id: string;
+  /** "A1-000142" — see BUILD_GUIDE 3.4 */
+  receipt_no: string;
+  subtotal: number;
+  discount: number;
+  total: number;
+  payment_method: PaymentMethod;
+  cashier_name: string;
+  /**
+   * Reserved for parity with the Postgres column in BUILD_GUIDE 3.2. It is
+   * never written locally: setting it would be an UPDATE on an immutable
+   * table. Voided status is derived from the existence of a void row whose
+   * voids_sale_id points here — see isVoided() in repositories/sales.ts.
+   */
+  voided_by: string | null;
+  /** Set only on a void row: the id of the sale this one reverses. */
+  voids_sale_id: string | null;
+  created_at: string;
+  /** Local only, stripped on push. */
+  synced_at: string | null;
+}
+
+export interface SaleItem {
+  id: string;
+  sale_id: string;
+  product_id: string;
+  /** Name and price AT TIME OF SALE. Never join to products for history. */
+  name_snapshot: string;
+  unit_price: number;
+  qty: number;
+  line_total: number;
+}
+
+export interface StockMovement {
+  id: string;
+  shop_id: string;
+  product_id: string;
+  /** Negative for sales, positive for restock. On-hand is the SUM of these. */
+  qty_delta: number;
+  reason: MovementReason;
+  /** sale_id when reason is 'sale' or 'return' */
+  ref_id: string | null;
+  note: string | null;
+  created_at: string;
+  device_id: string;
+}
+
+export interface OutboxEntry {
+  id?: number;
+  table: SyncedTable;
+  op: 'upsert';
+  row_id: string;
+  payload: unknown;
+  created_at: string;
+  attempts: number;
+  last_error: string | null;
+}
+
+/** Local only. One row, keyed by DEVICE_META_ID. */
+export interface DeviceMeta {
+  id: string;
+  device_id: string;
+  /** "A1" — makes receipt numbers collision-free across offline devices. */
+  device_prefix: string;
+  shop_id: string;
+  /** Monotonic, local, never reset. */
+  receipt_counter: number;
+  /** Server time from the last successful pull. Never Date.now(). */
+  last_pull_at: string | null;
+  cashier_name: string;
+}
+
+/**
+ * Render-speed cache only. Always recomputed from stock_movements, never
+ * written to directly by feature code. If cache and movements disagree,
+ * the movements are right. BUILD_GUIDE 3.5.
+ */
+export interface StockCacheEntry {
+  product_id: string;
+  on_hand: number;
+  computed_at: string;
+}
+
+export class SuqDatabase extends Dexie {
+  products!: EntityTable<Product, 'id'>;
+  sales!: EntityTable<Sale, 'id'>;
+  sale_items!: EntityTable<SaleItem, 'id'>;
+  stock_movements!: EntityTable<StockMovement, 'id'>;
+  outbox!: EntityTable<OutboxEntry, 'id'>;
+  device_meta!: EntityTable<DeviceMeta, 'id'>;
+  stock_cache!: EntityTable<StockCacheEntry, 'product_id'>;
+
+  constructor(name = 'suq') {
+    super(name);
+
+    /*
+     * Indexed for the queries we actually run.
+     *
+     * is_active is deliberately NOT indexed despite being on the wish list:
+     * IndexedDB cannot use a boolean as a key, so records would simply be
+     * absent from the index and `where('is_active')` would silently return
+     * nothing — worse than no index at all. Active filtering happens in
+     * memory, which is free at shop scale (tens to hundreds of products).
+     * The same constraint applies to nulls, which is why deleted_at and
+     * synced_at lookups filter rather than seek.
+     */
+    this.version(1).stores({
+      products: 'id, barcode, name, name_am, updated_at',
+      sales: 'id, created_at, receipt_no, synced_at, voids_sale_id',
+      sale_items: 'id, sale_id, product_id',
+      stock_movements: 'id, product_id, created_at, [product_id+created_at], ref_id',
+      outbox: '++id, table, row_id, created_at',
+      device_meta: 'id',
+      stock_cache: 'product_id',
+    });
+  }
+}
+
+export const db = new SuqDatabase();
+
+/** Test helper. Empties every table without tearing down the schema. */
+export async function clearAllTables(): Promise<void> {
+  await db.transaction('rw', db.tables, async () => {
+    await Promise.all(db.tables.map((table) => table.clear()));
+  });
+}
