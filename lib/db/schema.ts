@@ -63,6 +63,12 @@ export interface Sale {
   voided_by: string | null;
   /** Set only on a void row: the id of the sale this one reverses. */
   voids_sale_id: string | null;
+  /**
+   * What the customer handed over, for cash sales. Stored so a reprint can
+   * still show the change given — it is not derivable from the total.
+   * Null for every other payment method.
+   */
+  cash_received: number | null;
   created_at: string;
   /** Local only, stripped on push. */
   synced_at: string | null;
@@ -129,6 +135,27 @@ export interface StockCacheEntry {
   computed_at: string;
 }
 
+/**
+ * Local only, one row, keyed by SHOP_SETTINGS_ID.
+ *
+ * BUILD_GUIDE 3.1 files shop_settings under last-write-wins, but the session 5
+ * migration list does not include it, so nothing here replicates yet. Session 8
+ * owns the settings UI; if the owner dashboard ever needs these fields, add the
+ * Postgres table then and move it to the synced tier.
+ */
+export interface ShopSettings {
+  id: string;
+  shop_name: string;
+  shop_name_am: string;
+  phone: string;
+  address: string;
+  receipt_footer: string;
+  receipt_footer_am: string;
+  /** Thermal paper width in mm. Plenty of shops have the narrower printer. */
+  printer_width: 58 | 80;
+  updated_at: string;
+}
+
 export class SuqDatabase extends Dexie {
   products!: EntityTable<Product, 'id'>;
   sales!: EntityTable<Sale, 'id'>;
@@ -137,6 +164,7 @@ export class SuqDatabase extends Dexie {
   outbox!: EntityTable<OutboxEntry, 'id'>;
   device_meta!: EntityTable<DeviceMeta, 'id'>;
   stock_cache!: EntityTable<StockCacheEntry, 'product_id'>;
+  shop_settings!: EntityTable<ShopSettings, 'id'>;
 
   constructor(name = 'suq') {
     super(name);
@@ -160,6 +188,11 @@ export class SuqDatabase extends Dexie {
       outbox: '++id, table, row_id, created_at',
       device_meta: 'id',
       stock_cache: 'product_id',
+    });
+
+    // v2 adds shop settings. Dexie carries the v1 stores forward untouched.
+    this.version(2).stores({
+      shop_settings: 'id',
     });
   }
 }

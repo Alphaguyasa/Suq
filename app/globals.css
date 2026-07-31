@@ -66,6 +66,39 @@ body {
   outline-offset: 2px;
 }
 
+/*
+ * Print is thermal paper, not A4. The @page size itself is emitted by
+ * components/Receipt.tsx, because it depends on the 58/80mm setting and
+ * @page cannot be selected by class.
+ */
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  /* App chrome: header, bottom nav, every on-screen action. */
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  [data-print-sheet] {
+    margin: 0 !important;
+    border: 0 !important;
+    padding: 2mm 3mm !important;
+  }
+
+  /* Never tear a line item across two pieces of paper. */
+  [data-print-sheet] li {
+    break-inside: avoid;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

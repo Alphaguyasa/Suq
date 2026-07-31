@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { ensureDevice } from '@/lib/db';
+import { ensureDevice, ensureSettings } from '@/lib/db';
 import { useT } from '@/lib/i18n';
 import { BottomNav } from './BottomNav';
 import { SyncPill } from './SyncPill';
@@ -21,11 +21,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   // real first-run flow; until then the app registers a default one.
   useEffect(() => {
     void ensureDevice();
+    void ensureSettings();
   }, []);
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-rule bg-paper px-3 sm:px-4">
+      <header
+        data-print-hide=""
+        className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-rule bg-paper px-3 sm:px-4"
+      >
         <span className="ethiopic text-xl font-semibold tracking-tight">{t.app.name}</span>
         <SyncPill state="synced" pending={0} />
       </header>

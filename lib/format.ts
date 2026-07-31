@@ -39,6 +39,22 @@ export function formatDateTime(iso: string): string {
   );
 }
 
+/**
+ * parseETB for a field the cashier is still typing into: a half-finished "1."
+ * yields 0 rather than throwing. Only for live input — anything being stored
+ * must go through parseETB and deal with the error.
+ */
+export function parseETBOrZero(input: string): number {
+  const trimmed = input.trim();
+  if (!trimmed) return 0;
+
+  try {
+    return parseETB(trimmed);
+  } catch {
+    return 0;
+  }
+}
+
 /** Quantities are not money: show them plainly, trimming a pointless ".00". */
 export function formatQty(qty: number): string {
   return Number.isInteger(qty) ? String(qty) : qty.toFixed(2).replace(/\.?0+$/, '');

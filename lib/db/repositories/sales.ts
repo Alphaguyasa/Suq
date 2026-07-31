@@ -26,6 +26,8 @@ export interface PaymentInput {
   /** integer cents, applied to the whole sale */
   discount?: number;
   cashier_name?: string;
+  /** integer cents handed over. Recorded for cash only, so a reprint can show the change. */
+  cash_received?: number;
 }
 
 export interface SaleDetail {
@@ -121,6 +123,10 @@ export async function create(cart: CartLine[], payment: PaymentInput): Promise<S
         cashier_name: payment.cashier_name ?? meta.cashier_name,
         voided_by: null,
         voids_sale_id: null,
+        cash_received:
+          payment.method === 'cash' && payment.cash_received !== undefined
+            ? payment.cash_received
+            : null,
         created_at,
         synced_at: null,
       };
@@ -267,6 +273,7 @@ export async function voidSale(saleId: string, reason: string): Promise<Sale> {
         cashier_name: meta.cashier_name,
         voided_by: null,
         voids_sale_id: saleId,
+        cash_received: null,
         created_at,
         synced_at: null,
       };

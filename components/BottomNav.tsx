@@ -73,6 +73,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label={t.app.name}
+      data-print-hide=""
       className="sticky bottom-0 z-20 shrink-0 border-t border-rule bg-paper pb-[env(safe-area-inset-bottom)]"
     >
       <ul className="mx-auto flex max-w-3xl">

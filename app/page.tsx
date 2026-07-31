@@ -1,13 +1,14 @@
 'use client';
 
 import { useLiveQuery } from 'dexie-react-hooks';
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CartLines } from '@/components/sell/CartLines';
 import { PaymentPanel } from '@/components/sell/PaymentPanel';
 import { ProductTile } from '@/components/sell/ProductTile';
 import { ensureDevice, productsRepo, salesRepo, stockRepo } from '@/lib/db';
 import type { PaymentMethod, Product } from '@/lib/db';
-import { formatETB } from '@/lib/format';
+import { formatETB, parseETBOrZero } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { useCart } from '@/lib/sell/useCart';
 
@@ -22,7 +23,7 @@ export default function SellPage() {
   const [term, setTerm] = useState('');
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [received, setReceived] = useState('');
-  const [receipt, setReceipt] = useState<string>();
+  const [receipt, setReceipt] = useState<{ id: string; receipt_no: string }>();
   const [busy, setBusy] = useState(false);
 
   const products = useLiveQuery(() => productsRepo.list(), []);
@@ -121,10 +122,15 @@ export default function SellPage() {
           unit_price: item.unit_price,
           qty: item.qty,
         })),
-        { method, discount: cart.totals.discount },
+        {
+          method,
+          discount: cart.totals.discount,
+          // Recorded so a reprint can still show the change given.
+          cash_received: method === 'cash' ? parseETBOrZero(received) : undefined,
+        },
       );
 
-      setReceipt(sale.receipt_no);
+      setReceipt({ id: sale.id, receipt_no: sale.receipt_no });
       cart.clear();
       setReceived('');
       setTerm('');
@@ -132,7 +138,7 @@ export default function SellPage() {
     } finally {
       setBusy(false);
     }
-  }, [busy, cart, focusSearch, method]);
+  }, [busy, cart, focusSearch, method, received]);
 
   useEffect(() => {
     if (!receipt) return;
@@ -195,10 +201,13 @@ export default function SellPage() {
 
       <aside className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-20 lg:self-start">
         {receipt ? (
-          <p className="flex items-center justify-between gap-2 rounded-lg border border-birr/30 bg-birr/10 px-3 py-2 text-birr">
+          <Link
+            href={`/sales/${receipt.id}`}
+            className="flex items-center justify-between gap-2 rounded-lg border border-birr/30 bg-birr/10 px-3 py-2 text-birr"
+          >
             <span className="ethiopic text-sm font-medium">{t.sell.completed}</span>
-            <span className="num text-sm font-semibold">{receipt}</span>
-          </p>
+            <span className="num text-sm font-semibold">{receipt.receipt_no}</span>
+          </Link>
         ) : null}
 
         {cart.items.length === 0 ? (

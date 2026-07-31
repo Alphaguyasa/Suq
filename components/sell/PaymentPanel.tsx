@@ -1,23 +1,13 @@
 'use client';
 
 import type { PaymentMethod } from '@/lib/db';
-import { formatETB, parseETB } from '@/lib/format';
+import { formatETB, parseETBOrZero } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 
 const METHODS: PaymentMethod[] = ['cash', 'telebirr', 'card'];
 
 /** The notes a customer actually hands over, in cents. */
 const QUICK_NOTES = [5000, 10000, 20000, 50000];
-
-function safeParse(input: string): number {
-  const trimmed = input.trim();
-  if (!trimmed) return 0;
-  try {
-    return parseETB(trimmed);
-  } catch {
-    return 0;
-  }
-}
 
 export function PaymentPanel({
   method,
@@ -38,7 +28,7 @@ export function PaymentPanel({
 }) {
   const t = useT();
 
-  const receivedCents = safeParse(received);
+  const receivedCents = parseETBOrZero(received);
   const change = receivedCents - total;
   const showChange = method === 'cash' && receivedCents > 0;
 

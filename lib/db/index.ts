@@ -2,6 +2,7 @@ export * from './schema';
 export * from './write';
 export * from './device';
 export * from './bootstrap';
+export * from './settings';
 export * from './id';
 
 export * as productsRepo from './repositories/products';
