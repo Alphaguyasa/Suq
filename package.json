@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "seed": "node scripts/seed.mts",
+    "seed:demo": "node scripts/seed-demo.mts",
     "check:bundle": "node scripts/check-bundle.mts",
     "icons": "node scripts/make-icons.mts",
     "dev": "next dev",

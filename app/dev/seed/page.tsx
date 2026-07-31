@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { productsRepo } from '@/lib/db';
 import { CATALOGUE } from '@/lib/seed/catalogue';
 import { seedCatalogue } from '@/lib/seed/seed';
+import { loadDemoData } from '@/lib/seed/demo/load';
 import { formatETB } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 
@@ -30,6 +31,16 @@ export default function SeedPage() {
     }
   }
 
+  async function handleDemo() {
+    setBusy(true);
+    try {
+      const { products, sales } = await loadDemoData();
+      setResult(`${products} products · ${sales} sales`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-1">
@@ -37,10 +48,17 @@ export default function SeedPage() {
         <p className="ethiopic text-sm text-muted">{t.seed.description}</p>
       </header>
 
-      <div className="flex items-center gap-3">
-        <Button type="button" variant="primary" onClick={handleSeed} disabled={busy}>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" variant="quiet" onClick={handleSeed} disabled={busy}>
           <span className="ethiopic">{t.seed.load}</span>
         </Button>
+
+        {/* The demo dataset: 60 products and a month of trading. Written
+            straight to the tables, so none of it syncs — see load.ts. */}
+        <Button type="button" variant="primary" onClick={handleDemo} disabled={busy}>
+          <span className="ethiopic">{t.seed.loadDemo}</span>
+        </Button>
+
         <span className="num text-sm text-muted">{existing?.length ?? 0}</span>
       </div>
 

@@ -268,10 +268,16 @@ export const en: Dict = {
     body: 'This page has not been saved yet. The sale screen still works.',
     toSell: 'Back to selling',
   },
+  owner: {
+    title: 'Owner view',
+    today: "Today's sales",
+    noSalesYet: 'No sales yet today',
+  },
   seed: {
     title: 'Sample data',
     description: 'Loads 15 products onto this device for testing',
     load: 'Load sample',
+    loadDemo: 'Load demo data',
     loaded: (n: number) => `${n} products loaded`,
     alreadyLoaded: 'Sample already loaded',
   },

@@ -271,10 +271,16 @@ export const am = {
     body: 'ይህ ገጽ ገና አልተቀመጠም። የሽያጭ ማያው ግን ይሠራል።',
     toSell: 'ወደ ሽያጭ ተመለስ',
   },
+  owner: {
+    title: 'የባለቤት ገጽ',
+    today: 'የዛሬው ሽያጭ',
+    noSalesYet: 'ዛሬ ገና ሽያጭ የለም',
+  },
   seed: {
     title: 'የናሙና መረጃ',
     description: 'ለሙከራ 15 ምርቶች ወደ መሣሪያው ይጫናል',
     load: 'ናሙና ጫን',
+    loadDemo: 'የማሳያ መረጃ ጫን',
     loaded: (n: number) => `${n} ምርቶች ተጭነዋል`,
     alreadyLoaded: 'ናሙናው ቀድሞ ተጭኗል',
   },
