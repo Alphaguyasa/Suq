@@ -76,6 +76,13 @@ export interface Sale {
 
 export interface SaleItem {
   id: string;
+  /**
+   * Carried on the row rather than reached through sale_id. Postgres RLS
+   * scopes every table by shop_id, and an INSERT policy that had to look up
+   * the parent sale would make the sale's arrival order load-bearing.
+   * See supabase/migrations/20260731000000_init.sql.
+   */
+  shop_id: string;
   sale_id: string;
   product_id: string;
   /** Name and price AT TIME OF SALE. Never join to products for history. */

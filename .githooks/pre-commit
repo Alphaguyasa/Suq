@@ -11,7 +11,18 @@ staged=$(git diff --cached --name-only --diff-filter=ACM)
 fail=0
 
 # Written as a variable so this file does not trip its own scan.
-secret_pattern='service_role|SERVICE_ROLE_KEY|BEGIN [A-Z ]*PRIVATE KEY|eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.|sk-[A-Za-z0-9]{24,}|xox[baprs]-[A-Za-z0-9-]{10,}'
+#
+# These match key MATERIAL, not the words around it. The first version matched
+# the bare string "service_role", which flagged `grant ... to service_role` in
+# a migration and the guard in lib/supabase/client.ts that exists to catch
+# these keys. A scanner that cries wolf on correct code gets bypassed with
+# --no-verify, and then it protects nothing.
+#
+#   1. a two-segment JWT (both header and payload base64 of a JSON object)
+#   2. a Supabase secret key by prefix
+#   3. a secret-ish env assignment that actually has a value after it
+#   4. PEM private keys, OpenAI keys, Slack tokens
+secret_pattern='eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.|sb_secret_[A-Za-z0-9_-]{8,}|(SERVICE_ROLE|SERVICE_KEY|SECRET_KEY|PRIVATE_KEY|ACCESS_TOKEN)[A-Z_]*[[:space:]]*[:=][[:space:]]*.?[A-Za-z0-9._-]{16,}|BEGIN [A-Z ]*PRIVATE KEY|sk-[A-Za-z0-9]{24,}|xox[baprs]-[A-Za-z0-9-]{10,}'
 
 for file in $staged; do
   case "$file" in

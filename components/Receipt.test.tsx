@@ -41,6 +41,7 @@ const sale: Sale = {
 const items: SaleItem[] = [
   {
     id: 'item-1',
+    shop_id: 'shop',
     sale_id: 'sale-1',
     product_id: 'p-1',
     name_snapshot: LONG_NAME,
@@ -50,6 +51,7 @@ const items: SaleItem[] = [
   },
   {
     id: 'item-2',
+    shop_id: 'shop',
     sale_id: 'sale-1',
     product_id: 'p-2',
     name_snapshot: 'ሾላ ፓስታ 500 ግራም',

@@ -87,6 +87,7 @@ export async function create(cart: CartLine[], payment: PaymentInput): Promise<S
 
   const items: SaleItem[] = cart.map((line) => ({
     id: newId(),
+    shop_id: meta.shop_id,
     sale_id: saleId,
     product_id: line.product_id,
     name_snapshot: line.name_snapshot,
@@ -237,6 +238,7 @@ export async function voidSale(saleId: string, reason: string): Promise<Sale> {
 
   const items: SaleItem[] = originalItems.map((item) => ({
     id: newId(),
+    shop_id: original.shop_id,
     sale_id: voidId,
     product_id: item.product_id,
     name_snapshot: item.name_snapshot,
