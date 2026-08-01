@@ -285,13 +285,6 @@ export const am = {
     loaded: (n: number) => `${n} ምርቶች ተጭነዋል`,
     alreadyLoaded: 'ናሙናው ቀድሞ ተጭኗል',
   },
-  placeholder: {
-    sell: 'የሽያጭ ማያ',
-    products: 'ምርቶች',
-    reports: 'ሪፖርቶች',
-    settings: 'ቅንብሮች',
-    comingIn: (session: number) => `በክፍለ ጊዜ ${session} ይገነባል`,
-  },
 };
 
 export type Dict = typeof am;

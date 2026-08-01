@@ -282,11 +282,4 @@ export const en: Dict = {
     loaded: (n: number) => `${n} products loaded`,
     alreadyLoaded: 'Sample already loaded',
   },
-  placeholder: {
-    sell: 'Sale screen',
-    products: 'Products',
-    reports: 'Reports',
-    settings: 'Settings',
-    comingIn: (session: number) => `Built in session ${session}`,
-  },
 };

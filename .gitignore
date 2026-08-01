@@ -11,6 +11,10 @@ coverage/
 *.tsbuildinfo
 next-env.d.ts
 
+# Serwist compiles app/sw.ts to this on every build (see next.config.ts).
+/public/sw.js
+/public/sw.js.map
+
 .DS_Store
 Thumbs.db
 

@@ -48,7 +48,7 @@ Then open the folder in VS Code and start Claude Code from the integrated termin
 | Local database | Dexie 4 (IndexedDB) + `dexie-react-hooks` | The actual source of truth. `useLiveQuery` gives reactive UI for free |
 | Cloud database | Supabase Postgres | You already know it; free tier fits |
 | Offline shell | Serwist (`@serwist/next`) | The maintained PWA plugin that actually supports Next 15 |
-| Barcode | USB scanner (acts as a keyboard) + `@zxing/browser` for camera | USB path needs zero code |
+| Barcode | USB scanner (acts as a keyboard) | Needs zero code — just focus discipline. Camera scanning is phase two |
 | Receipts | CSS `@page` at 80mm, then optional Web Bluetooth ESC/POS | Print works on day one |
 | Deploy | Vercel | You already know it |
 
