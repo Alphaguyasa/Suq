@@ -9,7 +9,7 @@ import { useT } from '@/lib/i18n';
  *
  * On "everything monospace": the numbers are, and that is what has to line up.
  * Amharic has no monospaced face — Noto Sans Ethiopic is proportional, and
- * forcing a mono fallback would render Ethiopic badly, which CLAUDE.md rules
+ * forcing a mono fallback would render Ethiopic badly, which docs/RULES.md rules
  * out. So columns are held by flex/grid rather than by character counting,
  * which also survives a product name long enough to wrap. Names wrap onto
  * their own line above the qty × price row for exactly that reason.

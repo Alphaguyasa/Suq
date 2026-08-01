@@ -11,7 +11,7 @@ import { db as defaultDb } from '@/lib/db';
  * pushed straight back, forever. Replication is not a local mutation.
  *
  * Nothing else may write here. If you are adding a feature and this file looks
- * convenient, you want localWrite() (CLAUDE.md rule 3).
+ * convenient, you want localWrite() (docs/RULES.md rule 3).
  * ============================================================================
  */
 

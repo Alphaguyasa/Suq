@@ -17,7 +17,7 @@ import type {
  *
  * Nothing else may call db.products.put(), db.sales.put(), db.sale_items.put()
  * or db.stock_movements.put(). Not a component, not a hook, not another
- * repository. No exceptions. (CLAUDE.md rule 3, BUILD_GUIDE 4.3.)
+ * repository. No exceptions. (docs/RULES.md rule 3, BUILD_GUIDE 4.3.)
  *
  * The domain row and its outbox row are written inside ONE IndexedDB
  * transaction, so either both land or neither does. Bypass this and you can

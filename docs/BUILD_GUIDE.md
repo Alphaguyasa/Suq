@@ -244,7 +244,7 @@ export async function localWrite<T>(
 
 Domain row and outbox row are written in **one IndexedDB transaction**. Either both land or neither does. If the tab is closed mid-write, you never end up with a sale that exists locally but will never sync — the single most damaging failure mode this app can have, because it's invisible until reconciliation.
 
-Enforce this in `CLAUDE.md`: nothing calls `db.sales.put()` directly. Ever.
+Enforce this in `docs/RULES.md`: nothing calls `db.sales.put()` directly. Ever.
 
 ### 4.4 Sync states
 
@@ -325,7 +325,7 @@ Multi-branch. Supplier management. Accounting export. Customer accounts and cred
 
 Every one of these is a real thing a shop owner will ask for in the first meeting. The correct answer is "yes, that's phase two" — because a finished v1 that does six things flawlessly sells, and an unfinished v1 that half-does twenty things does not. You already know this failure mode; the mesh chat project worked because it had ten bounded sessions.
 
-Write the refuse list into `CLAUDE.md`. Claude Code will otherwise happily help you build all of it.
+Write the refuse list into `docs/RULES.md`, where it is in front of you every time the scope starts to drift.
 
 ---
 

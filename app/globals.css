@@ -35,7 +35,7 @@
   --spacing-pay: 4rem; /* 64px pay button */
 }
 
-/* Aliases under the exact names documented in CLAUDE.md. */
+/* Aliases under the exact names documented in docs/RULES.md. */
 :root {
   --ink: var(--color-ink);
   --paper: var(--color-paper);

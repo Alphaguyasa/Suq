@@ -21,7 +21,7 @@ export interface SyncPillProps {
  * button a detail sheet.
  *
  * Note on colour: 'blocked' does not use --alarm. Red is reserved for
- * destructive actions (CLAUDE.md), and a stalled sync has destroyed nothing.
+ * destructive actions (docs/RULES.md), and a stalled sync has destroyed nothing.
  * It escalates by inverting ochre instead — louder, same vocabulary.
  */
 const STATE_STYLES: Record<SyncState, { pill: string; dot: string }> = {
