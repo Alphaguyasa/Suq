@@ -30,3 +30,6 @@ but has NOT been pushed or opened as a PR. `gh` auth on the PC is expired. The P
 but had not finished its first run (Chromium was still downloading), so the e2e tests are **unverified**.
 Lint ✅, typecheck ✅ (from before the e2e files were added; recheck), unit tests not re-run after the timeout fix.
 Not started: Phase 1 items, Phase 2 scheduled task.
+**E2E first run: both Playwright tests FAIL** (`offline-launch`, and `offline-sync` waiting for the pill to
+reach `synced` after setup). Traces are in `test-results/` (gitignored). These must be debugged before the setup
+PR can go green — the setup PR must not be merged with them failing.
