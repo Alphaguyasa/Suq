@@ -35,3 +35,28 @@ lint, typecheck, unit, build, e2e) with dummy env; fixed the flaky timeout.
 - Docs: README said CSV prices are in cents; the importer (correctly) takes birr. README fixed.
 
 Local gates on `claude/setup`: lint ✅ · typecheck ✅ · unit 137 ✅ · build ✅ · e2e 2/2 ✅.
+
+**CI on PR #1:** first run failed — a test bug (`pay()` read the previous sale's lingering confirmation on the
+fast runner; server data was correct). Fixed on the same branch (attempt 1 of 2), all checks green, squash-merged,
+tagged `v2026-10-14-1`.
+
+**Phase 1:** started roadmap item 1 (dependency security patch) — `npm audit fix` was **killed by Claude Code
+because the PC ran critically low on memory**; nothing had been changed. Left for the first scheduled run, which
+has its own cloud machine.
+
+**Phase 2:** created routine *Suq daily autonomous dev* (trig_01QtYEsG3ee6NtS952hJFkTM), daily 07:00 Nairobi,
+model alias `opus`. First run 2026-10-15 07:00. Needs two settings from alpha (see NEEDS_APPROVAL.md).
+
+**Model check:** running on Claude Opus 5.5 (`claude-opus-5-5`), the newest Opus-class model available; the
+routine uses the `opus` alias so it follows new releases automatically.
+
+### REPORT — 2026-10-14
+| Field | Content |
+|---|---|
+| Done | Project setup: docs, ESLint, Playwright offline e2e, CI, 2 offline/sync bug fixes — [PR #1](https://github.com/Alphaguyasa/Suq/pull/1) |
+| Merged | PR #1: yes · `v2026-10-14-1` |
+| Failed or blocked | Roadmap item 1 (deps patch) not done: local `npm audit fix` killed for low memory on the PC |
+| Roadmap | 14 open; no replan needed |
+| Model | Claude Opus 5.5; routine on alias `opus` |
+| Needs approval | Set routine to "Automatically approve" + push notifications ON; optional branch protection; hosting costs before first client |
+| Next | Item 1 (patch Next.js critical + other advisories, add `npm audit` CI gate), item 2 (pull pagination) |
