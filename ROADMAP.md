@@ -109,4 +109,5 @@ A product edit queued offline and pushed late overwrites a newer edit already on
 
 ## Done
 
-_(nothing yet — see DAILY_LOG.md)_
+- **Project setup** — CLAUDE.md/ROADMAP/logs, ESLint, Playwright offline e2e + fake Supabase, CI; fixed offline
+  cold launch (page HTML not precached) and shop adoption race on fresh devices. [PR #1](https://github.com/Alphaguyasa/Suq/pull/1) · `v2026-10-14-1`
