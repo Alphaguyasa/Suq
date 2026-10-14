@@ -79,12 +79,31 @@ export async function scan(page: Page, barcodes: readonly string[]): Promise<voi
   }
 }
 
-/** F4 completes the sale; the confirmation shows the new receipt number. */
+/**
+ * F4 completes the sale; the confirmation shows the new receipt number.
+ *
+ * The previous sale's confirmation lingers for 2.5s, so on a fast machine the
+ * link is already visible before this sale lands — wait for a receipt number
+ * that differs from whatever was showing when F4 was pressed.
+ */
 export async function pay(page: Page): Promise<string> {
-  await page.keyboard.press('F4');
   const confirmation = page.getByRole('link', { name: new RegExp(t.sell.completed) });
-  await expect(confirmation).toBeVisible();
-  const receiptNo = (await confirmation.locator('.num').textContent())?.trim() ?? '';
+  const receiptOf = async () =>
+    (await confirmation.count()) > 0
+      ? ((await confirmation.locator('.num').textContent())?.trim() ?? '')
+      : '';
+
+  const before = await receiptOf();
+  await page.keyboard.press('F4');
+
+  let receiptNo = '';
+  await expect
+    .poll(async () => {
+      receiptNo = await receiptOf();
+      return receiptNo !== '' && receiptNo !== before;
+    })
+    .toBe(true);
+
   expect(receiptNo).toMatch(/^[A-Z0-9]+-\d{6}$/);
   return receiptNo;
 }
