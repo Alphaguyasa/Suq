@@ -25,11 +25,13 @@ DAILY_LOG.md, NEEDS_APPROVAL.md; ESLint 9 flat config (`npm run lint`); Playwrig
 fake Supabase and the required offline→sales→reconnect→sync e2e test; `.github/workflows/ci.yml` (install,
 lint, typecheck, unit, build, e2e) with dummy env; fixed the flaky timeout.
 
-**Status at end of session (usage limit reached):** setup work is committed on local branch `claude/setup`
-but has NOT been pushed or opened as a PR. `gh` auth on the PC is expired. The Playwright suite was written
-but had not finished its first run (Chromium was still downloading), so the e2e tests are **unverified**.
-Lint ✅, typecheck ✅ (from before the e2e files were added; recheck), unit tests not re-run after the timeout fix.
-Not started: Phase 1 items, Phase 2 scheduled task.
-**E2E first run: both Playwright tests FAIL** (`offline-launch`, and `offline-sync` waiting for the pill to
-reach `synced` after setup). Traces are in `test-results/` (gitignored). These must be debugged before the setup
-PR can go green — the setup PR must not be merged with them failing.
+**Two real bugs found by the new e2e tests and fixed in the setup PR** (they blocked CI from going green):
+- *Offline cold launch failed with `net::ERR_FAILED`.* The service worker precached JS/CSS but no page HTML,
+  so a till that was set up and then opened in airplane mode got nothing — not even `/offline`. Fix: precache
+  every static route (`additionalPrecacheEntries` in `next.config.ts`, revisioned per commit).
+- *A fresh device with a saved login never adopted its shop.* `adoptShopFromMembership()` ran before the device
+  was registered, threw, and the error was swallowed; every push was then rejected by RLS forever (pill stuck
+  on "syncing"). Hits every till after "reset device". Fix: register the device first (`lib/sync/shop.ts`).
+- Docs: README said CSV prices are in cents; the importer (correctly) takes birr. README fixed.
+
+Local gates on `claude/setup`: lint ✅ · typecheck ✅ · unit 137 ✅ · build ✅ · e2e 2/2 ✅.

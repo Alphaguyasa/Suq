@@ -17,9 +17,12 @@ export const PRODUCTS = [
   { name: 'Sugar 1kg', name_am: 'ስኳር 1 ኪሎ', barcode: '6001234567892', price: 12000, opening: 10 },
 ] as const;
 
+/** The CSV takes birr, as an owner would type it; the app stores integer cents. */
+const birr = (cents: number) => (cents / 100).toFixed(2);
+
 const CSV = [
   'name,name_am,barcode,unit,cost_price,sell_price,reorder_level,opening_qty',
-  ...PRODUCTS.map((p) => `${p.name},${p.name_am},${p.barcode},pcs,${p.price - 500},${p.price},5,${p.opening}`),
+  ...PRODUCTS.map((p) => `${p.name},${p.name_am},${p.barcode},pcs,${birr(p.price - 500)},${birr(p.price)},5,${p.opening}`),
 ].join('\n');
 
 /** Walk the four-step first-run wizard the way a shop owner would. */
