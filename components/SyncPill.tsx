@@ -66,6 +66,10 @@ export function SyncPill({ state, pending = 0, onClick }: SyncPillProps) {
       onClick={onClick}
       aria-label={accessibleLabel}
       aria-live="polite"
+      // Stable hooks for the e2e suite; the visible text is bilingual and changes.
+      data-testid="sync-pill"
+      data-state={state}
+      data-pending={pending}
       /* 56px tap target per BUILD_GUIDE 5.3; the visible pill sits inside it. */
       className="inline-flex min-h-touch items-center rounded-full px-1"
     >

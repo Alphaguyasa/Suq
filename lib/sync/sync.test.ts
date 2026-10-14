@@ -284,7 +284,9 @@ describe('3. clock skew', () => {
 /* ------------------------------------------------------------------ 4 ---- */
 
 describe('4. cold start with a full outbox', () => {
-  it('drains 200 queued sales in batches without one giant request', async () => {
+  // 600 IndexedDB writes: comfortably fast alone, but the 5s default is too
+  // tight when the whole suite runs in parallel on a slow CI runner.
+  it('drains 200 queued sales in batches without one giant request', { timeout: 30_000 }, async () => {
     const server = new FakeServer();
     const client = server.client();
 

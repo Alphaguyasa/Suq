@@ -87,7 +87,7 @@ A fresh device opens **`/setup`**, a four-step wizard:
 
 CSV columns: `name, name_am, barcode, unit, cost_price, sell_price, reorder_level, opening_qty`
 
-Prices are in **cents** — `12.35 ETB` is `1235`.
+Prices are in **birr**, as a shop owner would write them — `12.35` means 12.35 ETB. They are converted to integer cents on import and stored that way.
 
 ### 2. Selling — `/`
 

@@ -20,3 +20,8 @@ Thumbs.db
 
 .vercel
 .env*
+
+# Playwright
+/playwright-report/
+/test-results/
+/blob-report/
