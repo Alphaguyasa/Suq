@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEVICE_META_ID, localWrite } from '@/lib/db';
 import { FakeServer } from './fake-server';
 import { PUSH_BATCH_SIZE, drainOutbox, pushOnce } from './push';
-import { pullOnce } from './pull';
+import { PULL_PAGE_SIZE, pullOnce } from './pull';
 import type { Replica } from './sync-test-helpers';
 import { SHOP, makeProduct, makeReplica, onHandIn, sellOn } from './sync-test-helpers';
 
@@ -402,5 +402,110 @@ describe('5. voiding an already-synced sale', () => {
     expect(await onHandIn(b.db, product.id), 'B on hand restored').toBe(40);
     expect(await b.db.sales.get(sale.id), 'B still holds the original').toBeDefined();
     expect(await b.db.sales.get(voidId), 'B received the void row').toBeDefined();
+  });
+});
+
+/* ------------------------------------------------------------------ 6 ---- */
+
+describe('6. pulling a history longer than the server row cap', () => {
+  function serverSale(index: number, createdAt: string): Record<string, unknown> {
+    return {
+      id: `sale-${String(index).padStart(5, '0')}`,
+      shop_id: SHOP,
+      device_id: 'other-till',
+      receipt_no: `B1-${String(index).padStart(6, '0')}`,
+      subtotal: 3500,
+      discount: 0,
+      total: 3500,
+      payment_method: 'cash',
+      cashier_name: 'x',
+      voided_by: null,
+      voids_sale_id: null,
+      cash_received: null,
+      created_at: createdAt,
+    };
+  }
+
+  it('pages past the cap so a joining till gets every row', { timeout: 30_000 }, async () => {
+    const server = new FakeServer();
+    server.maxRows = 1000;
+
+    // A month of another till's sales, more than one capped response holds.
+    const total = 2345;
+    const start = Date.parse('2026-07-01T08:00:00.000Z');
+    server.seed(
+      'sales',
+      Array.from({ length: total }, (_, i) =>
+        serverSale(i, new Date(start + i * 60_000).toISOString()),
+      ),
+    );
+
+    const a = await replica('suq-page-cap', 'A1');
+    const result = await pullOnce(server.client(), a.db);
+
+    expect(result.inserted).toBe(total);
+    expect(await a.db.sales.count(), 'nothing truncated at the cap').toBe(total);
+    expect(Math.max(...server.fetchSizes), 'no request asks past the page size').toBeLessThanOrEqual(
+      PULL_PAGE_SIZE,
+    );
+  });
+
+  it('loses nothing when a page boundary falls inside rows sharing one timestamp', async () => {
+    const server = new FakeServer();
+    const sameInstant = '2026-07-15T10:00:00.000Z';
+
+    // A bulk import stamps every row alike; the id is the only tiebreak.
+    const total = PULL_PAGE_SIZE + 37;
+    server.seed(
+      'sales',
+      Array.from({ length: total }, (_, i) => serverSale(i, sameInstant)),
+    );
+
+    const a = await replica('suq-page-ties', 'A1');
+    await pullOnce(server.client(), a.db);
+
+    expect(await a.db.sales.count()).toBe(total);
+  });
+
+  it('keeps the old watermark when the network drops between pages', async () => {
+    const server = new FakeServer();
+    const start = Date.parse('2026-07-01T08:00:00.000Z');
+    server.seed(
+      'sales',
+      Array.from({ length: PULL_PAGE_SIZE * 2 }, (_, i) =>
+        serverSale(i, new Date(start + i * 1000).toISOString()),
+      ),
+    );
+
+    const a = await replica('suq-page-drop', 'A1');
+
+    // The four first pages (one per table) succeed, then the wifi goes.
+    server.fetchesBeforeOffline = 4;
+    await expect(pullOnce(server.client(), a.db)).rejects.toThrow('unreachable');
+
+    const meta = await a.db.device_meta.get(DEVICE_META_ID);
+    expect(meta?.last_pull_at, 'a half-read window is re-read next time').toBeNull();
+
+    server.offline = false;
+    server.fetchesBeforeOffline = null;
+    await pullOnce(server.client(), a.db);
+
+    expect(await a.db.sales.count()).toBe(PULL_PAGE_SIZE * 2);
+  });
+
+  it('fails the pull instead of looping when the server ignores the cursor', async () => {
+    const server = new FakeServer();
+    const stuck = Array.from({ length: PULL_PAGE_SIZE }, (_, i) =>
+      serverSale(i, '2026-07-15T10:00:00.000Z'),
+    );
+    const client = {
+      ...server.client(),
+      fetchSince: async () => stuck,
+    };
+
+    const a = await replica('suq-page-stuck', 'A1');
+    const pulled = pullOnce(client, a.db);
+
+    await expect(pulled).rejects.toThrow('did not advance');
   });
 });

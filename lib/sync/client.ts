@@ -11,16 +11,41 @@ import { getSupabase } from '@/lib/supabase/client';
  *   2. Everything network-shaped is in one file, so nothing in push/pull can
  *      accidentally await the UI's network on a code path it shouldn't.
  */
+export type WatermarkColumn = 'created_at' | 'updated_at';
+
+/**
+ * Keyset position in a (watermark, id) ordering. `id: null` means "everything
+ * with watermark > value" — the first page of a pull.
+ *
+ * Keyset, not offset: rows keep arriving while a till pages through a long
+ * history, and a product edit moves a row to a later position. An offset
+ * would shift under both and skip a row; a key never moves. The id breaks
+ * ties, so a page boundary in the middle of rows sharing one timestamp (a
+ * bulk import, a multi-line sale) loses nothing either.
+ *
+ * `value` is passed back exactly as the server sent it. Never round-trip it
+ * through Date: Postgres keeps microseconds, JavaScript does not, and the
+ * equality half of the cursor would then match nothing.
+ */
+export interface PageCursor {
+  value: string;
+  id: string | null;
+}
+
 export interface SyncClient {
   /** Upsert on id. Append-only tables ignore duplicates rather than overwrite. */
   upsert(table: SyncedTable, rows: unknown[], appendOnly: boolean): Promise<void>;
 
-  /** Rows for this shop whose watermark column is strictly greater than `since`. */
+  /**
+   * One page of this shop's rows strictly after `after`, ordered by
+   * (watermark column, id). At most `limit` rows; fewer means the last page.
+   */
   fetchSince(
     table: SyncedTable,
     shopId: string,
-    column: 'created_at' | 'updated_at',
-    since: string,
+    column: WatermarkColumn,
+    after: PageCursor,
+    limit: number,
   ): Promise<Record<string, unknown>[]>;
 
   /** The server's clock. Never the tablet's. */
@@ -37,13 +62,23 @@ export function supabaseSyncClient(): SyncClient {
       if (error) throw new Error(`${table}: ${error.message}`);
     },
 
-    async fetchSince(table, shopId, column, since) {
-      const { data, error } = await getSupabase()
-        .from(table)
-        .select('*')
-        .eq('shop_id', shopId)
-        .gt(column, since)
-        .order(column, { ascending: true });
+    async fetchSince(table, shopId, column, after, limit) {
+      const base = getSupabase().from(table).select('*').eq('shop_id', shopId);
+
+      // Values are double-quoted: timestamps contain ':' and '.', which are
+      // reserved inside PostgREST's or=(...) syntax.
+      const filtered =
+        after.id === null
+          ? base.gt(column, after.value)
+          : base.or(
+              `${column}.gt."${after.value}",` +
+                `and(${column}.eq."${after.value}",id.gt."${after.id}")`,
+            );
+
+      const { data, error } = await filtered
+        .order(column, { ascending: true })
+        .order('id', { ascending: true })
+        .limit(limit);
 
       if (error) throw new Error(`${table}: ${error.message}`);
       return (data ?? []) as Record<string, unknown>[];
