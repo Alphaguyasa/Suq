@@ -89,6 +89,11 @@ Additive migration (new table, RLS like the others) + LWW sync like `products`. 
 For shops that never sign in to sync, a one-tap export of sales and stock movements is the only backup.
 Offline, no server needed (Blob download). Bilingual.
 
+### 17. [P1 · S] Pre-commit secret scanner never runs (hook file not executable)
+`.githooks/pre-commit` is committed as mode 644, so git prints "hook was ignored because it's not set as
+executable" and commits go through unscanned. Fix: `git update-index --chmod=+x .githooks/pre-commit`, and
+add a CI step that runs the scanner over the PR diff so it is enforced even where hooks are not configured.
+
 ### 16. [P2 · S] Dev-tooling advisories (vitest, undici via jsdom, braces via eslint-config-next)
 `npm audit` (dev included) still reports high/moderate advisories in test/lint tooling only — nothing that
 ships to a till. `npm install` currently crashes in npm 10's arborist (`Cannot read properties of null
@@ -104,12 +109,12 @@ A product edit queued offline and pushed late overwrites a newer edit already on
 
 - **Pull pagination** — keyset pages of 500 on (watermark, id) until a short page; the watermark commits only
   after every page of every table landed; fake server enforces a 1000-row cap. Supabase `max_rows` must stay
-  ≥ 500. [PR #4](https://github.com/Alphaguyasa/Suq/pull/4) · `v2026-10-15-2`
+  ≥ 500. [PR #4](https://github.com/Alphaguyasa/Suq/pull/4) · tag `v2026-10-15-2` not pushed (see NEEDS_APPROVAL) — commit `ad3de63`
 
 - **Patch vulnerable production dependencies** — Next 15.5.22 → 15.5.28 (critical RCE + cache-poisoning
   advisories), `postcss` forced to ^8.5.30 via `overrides` (Next pins a vulnerable 8.4.31), sharp/nanoid/
   brace-expansion/source-map-js/browserslist bumped by `npm audit fix`; CI now fails on any new high/critical
-  production advisory. [PR #3](https://github.com/Alphaguyasa/Suq/pull/3) · `v2026-10-15-1`
+  production advisory. [PR #3](https://github.com/Alphaguyasa/Suq/pull/3) · tag `v2026-10-15-1` not pushed (see NEEDS_APPROVAL) — commit `c75669a`
 
 - **Project setup** — CLAUDE.md/ROADMAP/logs, ESLint, Playwright offline e2e + fake Supabase, CI; fixed offline
   cold launch (page HTML not precached) and shop adoption race on fresh devices. [PR #1](https://github.com/Alphaguyasa/Suq/pull/1) · `v2026-10-14-1`

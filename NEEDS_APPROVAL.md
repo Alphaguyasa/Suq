@@ -5,6 +5,18 @@ resolved, move it to **Resolved** with the date and outcome.
 
 ## Open
 
+### ACTION FOR ALPHA (optional): switch the routine's model to Claude Fable 5.1 (added 2026-10-15)
+The models page lists **Claude Fable 5.1** (`claude-fable-5-1`) as a tier above Opus. CLAUDE.md §10 asks for
+"the newest Opus-class model, or any higher tier". The routine uses alias `opus` (now Opus 5.5) and a run
+cannot change its own model. If you want it: routine settings → model → Fable 5.1. Not a purchase, but it
+uses more of your plan's usage per run than Opus. Staying on Opus is fine.
+
+### Release tags cannot be pushed from scheduled runs (added 2026-10-15)
+The cloud session's git proxy returns **403** on `git push origin <tag>`; it only allows the session branch.
+Merged commits still roll back by SHA. Pending tags: `v2026-10-15-1` → `c75669a`, `v2026-10-15-2` → `ad3de63`.
+Options: (a) allow tag pushes for the routine's GitHub access, or (b) accept SHAs as rollback points and drop
+the tagging rule. Until then runs log the SHA instead.
+
 ### ACTION FOR ALPHA: finish the daily routine's settings (one-time, ~1 minute, free)
 Routine **"Suq daily autonomous dev"** — https://claude.ai/code/routines/trig_01QtYEsG3ee6NtS952hJFkTM
 (daily 07:00 Africa/Nairobi, model alias `opus`, Supabase connector attached so it may apply *additive*
