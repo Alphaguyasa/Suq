@@ -28,6 +28,15 @@ export class FakeServer {
   offline = false;
   failUpsertsRemaining = 0;
 
+  /** PostgREST's max-rows: a select never returns more, whatever it asks for. */
+  maxRows = 1000;
+
+  /** Successful fetches left before the network drops; null = never drops. */
+  fetchesBeforeOffline: number | null = null;
+
+  /** Rows per fetch call, so a test can prove paging. */
+  readonly fetchSizes: number[] = [];
+
   /** Rows per upsert call, so a test can prove batching. */
   readonly upsertBatchSizes: number[] = [];
 
@@ -84,12 +93,31 @@ export class FakeServer {
         }
       },
 
-      fetchSince: async (table, shopId, column, since) => {
+      fetchSince: async (table, shopId, column, after, limit) => {
+        if (this.fetchesBeforeOffline !== null) {
+          if (this.fetchesBeforeOffline === 0) this.offline = true;
+          else this.fetchesBeforeOffline -= 1;
+        }
         this.assertReachable();
 
-        return this.rows(table)
-          .filter((row) => row.shop_id === shopId && String(row[column]) > since)
-          .sort((a, b) => String(a[column]).localeCompare(String(b[column])));
+        // Same semantics as the PostgREST query: strictly after the
+        // (watermark, id) key, ordered by it, capped at max-rows.
+        const key = (row: Row): [string, string] => [String(row[column]), String(row.id)];
+        const compare = (a: [string, string], b: [string, string]): number =>
+          a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0;
+
+        const page = this.rows(table)
+          .filter((row) => {
+            if (row.shop_id !== shopId) return false;
+            const [value, id] = key(row);
+            if (after.id === null) return value > after.value;
+            return compare([value, id], [after.value, after.id]) > 0;
+          })
+          .sort((a, b) => compare(key(a), key(b)))
+          .slice(0, Math.min(limit, this.maxRows));
+
+        this.fetchSizes.push(page.length);
+        return page;
       },
 
       serverNow: async () => {

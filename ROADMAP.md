@@ -12,13 +12,6 @@ and the unit test suite).
 
 ## Open
 
-### 2. [P0 · M] Pull silently truncates at the PostgREST row limit → rows never reach the device
-`client.fetchSince()` issues one `select` with no range. Supabase caps responses (default 1000 rows), and
-`pullOnce()` then advances `last_pull_at` to server time, so everything beyond the cap is **skipped forever**
-on that device (a second till joining a shop with a month of sales gets a partial history and wrong stock).
-Page through results (`.range()` / order by watermark + id) until a short page, and only then commit the
-watermark. Fake server must enforce a cap so the sync tests catch regressions.
-
 ### 3. [P0 · M] Pull skips rows that reach the server late (offline sales from another till are lost to this till)
 `pullOnce()` takes its watermark from the **server** clock (`server_now()`), but filters rows by
 `created_at`/`updated_at`, which are stamped by the **device** at sale time. Till B pulls at 10:00 (watermark
@@ -108,6 +101,10 @@ A product edit queued offline and pushed late overwrites a newer edit already on
 `updated_at` guard). Additive fix: a BEFORE UPDATE trigger that keeps the row when `new.updated_at <= old.updated_at`. Migration + test.
 
 ## Done
+
+- **Pull pagination** — keyset pages of 500 on (watermark, id) until a short page; the watermark commits only
+  after every page of every table landed; fake server enforces a 1000-row cap. Supabase `max_rows` must stay
+  ≥ 500. [PR #4](https://github.com/Alphaguyasa/Suq/pull/4) · `v2026-10-15-2`
 
 - **Patch vulnerable production dependencies** — Next 15.5.22 → 15.5.28 (critical RCE + cache-poisoning
   advisories), `postcss` forced to ^8.5.30 via `overrides` (Next pins a vulnerable 8.4.31), sharp/nanoid/

@@ -201,10 +201,22 @@ export class FakeSupabase {
       let result = this.rows(table).filter((row) => filters.every((filter) => matches(row, filter)));
 
       if (order) {
-        const [column, direction] = order.split('.');
-        result = result.sort((a, b) => String(a[column!]).localeCompare(String(b[column!])));
-        if (direction === 'desc') result.reverse();
+        // order=updated_at.asc,id.asc — compare key by key.
+        const keys = order.split(',').map((part) => {
+          const [column, direction] = part.split('.');
+          return { column: column!, sign: direction === 'desc' ? -1 : 1 };
+        });
+        result = result.sort((a, b) => {
+          for (const { column, sign } of keys) {
+            const cmp = String(a[column]).localeCompare(String(b[column]));
+            if (cmp !== 0) return cmp * sign;
+          }
+          return 0;
+        });
       }
+
+      const limit = url.searchParams.get('limit');
+      if (limit) result = result.slice(0, Number(limit));
 
       return route.fulfill({ status: 200, json: result });
     }
