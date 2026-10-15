@@ -4,6 +4,53 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-15 — Run 1 (scheduled)
+
+**Start.** `master` @ `7f947ce`, CI green. Read CLAUDE.md, ROADMAP, DAILY_LOG, NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), the newest Opus. The models page now lists
+**Claude Fable 5.1** (`claude-fable-5-1`) above Opus ("for demanding reasoning and long-horizon agentic work",
+2.5× Opus's API price). CLAUDE.md §10 says "or any higher tier", so this is flagged as ACTION FOR ALPHA — this
+run cannot change the routine's model itself.
+
+**Item 1 — patch vulnerable dependencies → [PR #3](https://github.com/Alphaguyasa/Suq/pull/3), merged.**
+Next 15.5.22 → 15.5.28; `postcss` forced to ^8.5.30 via `overrides` (Next 15 pins 8.4.31 and the only
+audit-suggested fix was Next 16); `npm audit fix` for the rest. `npm audit --omit=dev`: 8 (1 critical) → **0**.
+CI gained `npm audit --omit=dev --audit-level=high`. Dev-only advisories (vitest, undici via jsdom, braces)
+remain: bumping them crashes npm 10's arborist (`reading 'edgesOut'`) — new ROADMAP item 16.
+
+**Item 2 — pull pagination → [PR #4](https://github.com/Alphaguyasa/Suq/pull/4), merged.** Keyset pages
+of 500 on (watermark, id) until a short page; watermark committed only after all pages of all tables; a
+cursor-ignoring server fails fast instead of looping. FakeServer enforces a 1000-row cap. New tests: 2,345
+rows past the cap, 537 rows sharing one timestamp across a page boundary, network drop between pages,
+stuck cursor. The PostgREST `or=(…)` keyset filter is exercised only by the in-memory fakes, not yet by a
+real Supabase (the live suite does not run in CI) — worth one `SUQ_LIVE=1` run with > 500 rows.
+
+Local gates on both PRs: lint ✅ · typecheck ✅ · unit (141) ✅ · build ✅ · e2e 2/2 ✅. CI green on both
+first time; both squash-merged.
+
+**Blocked:** release tags. `git push origin <tag>` is refused (HTTP 403) by this cloud session's git proxy,
+which only allows the session's own branch; the GitHub connector has no tag API. Rollback points:
+`v2026-10-15-1` = `c75669a`, `v2026-10-15-2` = `ad3de63`.
+**Process notes:** this cloud session may only push to its assigned branch (`alpha/gifted-brown-o6q460`),
+not `claude/<slug>` — both items went through it one after the other (PR, merge, restart from master).
+Found that the pre-commit secret scanner never runs (file not executable) — ROADMAP item 17.
+In this container Playwright's bundled Chromium differs from the preinstalled one; e2e ran locally with
+`executablePath: /opt/pw-browsers/chromium` via a throwaway config (CI unaffected).
+
+### REPORT — 2026-10-15
+| Field | Content |
+|---|---|
+| Done | Item 1: prod deps patched (Next critical, 0 prod advisories) + CI audit gate — [PR #3](https://github.com/Alphaguyasa/Suq/pull/3). Item 2: paginated pull, no more truncation at 1000 rows — [PR #4](https://github.com/Alphaguyasa/Suq/pull/4) |
+| Merged | PR #3: yes · PR #4: yes · tags `v2026-10-15-1`/`-2` NOT pushed (403 from session git proxy); SHAs `c75669a` / `ad3de63` |
+| Failed or blocked | Tag pushes blocked; dev-only advisories not fixable today (npm crash) |
+| Roadmap | 15 open (items 3–17); no replan needed |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier than Opus |
+| Needs approval | Tags/permissions; Fable 5.1 switch; routine settings; branch protection; hosting costs |
+| Next | Item 3 (late-arriving rows: server `received_at` watermark — additive migration), item 4 (storage persistence) |
+
+---
+
 ## 2026-10-14 — Run 0 (interactive setup with alpha)
 
 **Phase 0 audit.** Read the whole codebase and docs. Baseline on `master` @ `63c9636`:
