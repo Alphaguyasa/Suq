@@ -12,13 +12,6 @@ and the unit test suite).
 
 ## Open
 
-### 1. [P0 · S] Patch vulnerable dependencies (Next.js critical advisory)
-`npm audit --omit=dev` reports 8 production advisories, including a **critical** Next.js advisory (RCE on
-Windows-hosted servers / image optimizer) plus high ones in `postcss`, `browserslist` (via `@serwist/next`),
-`sharp`, `nanoid`, `brace-expansion`, `source-map-js`. All have non-breaking fixes (`npm audit fix`, Next
-15.5.x patch). Bump within the current majors, re-run every gate, and add a CI step that fails on new
-high/critical production advisories (`npm audit --omit=dev --audit-level=high`).
-
 ### 2. [P0 · M] Pull silently truncates at the PostgREST row limit → rows never reach the device
 `client.fetchSince()` issues one `select` with no range. Supabase caps responses (default 1000 rows), and
 `pullOnce()` then advances `last_pull_at` to server time, so everything beyond the cap is **skipped forever**
@@ -103,11 +96,23 @@ Additive migration (new table, RLS like the others) + LWW sync like `products`. 
 For shops that never sign in to sync, a one-tap export of sales and stock movements is the only backup.
 Offline, no server needed (Blob download). Bilingual.
 
+### 16. [P2 · S] Dev-tooling advisories (vitest, undici via jsdom, braces via eslint-config-next)
+`npm audit` (dev included) still reports high/moderate advisories in test/lint tooling only — nothing that
+ships to a till. `npm install` currently crashes in npm 10's arborist (`Cannot read properties of null
+(reading 'edgesOut')`, peer-set resolution of vitest's optional `jsdom` peer) when bumping vitest to 4.1.11
+or overriding undici ≥ 8.10.2. Retry with a newer npm or by regenerating the lockfile; `braces` has no fixed
+release yet (every version affected) — wait for upstream.
+
 ### 15. [P1 · S] Server does not enforce last-write-wins on products
 A product edit queued offline and pushed late overwrites a newer edit already on the server (plain upsert, no
 `updated_at` guard). Additive fix: a BEFORE UPDATE trigger that keeps the row when `new.updated_at <= old.updated_at`. Migration + test.
 
 ## Done
+
+- **Patch vulnerable production dependencies** — Next 15.5.22 → 15.5.28 (critical RCE + cache-poisoning
+  advisories), `postcss` forced to ^8.5.30 via `overrides` (Next pins a vulnerable 8.4.31), sharp/nanoid/
+  brace-expansion/source-map-js/browserslist bumped by `npm audit fix`; CI now fails on any new high/critical
+  production advisory. [PR #3](https://github.com/Alphaguyasa/Suq/pull/3) · `v2026-10-15-1`
 
 - **Project setup** — CLAUDE.md/ROADMAP/logs, ESLint, Playwright offline e2e + fake Supabase, CI; fixed offline
   cold launch (page HTML not precached) and shop adoption race on fresh devices. [PR #1](https://github.com/Alphaguyasa/Suq/pull/1) · `v2026-10-14-1`
