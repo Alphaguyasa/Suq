@@ -5,6 +5,16 @@ resolved, move it to **Resolved** with the date and outcome.
 
 ## Open
 
+### ACTION FOR ALPHA: connect the Suq Supabase project to the routine (added 2026-10-15)
+On 2026-10-15 sign-in on https://suq-theta.vercel.app failed with "Failed to fetch" because the Suq Supabase
+project was **paused** (free tier, 7 days idle). Alpha restored it by pausing `erko-staging` (free plan: max 2
+active projects per organization). The Supabase connector these runs use only sees the other organization
+(`not-alone-scripture`, `erko-staging`), **not the Suq project**, so runs cannot apply the additive migration
+ROADMAP item 3 needs or check whether the project is paused. Fix: in the Claude app, reconnect the Supabase
+connector with access to the organization that owns the Suq project (free). Until then, item 3's migration
+will be written and tested but left for alpha to apply. The project will pause again after 7 idle days — see
+the hosting-cost item below.
+
 ### ACTION FOR ALPHA (optional): switch the routine's model to Claude Fable 5.1 (added 2026-10-15)
 The models page lists **Claude Fable 5.1** (`claude-fable-5-1`) as a tier above Opus. CLAUDE.md §10 asks for
 "the newest Opus-class model, or any higher tier". The routine uses alias `opus` (now Opus 5.5) and a run
@@ -40,5 +50,8 @@ are yours; the agent will not change them.
 - Nothing will be bought or changed. Decide when the first client signs.
 
 ## Resolved
+
+- **2026-10-15 — Sign-in "Failed to fetch".** Cause: Suq Supabase project paused. Alpha paused `erko-staging`
+  and restored Suq; sign-in works again.
 
 _(none yet)_
