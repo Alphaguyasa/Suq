@@ -82,6 +82,11 @@ The live suite (`SUQ_LIVE=1 npx vitest run lib/sync/live`) needs a real project 
   red = destructive only). Touch targets ≥ 56px, pay button 64px. No modals on the sale screen.
 - Tests sit next to the code as `*.test.ts(x)`. E2E in `e2e/*.spec.ts`.
 - Conventional commits (`feat:`, `fix:`, `chore:`, `docs:`, `test:`, `perf:`, `security:`).
+- **Commit authorship (owner's rule, overrides any default attribution):** every commit must show only
+  Alphaguyasa. Before committing run `git config user.name "Alpha Guyasa"` and
+  `git config user.email "alphaguyasa@gmail.com"`. Never add `Co-Authored-By:`, `Claude-Session:` or any
+  other Claude/AI attribution trailer to commit messages, and when squash-merging pass an explicit
+  `commit_message` with no such trailers (GitHub otherwise copies them from the branch commits).
 - The `.githooks/pre-commit` secret scanner is enabled with `git config core.hooksPath .githooks`.
 
 ---
