@@ -8,6 +8,7 @@
  * and merges the rows. Asserting against a mock would prove the mock.
  */
 import type { SyncedTable } from '@/lib/db';
+import { MissingColumnError } from './client';
 import type { SyncClient } from './client';
 
 type Row = Record<string, unknown>;
@@ -26,6 +27,13 @@ export class FakeServer {
   private clock = Date.parse('2026-07-31T12:00:00.000Z');
 
   offline = false;
+
+  /**
+   * Whether the received_at migration is applied. While it is, every row the
+   * server stores is stamped with the SERVER's clock on arrival, as the
+   * trigger does — whatever created_at the device sent.
+   */
+  hasReceivedAt = true;
   failUpsertsRemaining = 0;
 
   /** PostgREST's max-rows: a select never returns more, whatever it asks for. */
@@ -39,6 +47,23 @@ export class FakeServer {
 
   /** Rows per upsert call, so a test can prove batching. */
   readonly upsertBatchSizes: number[] = [];
+
+  /**
+   * What the migration does to rows already on the server: the column is
+   * added with default now(), so every existing row reads as received at the
+   * moment the migration ran.
+   */
+  applyReceivedAtMigration(): void {
+    this.hasReceivedAt = true;
+    for (const store of Object.values(this.tables)) {
+      for (const [id, row] of store) store.set(id, { ...row, received_at: this.serverIso() });
+    }
+  }
+
+  /** Jump the server clock to an absolute time (it only ever moves forward in tests). */
+  setClock(iso: string): void {
+    this.clock = Date.parse(iso);
+  }
 
   tick(ms = 1000): void {
     this.clock += ms;
@@ -58,7 +83,7 @@ export class FakeServer {
 
   /** Straight into the store, as though another till had already pushed. */
   seed(table: SyncedTable, rows: Row[]): void {
-    for (const row of rows) this.tables[table].set(row.id as string, { ...row });
+    for (const row of rows) this.tables[table].set(row.id as string, this.stamp(row));
   }
 
   onHand(productId: string): number {
@@ -89,7 +114,7 @@ export class FakeServer {
             throw new Error(`${table}: wrong append-only flag`);
           }
 
-          store.set(id, { ...row });
+          store.set(id, this.stamp(row));
         }
       },
 
@@ -99,6 +124,9 @@ export class FakeServer {
           else this.fetchesBeforeOffline -= 1;
         }
         this.assertReachable();
+        if (column === 'received_at' && !this.hasReceivedAt) {
+          throw new MissingColumnError(table, column);
+        }
 
         // Same semantics as the PostgREST query: strictly after the
         // (watermark, id) key, ordered by it, capped at max-rows.
@@ -125,6 +153,12 @@ export class FakeServer {
         return this.serverIso();
       },
     };
+  }
+
+  /** The trigger: the server's arrival time, never the client's value. */
+  private stamp(row: Row): Row {
+    const { received_at: _client, ...rest } = row;
+    return this.hasReceivedAt ? { ...rest, received_at: this.serverIso() } : rest;
   }
 
   private assertReachable(): void {

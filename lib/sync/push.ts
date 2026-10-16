@@ -20,12 +20,17 @@ export function backoffMs(attempts: number): number {
   return Math.min(2000 * 2 ** Math.max(0, attempts - 1), 60_000);
 }
 
-/** synced_at is local bookkeeping and has no column in Postgres. */
+/**
+ * synced_at is local bookkeeping and has no column in Postgres. received_at
+ * belongs to the server (a trigger overwrites it anyway); it is never stored
+ * locally, but a payload that somehow carried one must not pretend to set it.
+ */
 function forWire(table: SyncedTable, payload: unknown): unknown {
-  if (table !== 'sales') return payload;
+  const { received_at: _server, ...rest } = payload as Record<string, unknown>;
+  if (table !== 'sales') return rest;
 
-  const { synced_at: _ignored, ...rest } = payload as Record<string, unknown>;
-  return rest;
+  const { synced_at: _ignored, ...wire } = rest;
+  return wire;
 }
 
 export interface PushResult {
