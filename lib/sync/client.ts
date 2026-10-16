@@ -11,7 +11,19 @@ import { getSupabase } from '@/lib/supabase/client';
  *   2. Everything network-shaped is in one file, so nothing in push/pull can
  *      accidentally await the UI's network on a code path it shouldn't.
  */
-export type WatermarkColumn = 'created_at' | 'updated_at';
+export type WatermarkColumn = 'received_at' | 'created_at' | 'updated_at';
+
+/**
+ * The server has no such column. Pull uses it to tell a project that has not
+ * had the received_at migration applied yet from a real failure, and falls
+ * back to the legacy device-clock columns rather than stop syncing.
+ */
+export class MissingColumnError extends Error {
+  constructor(readonly table: SyncedTable, readonly column: WatermarkColumn) {
+    super(`${table}.${column} does not exist on the server`);
+    this.name = 'MissingColumnError';
+  }
+}
 
 /**
  * Keyset position in a (watermark, id) ordering. `id: null` means "everything
@@ -80,6 +92,8 @@ export function supabaseSyncClient(): SyncClient {
         .order('id', { ascending: true })
         .limit(limit);
 
+      // 42703 = undefined_column (Postgres), passed through by PostgREST.
+      if (error?.code === '42703') throw new MissingColumnError(table, column);
       if (error) throw new Error(`${table}: ${error.message}`);
       return (data ?? []) as Record<string, unknown>[];
     },

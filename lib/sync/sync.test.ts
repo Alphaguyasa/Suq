@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEVICE_META_ID, localWrite } from '@/lib/db';
 import { FakeServer } from './fake-server';
 import { PUSH_BATCH_SIZE, drainOutbox, pushOnce } from './push';
-import { PULL_PAGE_SIZE, pullOnce } from './pull';
+import { PULL_OVERLAP_MS, PULL_PAGE_SIZE, pullOnce } from './pull';
 import type { Replica } from './sync-test-helpers';
 import { SHOP, makeProduct, makeReplica, onHandIn, sellOn } from './sync-test-helpers';
 
@@ -507,5 +507,182 @@ describe('6. pulling a history longer than the server row cap', () => {
     const pulled = pullOnce(client, a.db);
 
     await expect(pulled).rejects.toThrow('did not advance');
+  });
+});
+
+/* ------------------------------------------------------------------ 7 ---- */
+
+describe('7. rows that reach the server late', () => {
+  /**
+   * Till A is offline from 09:45 and sells at 09:50 (its created_at). Till B
+   * pulls at 10:00, so its watermark is 10:00 by the server's clock. A comes
+   * back and pushes at 10:05 — a row created at 09:50 arriving at 10:05.
+   * Filtering on created_at, B asks for "after 10:00" and never sees it.
+   */
+  async function lateOfflineSale(server: FakeServer) {
+    const client = server.client();
+    const product = makeProduct({ updated_at: '2026-07-31T08:00:00.000Z' });
+    server.setClock('2026-07-31T08:00:00.000Z');
+    server.seed('products', [product as unknown as Record<string, unknown>]);
+    server.seed('stock_movements', [
+      {
+        id: 'opening-late',
+        shop_id: SHOP,
+        product_id: product.id,
+        qty_delta: 10,
+        reason: 'opening',
+        ref_id: null,
+        note: null,
+        created_at: '2026-07-31T08:00:00.000Z',
+        device_id: 'setup',
+      },
+    ]);
+
+    const a = await replica(`suq-late-a-${server.hasReceivedAt}`, 'A1');
+    const b = await replica(`suq-late-b-${server.hasReceivedAt}`, 'B1');
+
+    const late = await sellOn(a, {
+      productId: product.id,
+      qty: 2,
+      createdAt: '2026-07-31T09:50:00.000Z',
+    });
+
+    server.setClock('2026-07-31T10:00:00.000Z');
+    await pullOnce(client, b.db);
+
+    server.setClock('2026-07-31T10:05:00.000Z');
+    await drainOutbox(client, a.db);
+
+    server.setClock('2026-07-31T10:06:00.000Z');
+    await pullOnce(client, b.db);
+
+    return { client, product, a, b, late };
+  }
+
+  it('delivers an offline sale pushed after the other till pulled', async () => {
+    const server = new FakeServer();
+    const { product, b, late } = await lateOfflineSale(server);
+
+    expect(await b.db.sales.get(late.sale.id), 'B has the late sale').toBeDefined();
+    expect(await b.db.sale_items.get(late.item.id), 'and its line').toBeDefined();
+    expect(await b.db.stock_movements.get(late.movement.id), 'and its movement').toBeDefined();
+    expect(await onHandIn(b.db, product.id), 'B on hand').toBe(8);
+    expect(server.onHand(product.id), 'server on hand').toBe(8);
+  });
+
+  it('lost that sale on the legacy watermark, and recovers it once migrated', async () => {
+    // The bug, kept visible: a project without the migration still syncs
+    // (legacy fallback) but drops the late row.
+    const server = new FakeServer();
+    server.hasReceivedAt = false;
+    const { client, product, b, late } = await lateOfflineSale(server);
+
+    expect(await b.db.sales.get(late.sale.id), 'legacy filter skipped it').toBeUndefined();
+    expect(await onHandIn(b.db, product.id)).toBe(10);
+    expect((await b.db.device_meta.get(DEVICE_META_ID))?.pull_column).toBeUndefined();
+
+    // The migration is applied; B's first received_at pull starts over.
+    server.setClock('2026-07-31T11:00:00.000Z');
+    server.applyReceivedAtMigration();
+    server.tick(60_000);
+    await pullOnce(client, b.db);
+
+    expect(await b.db.sales.get(late.sale.id), 'recovered').toBeDefined();
+    expect(await onHandIn(b.db, product.id)).toBe(8);
+    expect(await b.db.sales.count(), 'nothing duplicated').toBe(1);
+    expect(await b.db.stock_movements.count(), 'nothing duplicated').toBe(2);
+    expect((await b.db.device_meta.get(DEVICE_META_ID))?.pull_column).toBe('received_at');
+  });
+
+  it('delivers a product edit from a till whose clock runs slow', async () => {
+    const server = new FakeServer();
+    const client = server.client();
+    server.setClock('2026-07-31T10:00:00.000Z');
+
+    const product = makeProduct({ updated_at: '2026-07-31T07:00:00.000Z', sell_price: 3500 });
+    server.seed('products', [product as unknown as Record<string, unknown>]);
+
+    const a = await replica('suq-late-edit-a', 'A1');
+    const b = await replica('suq-late-edit-b', 'B1');
+    await pullOnce(client, a.db);
+    await pullOnce(client, b.db);
+
+    // A's clock says 08:00 — hours behind the server — when it edits.
+    await localWrite(
+      'products',
+      { ...product, sell_price: 4000, updated_at: '2026-07-31T08:00:00.000Z' },
+      a.db,
+    );
+    server.tick(60_000);
+    await drainOutbox(client, a.db);
+    server.tick(60_000);
+    await pullOnce(client, b.db);
+
+    expect((await b.db.products.get(product.id))?.sell_price).toBe(4000);
+  });
+
+  it('re-reads a window behind the watermark for rows that committed late', async () => {
+    const server = new FakeServer();
+    const client = server.client();
+    server.setClock('2026-07-31T10:00:00.000Z');
+
+    const b = await replica('suq-late-commit', 'B1');
+    await pullOnce(client, b.db);
+
+    // Stamped 30s before B's watermark but invisible until its transaction
+    // committed — after B had already read server_now().
+    server.tables.sales.set('slow-commit', {
+      id: 'slow-commit',
+      shop_id: SHOP,
+      device_id: 'other-till',
+      receipt_no: 'C1-000001',
+      subtotal: 3500,
+      discount: 0,
+      total: 3500,
+      payment_method: 'cash',
+      cashier_name: 'x',
+      voided_by: null,
+      voids_sale_id: null,
+      cash_received: null,
+      created_at: '2026-07-31T09:59:30.000Z',
+      received_at: new Date(Date.parse('2026-07-31T10:00:00.000Z') - 30_000).toISOString(),
+    });
+    expect(30_000).toBeLessThan(PULL_OVERLAP_MS);
+
+    server.tick(60_000);
+    await pullOnce(client, b.db);
+    expect(await b.db.sales.get('slow-commit')).toBeDefined();
+
+    // And re-reading the overlap again is harmless.
+    server.tick(10_000);
+    const again = await pullOnce(client, b.db);
+    expect(again.inserted).toBe(0);
+    expect(await b.db.sales.count()).toBe(1);
+  });
+
+  it('keeps received_at out of local rows and out of pushes', async () => {
+    const server = new FakeServer();
+    const client = server.client();
+    const product = makeProduct();
+    server.seed('products', [product as unknown as Record<string, unknown>]);
+
+    const a = await replica('suq-received-local', 'A1');
+    await pullOnce(client, a.db);
+
+    const local = (await a.db.products.get(product.id)) as unknown as Record<string, unknown>;
+    expect(local).toBeDefined();
+    expect('received_at' in local).toBe(false);
+
+    const upsert = vi.spyOn(client, 'upsert');
+    await localWrite(
+      'products',
+      { ...(local as unknown as typeof product), received_at: 'client-made-this-up' } as never,
+      a.db,
+    );
+    await drainOutbox(client, a.db);
+
+    const sent = upsert.mock.calls[0]?.[1] as Record<string, unknown>[];
+    expect(sent[0]).toBeDefined();
+    expect('received_at' in sent[0]!).toBe(false);
   });
 });

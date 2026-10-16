@@ -132,6 +132,12 @@ export interface DeviceMeta {
   receipt_counter: number;
   /** Server time from the last successful pull. Never Date.now(). */
   last_pull_at: string | null;
+  /**
+   * Which server column last_pull_at is a watermark for. Absent = the legacy
+   * device-clock columns (created_at / updated_at). Not indexed, so adding it
+   * needs no Dexie version bump.
+   */
+  pull_column?: 'received_at';
   cashier_name: string;
 }
 
