@@ -139,6 +139,12 @@ export interface DeviceMeta {
    */
   pull_column?: 'received_at';
   cashier_name: string;
+  /**
+   * Outcome of the first-run navigator.storage.persist() request, and when.
+   * Absent = never asked. Not indexed, so no Dexie version bump.
+   */
+  storage_persist?: 'granted' | 'denied' | 'unsupported';
+  storage_persist_at?: string;
 }
 
 /**
