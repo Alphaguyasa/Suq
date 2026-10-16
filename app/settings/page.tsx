@@ -20,6 +20,8 @@ import {
 } from '@/lib/db';
 import { useBilingual, useLang } from '@/lib/i18n';
 import { lockNow } from '@/lib/lock/lock';
+import { persistState, requestAndRecord } from '@/lib/storage/persist';
+import type { PersistState } from '@/lib/storage/persist';
 
 export default function SettingsPage() {
   const { t, other } = useBilingual();
@@ -196,6 +198,8 @@ export default function SettingsPage() {
         </div>
       </form>
 
+      <StorageSection />
+
       <CashierSection cashiers={cashiers ?? []} />
 
       <section className="flex flex-col gap-3">
@@ -217,6 +221,76 @@ export default function SettingsPage() {
         <span className="ethiopic">{t.lock.lockNow}</span>
       </Button>
     </div>
+  );
+}
+
+/**
+ * Whether the browser may evict this till's data. Read live rather than from
+ * the recorded first-run answer: the browser can grant it later (after the
+ * app is installed, say), and this should say what is true now.
+ */
+function StorageSection() {
+  const { t, other } = useBilingual();
+  const [state, setState] = useState<PersistState | null>(null);
+  const [asking, setAsking] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    void persistState().then((current) => {
+      if (live) setState(current);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  async function handleRetry() {
+    setAsking(true);
+    try {
+      setState(await requestAndRecord());
+    } finally {
+      setAsking(false);
+    }
+  }
+
+  const message =
+    state === 'granted'
+      ? t.settings.storageGranted
+      : state === 'denied'
+        ? t.settings.storageDenied
+        : state === 'unsupported'
+          ? t.settings.storageUnsupported
+          : t.settings.storageChecking;
+
+  return (
+    <section className="flex flex-col gap-3" aria-labelledby="storage-heading">
+      <h2 id="storage-heading" className="ethiopic text-lg font-semibold">
+        {t.settings.storageSection}
+        <span className="ml-2 text-sm font-normal text-muted">{other.settings.storageSection}</span>
+      </h2>
+
+      <p
+        data-testid="storage-persist"
+        data-state={state ?? 'checking'}
+        aria-live="polite"
+        // Colour on the rule, not the text: ochre text on paper is too faint
+        // to read in a sunlit shop.
+        className={`ethiopic max-w-prose border-l-4 pl-3 text-sm ${
+          state === 'granted' ? 'border-birr' : state === null ? 'border-rule text-muted' : 'border-ochre'
+        }`}
+      >
+        {message}
+      </p>
+
+      {state === 'denied' ? (
+        <>
+          <p className="ethiopic max-w-prose text-sm text-muted">{t.settings.storageHint}</p>
+          <Button type="button" variant="quiet" disabled={asking} onClick={() => void handleRetry()}>
+            <span className="ethiopic">{t.settings.storageRetry}</span>
+          </Button>
+        </>
+      ) : null}
+    </section>
   );
 }
 

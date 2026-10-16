@@ -248,6 +248,13 @@ export const am = {
     resetConfirmLabel: 'ለማረጋገጥ የሱቁን ስም ይተይቡ',
     resetDevice: 'አጽዳ',
     resetMismatch: 'ስሙ አይመሳሰልም',
+    storageSection: 'የመረጃ ማከማቻ',
+    storageGranted: 'ቋሚ ማከማቻ ተፈቅዷል። አሳሹ የሽያጭ መረጃን በራሱ አያጠፋም።',
+    storageDenied: 'ቋሚ ማከማቻ አልተፈቀደም። ስልኩ ቦታ ሲያጥረው አሳሹ ያልተመሳሰሉ ሽያጮችን ሊያጠፋ ይችላል።',
+    storageUnsupported: 'ይህ አሳሽ ቋሚ ማከማቻን አይደግፍም። ሽያጮች እንዳይጠፉ በየጊዜው ያመሳስሉ።',
+    storageHint: 'መተግበሪያውን በመነሻ ገጽ ላይ መጫን (Add to Home screen) ፈቃድ የማግኘት ዕድሉን ይጨምራል።',
+    storageRetry: 'እንደገና ጠይቅ',
+    storageChecking: 'በመፈተሽ ላይ…',
     saved: 'ተቀምጧል',
   },
   setup: {

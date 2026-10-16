@@ -244,6 +244,13 @@ export const en: Dict = {
     resetConfirmLabel: 'Type the shop name to confirm',
     resetDevice: 'Reset',
     resetMismatch: 'That does not match',
+    storageSection: 'Data storage',
+    storageGranted: 'Persistent storage is on. The browser will not delete sales data by itself.',
+    storageDenied: 'Persistent storage is not granted. When the phone runs low on space, the browser may delete sales that have not synced yet.',
+    storageUnsupported: 'This browser does not support persistent storage. Sync often so no sales are lost.',
+    storageHint: 'Installing the app (Add to Home screen) makes it more likely to be granted.',
+    storageRetry: 'Ask again',
+    storageChecking: 'Checking…',
     saved: 'Saved',
   },
   setup: {
