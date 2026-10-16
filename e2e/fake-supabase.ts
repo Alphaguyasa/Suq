@@ -190,7 +190,8 @@ export class FakeSupabase {
         this.received[table].push(row);
         const id = row.id as string;
         if (ignoreDuplicates && store.has(id)) continue;
-        store.set(id, { ...row });
+        // The received_at trigger: server arrival time, whatever the client sent.
+        store.set(id, { ...row, received_at: new Date().toISOString() });
       }
       return route.fulfill({ status: 201, body: '' });
     }

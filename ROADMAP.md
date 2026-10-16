@@ -12,21 +12,6 @@ and the unit test suite).
 
 ## Open
 
-### 3. [P0 · M] Pull skips rows that reach the server late (offline sales from another till are lost to this till)
-`pullOnce()` takes its watermark from the **server** clock (`server_now()`), but filters rows by
-`created_at`/`updated_at`, which are stamped by the **device** at sale time. Till B pulls at 10:00 (watermark
-10:00). Till A was offline and made a sale at 09:50; it pushes at 10:05 with `created_at = 09:50`. B's next
-pull asks for `created_at > 10:00` and **never receives A's sale** — B's history and stock are permanently
-wrong. Same for product edits from a device with a slow clock. The existing clock-skew test does not catch it
-because its fake server stamps rows with server time. Fix: additive migration adding a server-assigned
-`received_at timestamptz not null default now()` (set by trigger on insert/update, client value ignored) +
-`(shop_id, received_at)` indexes on all four synced tables; pull filters on `received_at` with a small
-overlap window (re-reads are free: apply is idempotent); `received_at` stripped before push; fall back to the
-old column if the migration is not yet applied. Fake server must model "pushed late" and the sync tests must
-cover it (two offline tills, one pulls in between). Backfill existing rows' `received_at` from
-`created_at`/`updated_at`, and reset each device's watermark once so rows already lost are recovered
-(relies on item 2's pagination).
-
 ### 4. [P0 · S] Request persistent storage on first run and show the result in Settings
 Project rule, currently not implemented anywhere: nothing calls `navigator.storage.persist()`. On a cheap
 Android phone under storage pressure the browser may evict IndexedDB — i.e. delete unsynced sales. Request
@@ -106,6 +91,14 @@ A product edit queued offline and pushed late overwrites a newer edit already on
 `updated_at` guard). Additive fix: a BEFORE UPDATE trigger that keeps the row when `new.updated_at <= old.updated_at`. Migration + test.
 
 ## Done
+
+- **Pull watermark in the server's clock (item 3)** — additive migration `20261016000000_received_at.sql`:
+  `received_at` on all four synced tables, stamped by a trigger with `clock_timestamp()` (client value
+  ignored), `(shop_id, received_at, id)` indexes, existing rows read as received at migration time. Pull
+  filters on `received_at` with a 2-minute overlap, strips it from local rows and pushes, re-reads from the
+  beginning once on switching (recovers rows already lost), and falls back to `created_at`/`updated_at` while
+  the migration is not applied. Migration tested on real Postgres (PGlite). **Migration still to be applied
+  to the Suq project** (see NEEDS_APPROVAL). [PR #9](https://github.com/Alphaguyasa/Suq/pull/9)
 
 - **Pull pagination** — keyset pages of 500 on (watermark, id) until a short page; the watermark commits only
   after every page of every table landed; fake server enforces a 1000-row cap. Supabase `max_rows` must stay
