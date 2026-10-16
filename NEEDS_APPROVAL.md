@@ -5,6 +5,15 @@ resolved, move it to **Resolved** with the date and outcome.
 
 ## Open
 
+### ACTION FOR ALPHA: apply migration `20261016000000_received_at.sql` to the Suq project (added 2026-10-16)
+Merged in PR #9. It is additive only: new `received_at` columns with a default, one trigger function in
+`private`, four triggers and four indexes. Nothing is dropped, renamed or deleted. This run could not apply it
+because the Supabase connector still cannot see the Suq project (see the next item). Until the migration is
+applied, tills keep using the old filter. That filter still misses offline sales another till pushes late.
+Once applied, each till's next pull re-reads its shop's history once and recovers those rows.
+How to apply (free, ~1 minute): Supabase dashboard → Suq project → SQL Editor → paste the file → Run.
+Alternatively, reconnect the connector and the next run will apply it.
+
 ### ACTION FOR ALPHA: connect the Suq Supabase project to the routine (added 2026-10-15)
 On 2026-10-15 sign-in on https://suq-theta.vercel.app failed with "Failed to fetch" because the Suq Supabase
 project was **paused** (free tier, 7 days idle). Alpha restored it by pausing `erko-staging` (free plan: max 2
@@ -23,7 +32,8 @@ uses more of your plan's usage per run than Opus. Staying on Opus is fine.
 
 ### Release tags cannot be pushed from scheduled runs (added 2026-10-15)
 The cloud session's git proxy returns **403** on `git push origin <tag>`; it only allows the session branch.
-Merged commits still roll back by SHA. Pending tags: `v2026-10-15-1` → `c75669a`, `v2026-10-15-2` → `ad3de63`.
+Merged commits still roll back by SHA. Pending tags: `v2026-10-15-1` → `c75669a`, `v2026-10-15-2` → `ad3de63`,
+`v2026-10-16-1` → `2c92d3b`, `v2026-10-16-2` → `943f9f0`.
 Options: (a) allow tag pushes for the routine's GitHub access, or (b) accept SHAs as rollback points and drop
 the tagging rule. Until then runs log the SHA instead.
 
