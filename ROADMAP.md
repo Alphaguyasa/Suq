@@ -12,13 +12,6 @@ and the unit test suite).
 
 ## Open
 
-### 4. [P0 · S] Request persistent storage on first run and show the result in Settings
-Project rule, currently not implemented anywhere: nothing calls `navigator.storage.persist()`. On a cheap
-Android phone under storage pressure the browser may evict IndexedDB — i.e. delete unsynced sales. Request
-persistence on first run (AppShell boot), store the outcome locally, show "granted / not granted / not
-supported" in Settings with a retry button and a bilingual explanation. Unit test the helper (granted,
-denied, unsupported, already persisted) and an e2e assertion that Settings shows the state.
-
 ### 5. [P0 · M] Receipt and product detail pages fail offline
 `/sales/[id]`, `/products/[id]` and `/products/[id]/stock` are dynamic routes (`ƒ` in the build output).
 Offline, the RSC fetch for an id that was never visited fails and the service worker serves `/offline`.
@@ -92,13 +85,18 @@ A product edit queued offline and pushed late overwrites a newer edit already on
 
 ## Done
 
+- **Persistent storage (item 4)** — `lib/storage/persist.ts`: `navigator.storage.persist()` requested once on
+  first run (after the device row exists), outcome + time recorded on `device_meta`; Settings shows the live
+  state (granted / not granted / not supported) with a bilingual explanation and an "ask again" button.
+  Unit tests (granted, denied, unsupported, already persisted, throws) + e2e. [PR #10](https://github.com/Alphaguyasa/Suq/pull/10)
+
 - **Pull watermark in the server's clock (item 3)** — additive migration `20261016000000_received_at.sql`:
   `received_at` on all four synced tables, stamped by a trigger with `clock_timestamp()` (client value
   ignored), `(shop_id, received_at, id)` indexes, existing rows read as received at migration time. Pull
   filters on `received_at` with a 2-minute overlap, strips it from local rows and pushes, re-reads from the
   beginning once on switching (recovers rows already lost), and falls back to `created_at`/`updated_at` while
   the migration is not applied. Migration tested on real Postgres (PGlite). **Migration still to be applied
-  to the Suq project** (see NEEDS_APPROVAL). [PR #9](https://github.com/Alphaguyasa/Suq/pull/9)
+  to the Suq project** (see NEEDS_APPROVAL). [PR #9](https://github.com/Alphaguyasa/Suq/pull/9) · tag `v2026-10-16-1` not pushed (403) — commit `2c92d3b`
 
 - **Pull pagination** — keyset pages of 500 on (watermark, id) until a short page; the watermark commits only
   after every page of every table landed; fake server enforces a 1000-row cap. Supabase `max_rows` must stay

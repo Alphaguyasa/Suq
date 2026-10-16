@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { anyCashiers, db, ensureDevice, ensureSettings, getSettings } from '@/lib/db';
 import { useT } from '@/lib/i18n';
 import { initialiseLock, useIdleLock, useLock } from '@/lib/lock/lock';
+import { requestPersistenceOnFirstRun } from '@/lib/storage/persist';
 import { useSyncStatus } from '@/lib/sync/status';
 import { BottomNav } from './BottomNav';
 import { LockScreen } from './LockScreen';
@@ -28,8 +29,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   // A till always has a device row and settings, whether or not anyone has
   // been through /setup yet. The setup flow overwrites these values rather
   // than creating them.
+  //
+  // Persistent storage is asked for once the device row exists, so the
+  // outcome can be recorded with it (docs/RULES.md, project rules).
   useEffect(() => {
-    void ensureDevice();
+    void ensureDevice()
+      .then(() => requestPersistenceOnFirstRun())
+      .catch(() => undefined);
     void ensureSettings();
     void initialiseLock();
   }, []);
