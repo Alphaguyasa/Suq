@@ -88,7 +88,7 @@ A product edit queued offline and pushed late overwrites a newer edit already on
 - **Persistent storage (item 4)** — `lib/storage/persist.ts`: `navigator.storage.persist()` requested once on
   first run (after the device row exists), outcome + time recorded on `device_meta`; Settings shows the live
   state (granted / not granted / not supported) with a bilingual explanation and an "ask again" button.
-  Unit tests (granted, denied, unsupported, already persisted, throws) + e2e. [PR #10](https://github.com/Alphaguyasa/Suq/pull/10)
+  Unit tests (granted, denied, unsupported, already persisted, throws) + e2e. [PR #10](https://github.com/Alphaguyasa/Suq/pull/10) · tag `v2026-10-16-2` not pushed (403) — commit `943f9f0`
 
 - **Pull watermark in the server's clock (item 3)** — additive migration `20261016000000_received_at.sql`:
   `received_at` on all four synced tables, stamped by a trigger with `clock_timestamp()` (client value

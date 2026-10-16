@@ -4,6 +4,52 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-16 — Run 2 (scheduled)
+
+**Start.** `master` @ `c059ad9`, CI green, no open PRs. Read CLAUDE.md, ROADMAP, DAILY_LOG, NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page.
+Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged from yesterday and optional.
+**Supabase check.** The connector still lists only `not-alone-scripture` and `erko-staging`, not Suq.
+
+**Item 3: pull watermark in the server's clock → [PR #9](https://github.com/Alphaguyasa/Suq/pull/9), merged.**
+- Additive migration `20261016000000_received_at.sql`. It adds `received_at` to the four synced tables, stamped by a trigger with `clock_timestamp()` so any client value is ignored. It also adds `(shop_id, received_at, id)` indexes. Existing rows get the migration time.
+- Pull now filters on `received_at` and re-reads 2 minutes behind the watermark, to catch rows stamped before a pull but committed after it.
+- The first pull after the switch starts from the beginning. That recovers rows the old filter had already skipped.
+- Pull falls back to `created_at`/`updated_at` on `42703` (column missing), so the PR was safe to merge before the migration.
+- `received_at` is never stored locally or pushed.
+- Tests:
+  - FakeServer now models "pushed late". New cases: a late offline sale, a product edit from a till with a slow clock, the overlap window, and legacy-then-migrated recovery.
+  - New `supabase/migrations.test.ts` applies every migration to real Postgres via PGlite (dev dependency `@electric-sql/pglite` 0.5.8, Apache-2.0, pinned to a release 7 weeks old). It checks the trigger, duplicate pushes, that existing rows survive, and that RLS still applies.
+- **The migration is not applied to production** (connector gap), so it is now in NEEDS_APPROVAL.
+
+**Item 4: persistent storage → [PR #10](https://github.com/Alphaguyasa/Suq/pull/10), merged.**
+- `navigator.storage.persist()` is requested once on first run, after the device row exists. The outcome and time are recorded on `device_meta` (optional fields, no Dexie bump).
+- Settings shows the live state with bilingual text, a hint and an "ask again" button.
+- Unit tests and a new e2e spec. Headless Chromium records a state, and the test accepts any of the three.
+
+Local gates on both PRs: lint ✅ · typecheck ✅ · unit (152 → 161) ✅ · build ✅ · e2e (2 → 3) ✅. CI green
+the first time on both; both squash-merged with trailer-free messages.
+
+**Blocked:** release tags again (HTTP 403 from the session git proxy). Rollback SHAs: `v2026-10-16-1` =
+`2c92d3b`, `v2026-10-16-2` = `943f9f0`.
+**Process notes:**
+- One session branch again. After PR #9 merged, I did not force-push. I merged the old branch head back in, so every push was a fast-forward.
+- The pre-commit hook is still ignored because the file isn't executable (item 17). I ran the scanner's patterns over each diff by hand: clean.
+
+### REPORT — 2026-10-16
+| Field | Content |
+|---|---|
+| Done | Item 3: late-pushed rows now reach every till (server `received_at` watermark) — [PR #9](https://github.com/Alphaguyasa/Suq/pull/9). Item 4: persistent storage requested + shown in Settings — [PR #10](https://github.com/Alphaguyasa/Suq/pull/10) |
+| Merged | PR #9: yes · PR #10: yes · tags `v2026-10-16-1`/`-2` NOT pushed (403); SHAs `2c92d3b` / `943f9f0` |
+| Failed or blocked | Migration for item 3 not applied to Supabase (connector can't see the Suq project); tag pushes |
+| Roadmap | 13 open (items 5–17); no replan needed |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | **Apply the received_at migration** (SQL Editor, 1 min) or reconnect the Supabase connector; tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 5 (receipt/product pages offline), item 6 (Dexie upgrade survival tests) |
+
+---
+
 ## 2026-10-15 — Run 1 (scheduled)
 
 **Start.** `master` @ `7f947ce`, CI green. Read CLAUDE.md, ROADMAP, DAILY_LOG, NEEDS_APPROVAL.
