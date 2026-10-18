@@ -1,8 +1,9 @@
 /** Test-only fixtures. Never imported by application code. */
+import Dexie from 'dexie';
 import { registerDevice } from './device';
 import * as productsRepo from './repositories/products';
 import type { CartLine } from './repositories/sales';
-import { clearAllTables } from './schema';
+import { SCHEMA_VERSIONS, clearAllTables } from './schema';
 import type { DeviceMeta, Product } from './schema';
 
 export const TEST_SHOP = 'shop-test';
@@ -39,4 +40,20 @@ export function cartLine(product: Product, qty: number): CartLine {
     unit_price: product.sell_price,
     qty,
   };
+}
+
+/**
+ * A database as an older build of the app left it: only the schema steps up
+ * to `version`, under its own name so it never touches the app's `db`.
+ * Fill it, close it, then open `new SuqDatabase(name)` to run the upgrade a
+ * till would run on its next launch (lib/db/upgrade.test.ts).
+ */
+export function openAtVersion(name: string, version: number): Dexie {
+  const old = new Dexie(name);
+  for (const step of SCHEMA_VERSIONS) {
+    if (step.version > version) break;
+    const declared = old.version(step.version).stores(step.stores);
+    if (step.upgrade) declared.upgrade(step.upgrade);
+  }
+  return old;
 }

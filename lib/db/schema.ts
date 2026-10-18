@@ -1,5 +1,5 @@
 import Dexie from 'dexie';
-import type { EntityTable } from 'dexie';
+import type { EntityTable, Transaction } from 'dexie';
 
 /**
  * IndexedDB is the source of truth. Supabase is a replica.
@@ -208,18 +208,43 @@ export class SuqDatabase extends Dexie {
   constructor(name = 'suq') {
     super(name);
 
-    /*
-     * Indexed for the queries we actually run.
-     *
-     * is_active is deliberately NOT indexed despite being on the wish list:
-     * IndexedDB cannot use a boolean as a key, so records would simply be
-     * absent from the index and `where('is_active')` would silently return
-     * nothing — worse than no index at all. Active filtering happens in
-     * memory, which is free at shop scale (tens to hundreds of products).
-     * The same constraint applies to nulls, which is why deleted_at and
-     * synced_at lookups filter rather than seek.
-     */
-    this.version(1).stores({
+    for (const { version, stores, upgrade } of SCHEMA_VERSIONS) {
+      const step = this.version(version).stores(stores);
+      if (upgrade) step.upgrade(upgrade);
+    }
+  }
+}
+
+/**
+ * Every Dexie version, oldest first. APPEND ONLY: a device in a shop may still
+ * hold any of these on disk, and Dexie upgrades it by replaying the steps after
+ * it. Editing a published step changes what an old till upgrades into.
+ * lib/db/upgrade.test.ts opens a database at each historical version, fills
+ * it, upgrades it, and checks nothing was lost; it also freezes these
+ * definitions. A new version needs only a new entry here (plus an `upgrade`
+ * if existing rows must change) and a fixture for any new table in that test.
+ *
+ * Indexed for the queries we actually run.
+ *
+ * is_active is deliberately NOT indexed despite being on the wish list:
+ * IndexedDB cannot use a boolean as a key, so records would simply be
+ * absent from the index and `where('is_active')` would silently return
+ * nothing — worse than no index at all. Active filtering happens in
+ * memory, which is free at shop scale (tens to hundreds of products).
+ * The same constraint applies to nulls, which is why deleted_at and
+ * synced_at lookups filter rather than seek.
+ */
+export interface SchemaVersion {
+  version: number;
+  stores: Record<string, string>;
+  /** Rewrites existing rows when a step changes their shape. */
+  upgrade?: (tx: Transaction) => Promise<void> | void;
+}
+
+export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
+  {
+    version: 1,
+    stores: {
       products: 'id, barcode, name, name_am, updated_at',
       sales: 'id, created_at, receipt_no, synced_at, voids_sale_id',
       sale_items: 'id, sale_id, product_id, created_at',
@@ -227,19 +252,13 @@ export class SuqDatabase extends Dexie {
       outbox: '++id, table, row_id, created_at',
       device_meta: 'id',
       stock_cache: 'product_id',
-    });
-
-    // v2 adds shop settings. Dexie carries the v1 stores forward untouched.
-    this.version(2).stores({
-      shop_settings: 'id',
-    });
-
-    // v3 adds cashiers for the PIN lock.
-    this.version(3).stores({
-      cashiers: 'id, name',
-    });
-  }
-}
+    },
+  },
+  // v2 adds shop settings. Dexie carries the v1 stores forward untouched.
+  { version: 2, stores: { shop_settings: 'id' } },
+  // v3 adds cashiers for the PIN lock.
+  { version: 3, stores: { cashiers: 'id, name' } },
+];
 
 export const db = new SuqDatabase();
 
