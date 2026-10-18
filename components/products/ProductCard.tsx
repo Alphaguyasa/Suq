@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { Product } from '@/lib/db';
 import { formatETB, formatQty } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import { productHref } from '@/lib/routes';
 
 export function ProductCard({ product, onHand }: { product: Product; onHand: number }) {
   const t = useT();
@@ -11,7 +12,7 @@ export function ProductCard({ product, onHand }: { product: Product; onHand: num
 
   return (
     <Link
-      href={`/products/${product.id}`}
+      href={productHref(product.id)}
       className="flex h-full w-full flex-col gap-1 rounded-xl border border-rule bg-paper p-3 transition-colors hover:border-ink"
     >
       <div className="flex items-start justify-between gap-2">

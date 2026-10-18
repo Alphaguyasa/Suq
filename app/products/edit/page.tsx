@@ -1,15 +1,35 @@
 'use client';
 
 import { useLiveQuery } from 'dexie-react-hooks';
-import { use } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import { ProductForm } from '@/components/products/ProductForm';
 import { ButtonLink } from '@/components/ui/Button';
 import { productsRepo, stockRepo } from '@/lib/db';
 import { formatQty } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import { productStockHref } from '@/lib/routes';
 
-export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+/**
+ * A static shell: the id comes from the query string so the service worker can
+ * precache this page and open any product offline (lib/routes.ts).
+ * useSearchParams needs a Suspense boundary to prerender.
+ */
+export default function EditProductPage() {
+  return (
+    <Suspense fallback={null}>
+      <EditProductFromQuery />
+    </Suspense>
+  );
+}
+
+function EditProductFromQuery() {
+  const id = useSearchParams().get('id') ?? '';
+  // Keyed so a form half-filled for one id never carries over to the next.
+  return <EditProduct key={id} id={id} />;
+}
+
+function EditProduct({ id }: { id: string }) {
   const t = useT();
 
   // null distinguishes "not found" from undefined, which means "still loading".
@@ -27,7 +47,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="ethiopic text-2xl font-semibold">{t.products.edit}</h1>
 
-        <ButtonLink href={`/products/${id}/stock`} variant="quiet">
+        <ButtonLink href={productStockHref(id)} variant="quiet">
           <span className="ethiopic">{t.stock.title}</span>
           <span className="num font-semibold">{formatQty(onHand ?? 0)}</span>
         </ButtonLink>

@@ -2,15 +2,35 @@
 
 import { useLiveQuery } from 'dexie-react-hooks';
 import Link from 'next/link';
-import { use, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useState } from 'react';
 import { Receipt } from '@/components/Receipt';
 import { Button } from '@/components/ui/Button';
 import { Field, TextInput } from '@/components/ui/Field';
 import { getSettings, salesRepo } from '@/lib/db';
 import { useBilingual, useT } from '@/lib/i18n';
+import { saleHref } from '@/lib/routes';
 
-export default function SaleDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+/**
+ * A static shell: the id comes from the query string so the service worker can
+ * precache this page and open any receipt offline (lib/routes.ts).
+ * useSearchParams needs a Suspense boundary to prerender.
+ */
+export default function SaleDetailPage() {
+  return (
+    <Suspense fallback={null}>
+      <SaleDetailFromQuery />
+    </Suspense>
+  );
+}
+
+function SaleDetailFromQuery() {
+  const id = useSearchParams().get('id') ?? '';
+  // Keyed so a form half-filled for one id never carries over to the next.
+  return <SaleDetail key={id} id={id} />;
+}
+
+function SaleDetail({ id }: { id: string }) {
   const t = useT();
 
   const detail = useLiveQuery(async () => (await salesRepo.getById(id)) ?? null, [id]);
@@ -46,7 +66,7 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
           className="flex items-center justify-between gap-2 rounded-lg border border-ochre/40 bg-ochre/10 px-3 py-2"
         >
           <span className="ethiopic text-sm font-medium text-ochre">{t.sales.voidedAs}</span>
-          <Link href={`/sales/${voidedBy.id}`} className="num text-sm font-semibold text-ochre">
+          <Link href={saleHref(voidedBy.id)} className="num text-sm font-semibold text-ochre">
             {voidedBy.receipt_no}
           </Link>
         </p>

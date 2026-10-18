@@ -10,6 +10,7 @@ import { ensureDevice, productsRepo, salesRepo, stockRepo } from '@/lib/db';
 import type { PaymentMethod, Product } from '@/lib/db';
 import { formatETB, parseETBOrZero } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import { saleHref } from '@/lib/routes';
 import { useCart } from '@/lib/sell/useCart';
 
 /** Shorter than this and a search term could collide with a real barcode. */
@@ -202,7 +203,7 @@ export default function SellPage() {
       <aside className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-20 lg:self-start">
         {receipt ? (
           <Link
-            href={`/sales/${receipt.id}`}
+            href={saleHref(receipt.id)}
             className="flex items-center justify-between gap-2 rounded-lg border border-birr/30 bg-birr/10 px-3 py-2 text-birr"
           >
             <span className="ethiopic text-sm font-medium">{t.sell.completed}</span>

@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import withSerwistInit from '@serwist/next';
 import type { NextConfig } from 'next';
+import { DETAIL_SHELLS } from './lib/routes';
 
 /**
  * Serwist rather than next-pwa: next-pwa does not properly support Next 15.
@@ -17,7 +18,8 @@ import type { NextConfig } from 'next';
  * mode got net::ERR_FAILED — not even the /offline fallback, which was never
  * cached either. Found by e2e/offline-launch.spec.ts.
  *
- * Dynamic routes (/sales/[id], /products/[id]) are not here; see ROADMAP.
+ * Receipts and products are static shells that take ?id= (lib/routes.ts), so
+ * they are precached like any other page.
  */
 const STATIC_ROUTES = [
   '/',
@@ -30,6 +32,7 @@ const STATIC_ROUTES = [
   '/setup',
   '/signin',
   '/owner',
+  ...DETAIL_SHELLS,
 ];
 
 /** Changes on every deploy, so precached HTML never outlives its JS chunks. */
@@ -63,6 +66,33 @@ const nextConfig: NextConfig = {
    */
   pageExtensions:
     process.env.NODE_ENV === 'development' ? ['tsx', 'ts', 'dev.tsx'] : ['tsx', 'ts'],
+
+  /**
+   * Receipts and products used to live at /sales/<id> and /products/<id>[/stock].
+   * Printed QR codes, bookmarks and open tabs may still hold those, so the
+   * server forwards them. The patterns skip the static siblings (new, edit,
+   * stock, view) that share the prefix. Online only, which is fine: nothing in
+   * the app links to the old paths any more.
+   */
+  async redirects() {
+    return [
+      {
+        source: '/sales/:id((?!view$)[^/]+)',
+        destination: '/sales/view?id=:id',
+        permanent: false,
+      },
+      {
+        source: '/products/:id((?!new$|edit$|stock$)[^/]+)/stock',
+        destination: '/products/stock?id=:id',
+        permanent: false,
+      },
+      {
+        source: '/products/:id((?!new$|edit$|stock$)[^/]+)',
+        destination: '/products/edit?id=:id',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default withSerwist(nextConfig);
