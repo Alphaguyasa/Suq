@@ -81,7 +81,7 @@ fake Supabase routes working), so those tests prove what they claim.
 - **Dexie upgrade survival tests (item 6)** — schema versions in an append-only `SCHEMA_VERSIONS` list;
   `openAtVersion()` helper; `lib/db/upgrade.test.ts` fills a database at every historical version, upgrades it,
   and checks rows, receipt counter, indexes, new tables and the outbox sequence; it freezes published versions
-  and requires a fixture per table. [PR #13](https://github.com/Alphaguyasa/Suq/pull/13) · 7e19f07
+  and requires a fixture per table. [PR #13](https://github.com/Alphaguyasa/Suq/pull/13) · tag `v2026-10-18-2` not pushed (refused) — commit `7e19f07`
 
 - **Receipts and products open offline (item 5)** — `/sales/view`, `/products/edit`, `/products/stock` static
   shells reading `?id=`, precached, served by a SW navigation rule whatever the query; old paths redirect.
