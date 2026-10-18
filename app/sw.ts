@@ -4,6 +4,7 @@
 import { defaultCache } from '@serwist/next/worker';
 import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist';
 import { Serwist } from 'serwist';
+import { DETAIL_SHELLS } from '@/lib/routes';
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -21,12 +22,29 @@ declare const self: ServiceWorkerGlobalScope;
  * Data does not live here — it lives in IndexedDB, and the sync engine moves
  * it. This worker caches the application, not the shop's records.
  */
-const serwist = new Serwist({
+const serwist: Serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  runtimeCaching: [
+    /*
+     * Receipts and products are one precached shell each, whatever the ?id=.
+     * The precache only matches its exact URL, so without this a receipt
+     * opened in airplane mode would miss it and land on /offline. Offline,
+     * Next's client router also falls back to a full navigation when its RSC
+     * fetch fails, so this one rule covers taps as well as cold launches.
+     */
+    {
+      matcher: ({ request, url, sameOrigin }) =>
+        sameOrigin &&
+        request.mode === 'navigate' &&
+        (DETAIL_SHELLS as readonly string[]).includes(url.pathname),
+      handler: async ({ request, url }): Promise<Response> =>
+        (await serwist.matchPrecache(url.pathname)) ?? fetch(request),
+    },
+    ...defaultCache,
+  ],
   fallbacks: {
     entries: [
       {

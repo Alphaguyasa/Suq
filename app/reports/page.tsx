@@ -12,6 +12,7 @@ import { db, getSettings, productsRepo, stockRepo } from '@/lib/db';
 import type { PaymentMethod } from '@/lib/db';
 import { formatETB, formatQty, parseETBOrZero } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import { productStockHref } from '@/lib/routes';
 import {
   cashUp,
   changeVsPrevious,
@@ -241,7 +242,7 @@ export default function ReportsPage() {
                 </span>
 
                 <Link
-                  href={`/products/${row.product.id}/stock`}
+                  href={productStockHref(row.product.id)}
                   className="ethiopic min-h-touch shrink-0 content-center rounded-lg border border-rule px-3 text-sm"
                 >
                   {t.stock.restock}

@@ -2,7 +2,8 @@
 
 import { useLiveQuery } from 'dexie-react-hooks';
 import Link from 'next/link';
-import { use, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Field, NumberInput, Select, TextInput } from '@/components/ui/Field';
@@ -10,12 +11,31 @@ import { productsRepo, stockRepo } from '@/lib/db';
 import type { MovementReason, StockMovement } from '@/lib/db';
 import { formatDateTime, formatQty } from '@/lib/format';
 import { useBilingual, useT } from '@/lib/i18n';
+import { productHref } from '@/lib/routes';
 
 type AdjustReason = Extract<MovementReason, 'adjustment' | 'damage' | 'return'>;
 const ADJUST_REASONS: AdjustReason[] = ['adjustment', 'damage', 'return'];
 
-export default function ProductStockPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+/**
+ * A static shell: the id comes from the query string so the service worker can
+ * precache this page and open any product's stock offline (lib/routes.ts).
+ * useSearchParams needs a Suspense boundary to prerender.
+ */
+export default function ProductStockPage() {
+  return (
+    <Suspense fallback={null}>
+      <ProductStockFromQuery />
+    </Suspense>
+  );
+}
+
+function ProductStockFromQuery() {
+  const id = useSearchParams().get('id') ?? '';
+  // Keyed so a form half-filled for one id never carries over to the next.
+  return <ProductStock key={id} id={id} />;
+}
+
+function ProductStock({ id }: { id: string }) {
   const t = useT();
 
   const product = useLiveQuery(async () => (await productsRepo.getById(id)) ?? null, [id]);
@@ -33,7 +53,7 @@ export default function ProductStockPage({ params }: { params: Promise<{ id: str
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <Link href={`/products/${id}`} className="ethiopic text-xs text-muted">
+        <Link href={productHref(id)} className="ethiopic text-xs text-muted">
           {product.name_am}
         </Link>
 

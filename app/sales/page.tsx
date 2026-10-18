@@ -7,6 +7,7 @@ import { TextInput } from '@/components/ui/Field';
 import { salesRepo } from '@/lib/db';
 import { formatDateTime, formatETB } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import { saleHref } from '@/lib/routes';
 import { groupByDay } from '@/lib/sales/grouping';
 
 export default function SalesHistoryPage() {
@@ -69,7 +70,7 @@ export default function SalesHistoryPage() {
                 return (
                   <li key={sale.id}>
                     <Link
-                      href={`/sales/${sale.id}`}
+                      href={saleHref(sale.id)}
                       className="flex min-h-touch items-center justify-between gap-3 py-2"
                     >
                       <span className="flex min-w-0 flex-col leading-tight">
