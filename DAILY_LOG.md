@@ -4,6 +4,59 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-18 — Run 3 (scheduled)
+
+**Start.** `master` @ `922f951`, CI green, no open PRs. No run on 2026-10-17 (nothing in the log or git history).
+I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page.
+Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+**Supabase check.** The connector still lists only `not-alone-scripture` and `erko-staging`, not Suq. The
+`received_at` migration is still unapplied.
+
+**Item 5: receipts and products open offline → [PR #12](https://github.com/Alphaguyasa/Suq/pull/12), merged.**
+- `/sales/[id]`, `/products/[id]` and `/products/[id]/stock` became the static shells `/sales/view?id=`, `/products/edit?id=` and `/products/stock?id=`.
+  - They are precached.
+  - A service-worker navigation rule serves the shell whatever the query string, because the precache only matches its exact URL.
+  - `lib/routes.ts` builds every link. The old paths redirect.
+- **Found while testing: a PIN prompt in the middle of the demo.** Offline, Next's router cannot fetch the next page's data, so every link tap becomes a full page load. A full load reset the in-memory lock. The cashier had to enter the PIN again just to see the receipt, and the same happened on any offline navigation.
+  - Fix: the unlocked cashier is remembered per tab in `sessionStorage`.
+  - The 5-minute idle timeout still applies, "lock now" clears it, and a removed cashier is not restored.
+  - A cold launch still locks.
+- **Found while testing: the offline e2e tests could pass when they should fail.** In Chromium, `context.setOffline()` lets the service worker's own fetches through. The first version of the new spec passed even on a build without the fix.
+  - The spec now also blocks the app origin with `context.route`. I checked that it fails without the SW rule and passes with it.
+  - The older offline specs use only `setOffline` → new ROADMAP item 18.
+- Local: lint ✅ · typecheck ✅ · unit 170 ✅ · build ✅ · e2e 6/6 ✅. CI green on the first try. Squash-merged as `204fb5f`.
+
+**Item 6: Dexie upgrade survival tests → [PR #13](https://github.com/Alphaguyasa/Suq/pull/13), merged.**
+- Versions now live in an append-only `SCHEMA_VERSIONS` list. The indexes are unchanged.
+- New `openAtVersion()` helper.
+- `lib/db/upgrade.test.ts` opens a database at v1 and at v2 and fills every table. It upgrades the database to v3 and checks:
+  - rows, the receipt counter and indexed queries
+  - that the newer tables are writable and the outbox id sequence continues
+- It also freezes the published versions and requires a fixture for every table.
+- I checked that it catches real breakage: an upgrade that clears `sales`, and a v1 index that was edited.
+- Local: lint ✅ · typecheck ✅ · unit 180 ✅ · build ✅ · e2e 6/6 ✅.
+
+**Blocked:** the release tag. `git push origin v2026-10-18-1` was refused again (the remote hung up). Rollback SHAs:
+`v2026-10-18-1` = `204fb5f`, `v2026-10-18-2` = `7e19f07`.
+**Process notes:**
+- One session branch again. After #12 merged, I restarted the branch from master. I folded the old head back in with `merge -s ours`, so the push was a fast-forward with no force-push.
+- The pre-commit hook is still not executable (item 17). I ran `sh .githooks/pre-commit` by hand before each commit: clean.
+
+### REPORT — 2026-10-18
+| Field | Content |
+|---|---|
+| Done | Item 5: receipts/products open offline + no PIN re-prompt on offline navigation — [PR #12](https://github.com/Alphaguyasa/Suq/pull/12). Item 6: Dexie upgrade survival tests — [PR #13](https://github.com/Alphaguyasa/Suq/pull/13) |
+| Merged | PR #12: yes · PR #13: yes · tags `v2026-10-18-1`/`-2` NOT pushed (refused); SHAs `204fb5f` / `7e19f07` |
+| Failed or blocked | Tag pushes; `received_at` migration still unapplied (connector can't see Suq) |
+| Roadmap | 11 open (items 7–18); no replan needed |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | **Apply the received_at migration** (SQL Editor, 1 min) or reconnect the Supabase connector; tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 7 (device reset → duplicate receipt numbers), item 8 (indexed outbox status, Dexie v4 using item 6's helper) |
+
+---
+
 ## 2026-10-16 — Run 2 (scheduled)
 
 **Start.** `master` @ `c059ad9`, CI green, no open PRs. Read CLAUDE.md, ROADMAP, DAILY_LOG, NEEDS_APPROVAL.

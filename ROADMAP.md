@@ -12,20 +12,6 @@ and the unit test suite).
 
 ## Open
 
-### 5. [P0 · M] Receipt and product detail pages fail offline
-`/sales/[id]`, `/products/[id]` and `/products/[id]/stock` are dynamic routes (`ƒ` in the build output).
-Offline, the RSC fetch for an id that was never visited fails and the service worker serves `/offline`.
-The sale screen links to `/sales/<id>` right after a sale ("Sale complete A1-000042") — exactly the step in
-the demo after the wifi is switched off. Fix by serving these pages from static shells (e.g. query-param routes
-`/sales/view?id=` with redirects from the old paths, or a SW navigation route that maps `/sales/*` to a
-precached shell). Playwright test: go offline, complete a sale, open its receipt, void it.
-
-### 6. [P1 · S] Test that old IndexedDB data survives every Dexie schema upgrade
-Project rule. The schema is at v3 (v1 core tables, v2 `shop_settings`, v3 `cashiers`) and there is no
-upgrade test. Add a test that opens a raw v1 database with real rows, then opens `SuqDatabase` and asserts
-every row (sales, items, movements, outbox, device_meta incl. receipt counter) survived, and the same for
-v2→v3. Add a test helper so every future `version(n)` change gets its own test cheaply.
-
 ### 7. [P1 · S] Device reset restarts the receipt counter → duplicate receipt numbers in the cloud
 `resetDevice()` clears `device_meta`; re-running setup with the same prefix (the default is `A1`) restarts
 the counter at 000001, so the shop gets two different sales both numbered `A1-000001`. Similarly, Settings
@@ -83,7 +69,25 @@ release yet (every version affected) — wait for upstream.
 A product edit queued offline and pushed late overwrites a newer edit already on the server (plain upsert, no
 `updated_at` guard). Additive fix: a BEFORE UPDATE trigger that keeps the row when `new.updated_at <= old.updated_at`. Migration + test.
 
+### 18. [P2 · S] Harden the older offline e2e tests against service-worker network leaks
+Found while doing item 5: in Chromium, `context.setOffline(true)` does not stop requests the service
+worker makes itself, so a page missing from the precache can still load "offline" in a test.
+`e2e/offline-detail-pages.spec.ts` also blocks the app origin with `context.route` (`goOffline()`); move that
+helper into `e2e/helpers.ts` and use it in `offline-launch.spec.ts` and `offline-sync.spec.ts` (keep the
+fake Supabase routes working), so those tests prove what they claim.
+
 ## Done
+
+- **Dexie upgrade survival tests (item 6)** — schema versions in an append-only `SCHEMA_VERSIONS` list;
+  `openAtVersion()` helper; `lib/db/upgrade.test.ts` fills a database at every historical version, upgrades it,
+  and checks rows, receipt counter, indexes, new tables and the outbox sequence; it freezes published versions
+  and requires a fixture per table. [PR #13](https://github.com/Alphaguyasa/Suq/pull/13) · tag `v2026-10-18-2` not pushed (refused) — commit `7e19f07`
+
+- **Receipts and products open offline (item 5)** — `/sales/view`, `/products/edit`, `/products/stock` static
+  shells reading `?id=`, precached, served by a SW navigation rule whatever the query; old paths redirect.
+  Unlocked cashier remembered per tab (sessionStorage, idle timeout kept) so an offline full-page navigation
+  doesn't ask for the PIN again. e2e: offline sale → receipt → void; product → stock → restock.
+  [PR #12](https://github.com/Alphaguyasa/Suq/pull/12) · tag `v2026-10-18-1` not pushed (refused) — commit `204fb5f`
 
 - **Persistent storage (item 4)** — `lib/storage/persist.ts`: `navigator.storage.persist()` requested once on
   first run (after the device row exists), outcome + time recorded on `device_meta`; Settings shows the live
