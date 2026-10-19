@@ -258,6 +258,10 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
   { version: 2, stores: { shop_settings: 'id' } },
   // v3 adds cashiers for the PIN lock.
   { version: 3, stores: { cashiers: 'id, name' } },
+  // v4 indexes outbox.attempts so the sync pill finds the worst row by seek,
+  // not by reading the whole queue on every write. IndexedDB builds the new
+  // index over existing rows during the upgrade; no row changes shape.
+  { version: 4, stores: { outbox: '++id, table, row_id, created_at, attempts' } },
 ];
 
 export const db = new SuqDatabase();
