@@ -229,6 +229,8 @@ export const en: Dict = {
     deviceSection: 'Device',
     devicePrefix: 'Device code',
     devicePrefixHint: 'Appears on every receipt number, e.g. A1',
+    devicePrefixInUse:
+      'Another till has printed receipts with this code. If it is still in use, pick a different code.',
     printerWidth: 'Printer width',
     language: 'Language',
     cashiersSection: 'Cashiers',

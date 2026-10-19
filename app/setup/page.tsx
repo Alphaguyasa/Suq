@@ -1,11 +1,19 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Field, TextInput } from '@/components/ui/Field';
-import { addCashier, db, ensureDevice, ensureSettings, isValidPin, updateSettings } from '@/lib/db';
+import {
+  addCashier,
+  db,
+  ensureDevice,
+  ensureSettings,
+  isValidPin,
+  suggestDevicePrefix,
+  updateSettings,
+} from '@/lib/db';
 import { useBilingual } from '@/lib/i18n';
 import { parseProductCsv } from '@/lib/seed/csv';
 import { importProducts } from '@/lib/seed/import';
@@ -27,13 +35,18 @@ export default function SetupPage() {
   const [shopName, setShopName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
-  const [prefix, setPrefix] = useState('A1');
+  const [prefix, setPrefix] = useState('');
   const [cashierName, setCashierName] = useState('');
   const [pin, setPin] = useState('');
   const [importSummary, setImportSummary] = useState<string>();
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+
+  // Random, so it can't match the server-rendered HTML: filled in after mount.
+  useEffect(() => {
+    setPrefix((current) => current || suggestDevicePrefix());
+  }, []);
 
   async function next() {
     setError(undefined);
@@ -167,7 +180,7 @@ export default function SetupPage() {
           </Field>
 
           <p className="num rounded-lg border border-rule p-3 text-center text-lg">
-            {prefix.trim().toUpperCase() || 'A1'}-000001
+            {prefix.trim().toUpperCase()}-000001
           </p>
         </section>
       ) : null}

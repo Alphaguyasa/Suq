@@ -11,6 +11,7 @@ import {
   addCashier,
   getDevice,
   getSettings,
+  isPrefixUsedByAnotherDevice,
   isValidPin,
   listCashiers,
   removeCashier,
@@ -42,6 +43,16 @@ export default function SettingsPage() {
   });
   const [prefix, setPrefix] = useState('');
   const [saved, setSaved] = useState(false);
+
+  /*
+   * Warn, don't block: after a reset this till's own old receipts carry a
+   * different device_id, and numbering already continues past them.
+   */
+  const cleanedPrefix = prefix.trim().toUpperCase();
+  const prefixInUse = useLiveQuery(
+    () => (device ? isPrefixUsedByAnotherDevice(cleanedPrefix, device.device_id) : false),
+    [cleanedPrefix, device?.device_id],
+  );
 
   // Seed the form once the stored values arrive.
   useEffect(() => {
@@ -149,6 +160,7 @@ export default function SettingsPage() {
             label={t.settings.devicePrefix}
             sublabel={other.settings.devicePrefix}
             hint={t.settings.devicePrefixHint}
+            error={prefixInUse ? t.settings.devicePrefixInUse : undefined}
           >
             <TextInput
               id="prefix"
