@@ -8,8 +8,9 @@ import { db } from './schema';
  * makes you type the shop name first, and says so plainly.
  *
  * device_meta goes too, so the next launch runs first-run setup again and the
- * receipt counter restarts — appropriate, because this is now a different
- * shop as far as the device is concerned.
+ * local receipt counter restarts. Receipt numbers do not repeat, though: if
+ * the till is set up again with a prefix the shop already used, nextReceiptNo()
+ * continues past the highest such receipt once the first pull brings them back.
  */
 export async function resetDevice(): Promise<void> {
   await db.transaction('rw', db.tables, async () => {

@@ -234,6 +234,7 @@ export const am = {
     deviceSection: 'መሣሪያ',
     devicePrefix: 'የመሣሪያ ኮድ',
     devicePrefixHint: 'በደረሰኝ ቁጥር ላይ ይታያል፤ ለምሳሌ A1',
+    devicePrefixInUse: 'ሌላ መሣሪያ በዚህ ኮድ ደረሰኝ አትሟል። ያ መሣሪያ አሁንም የሚሠራ ከሆነ ሌላ ኮድ ይምረጡ።',
     printerWidth: 'የአታሚ ስፋት',
     language: 'ቋንቋ',
     cashiersSection: 'ሻጮች',
