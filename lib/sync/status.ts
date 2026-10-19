@@ -3,6 +3,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { db } from '@/lib/db';
+import type { SuqDatabase } from '@/lib/db';
 import { getEngineState, subscribeToEngine } from './engine';
 
 export type SyncState = 'synced' | 'syncing' | 'offline' | 'blocked';
@@ -67,6 +68,18 @@ export function deriveState(input: {
   return 'synced';
 }
 
+/**
+ * Highest attempt count in the outbox, 0 when empty.
+ *
+ * Runs on every IndexedDB change the pill observes. Reading the whole queue
+ * here meant a cold-start till with hundreds of queued rows re-read all of
+ * them on every sale; the attempts index (schema v4) makes it one seek.
+ */
+export async function worstAttempts(database: SuqDatabase = db): Promise<number> {
+  const worst = await database.outbox.orderBy('attempts').last();
+  return worst?.attempts ?? 0;
+}
+
 export function useSyncStatus(): SyncStatus {
   const online = useOnline();
 
@@ -78,14 +91,7 @@ export function useSyncStatus(): SyncStatus {
     [],
     0,
   );
-  const maxAttempts = useLiveQuery(
-    async () => {
-      const worst = await db.outbox.orderBy('id').toArray();
-      return worst.reduce((most, entry) => Math.max(most, entry.attempts), 0);
-    },
-    [],
-    0,
-  );
+  const maxAttempts = useLiveQuery(() => worstAttempts(), [], 0);
 
   return {
     state: deriveState({

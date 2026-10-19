@@ -47,6 +47,7 @@ const FROZEN = [
   },
   { version: 2, stores: { shop_settings: 'id' } },
   { version: 3, stores: { cashiers: 'id, name' } },
+  { version: 4, stores: { outbox: '++id, table, row_id, created_at, attempts' } },
 ];
 
 const SHOP = 'b7c1d2e3-0000-4000-8000-000000000001';
@@ -207,9 +208,11 @@ afterEach(async () => {
 
 /** Tables that exist once every step up to `version` has run. */
 function tablesAt(version: number): string[] {
-  return SCHEMA_VERSIONS.filter((step) => step.version <= version).flatMap((step) =>
+  // A later step may redeclare an existing table (v4 re-indexes outbox).
+  const names = SCHEMA_VERSIONS.filter((step) => step.version <= version).flatMap((step) =>
     Object.keys(step.stores),
   );
+  return [...new Set(names)];
 }
 
 async function fillAt(version: number): Promise<{ name: string; tables: string[] }> {
@@ -295,6 +298,9 @@ describe.each(SCHEMA_VERSIONS.filter((step) => step.version < LATEST).map((step)
           .count(),
       ).toBe(2);
       expect(await current.outbox.where('row_id').equals('s-1').count()).toBe(1);
+      // v4 index, built over rows that were queued before it existed.
+      expect(await current.outbox.where('attempts').aboveOrEqual(3).count()).toBe(1);
+      expect((await current.outbox.orderBy('attempts').last())?.id).toBe(7);
     });
 
     it('makes the newer tables usable and keeps the outbox sequence', async () => {
