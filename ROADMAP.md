@@ -12,18 +12,14 @@ and the unit test suite).
 
 ## Open
 
-### 7. [P1 · S] Device reset restarts the receipt counter → duplicate receipt numbers in the cloud
-`resetDevice()` clears `device_meta`; re-running setup with the same prefix (the default is `A1`) restarts
-the counter at 000001, so the shop gets two different sales both numbered `A1-000001`. Similarly, Settings
-lets the prefix be changed to one another till already uses. Fix: after reset, seed the counter from the
-highest receipt number this device prefix has in the cloud (on first pull) and/or warn when the prefix is
-already used by another device; make the setup default prefix unique-ish. Tests for both paths.
+### 17. [P1 · S] Pre-commit secret scanner never runs (hook file not executable)
+`.githooks/pre-commit` is committed as mode 644, so git prints "hook was ignored because it's not set as
+executable" and commits go through unscanned. Fix: `git update-index --chmod=+x .githooks/pre-commit`, and
+add a CI step that runs the scanner over the PR diff so it is enforced even where hooks are not configured.
 
-### 8. [P1 · S] Pill / status queries scan the whole outbox on every change
-`useSyncStatus()` reads every outbox row (`orderBy('id').toArray()`) on every IndexedDB change to compute
-the max attempts. With 200+ queued rows on a cheap phone (the cold-start case) this runs on every keypress
-that writes. Track a `blocked` flag via an indexed query (e.g. index `attempts`, `where('attempts').aboveOrEqual(5)`)
-— needs a Dexie v4 schema bump + upgrade test (item 6's helper).
+### 15. [P1 · S] Server does not enforce last-write-wins on products
+A product edit queued offline and pushed late overwrites a newer edit already on the server (plain upsert, no
+`updated_at` guard). Additive fix: a BEFORE UPDATE trigger that keeps the row when `new.updated_at <= old.updated_at`. Migration + test.
 
 ### 9. [P2 · S] Language choice is not remembered
 `I18nProvider` keeps the language in React state; every reload or app launch is back to Amharic. Persist the
@@ -53,21 +49,12 @@ Additive migration (new table, RLS like the others) + LWW sync like `products`. 
 For shops that never sign in to sync, a one-tap export of sales and stock movements is the only backup.
 Offline, no server needed (Blob download). Bilingual.
 
-### 17. [P1 · S] Pre-commit secret scanner never runs (hook file not executable)
-`.githooks/pre-commit` is committed as mode 644, so git prints "hook was ignored because it's not set as
-executable" and commits go through unscanned. Fix: `git update-index --chmod=+x .githooks/pre-commit`, and
-add a CI step that runs the scanner over the PR diff so it is enforced even where hooks are not configured.
-
 ### 16. [P2 · S] Dev-tooling advisories (vitest, undici via jsdom, braces via eslint-config-next)
 `npm audit` (dev included) still reports high/moderate advisories in test/lint tooling only — nothing that
 ships to a till. `npm install` currently crashes in npm 10's arborist (`Cannot read properties of null
 (reading 'edgesOut')`, peer-set resolution of vitest's optional `jsdom` peer) when bumping vitest to 4.1.11
 or overriding undici ≥ 8.10.2. Retry with a newer npm or by regenerating the lockfile; `braces` has no fixed
 release yet (every version affected) — wait for upstream.
-
-### 15. [P1 · S] Server does not enforce last-write-wins on products
-A product edit queued offline and pushed late overwrites a newer edit already on the server (plain upsert, no
-`updated_at` guard). Additive fix: a BEFORE UPDATE trigger that keeps the row when `new.updated_at <= old.updated_at`. Migration + test.
 
 ### 18. [P2 · S] Harden the older offline e2e tests against service-worker network leaks
 Found while doing item 5: in Chromium, `context.setOffline(true)` does not stop requests the service
@@ -77,6 +64,16 @@ helper into `e2e/helpers.ts` and use it in `offline-launch.spec.ts` and `offline
 fake Supabase routes working), so those tests prove what they claim.
 
 ## Done
+
+- **Indexed outbox status (item 8)** — Dexie v4 indexes `outbox.attempts`; the sync pill's blocked check is one
+  seek (`orderBy('attempts').last()`) instead of reading the whole queue on every change. Upgrade test covers
+  v1–v3 → v4 and checks the new index over old rows. [PR #16](https://github.com/Alphaguyasa/Suq/pull/16) · tag `v2026-10-19-2` not pushed (refused) — commit `3356bd1`
+
+- **No duplicate receipt numbers after reset (item 7)** — `nextReceiptNo()` continues past the highest local
+  receipt with the device's prefix (own or pulled), so a reset till resumes after its first pull; Settings warns
+  when another device printed receipts with the chosen code; setup suggests a random code instead of `A1`.
+  Remaining gap: a reset till that sells before its first pull (unlikely with the random default).
+  [PR #15](https://github.com/Alphaguyasa/Suq/pull/15) · tag `v2026-10-19-1` not pushed (refused) — commit `9ac3386`
 
 - **Dexie upgrade survival tests (item 6)** — schema versions in an append-only `SCHEMA_VERSIONS` list;
   `openAtVersion()` helper; `lib/db/upgrade.test.ts` fills a database at every historical version, upgrades it,
