@@ -4,6 +4,52 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-19 — Run 4 (scheduled)
+
+**Start.** `master` @ `b25a9ec`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page.
+Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+**Supabase check.** The connector still lists only `not-alone-scripture` and `erko-staging` (now INACTIVE), not Suq. The
+`received_at` migration is still unapplied.
+
+**Item 7: receipt numbers never repeat after a reset → [PR #15](https://github.com/Alphaguyasa/Suq/pull/15), merged.**
+- `nextReceiptNo()` now numbers from `max(local counter, highest receipt with this prefix on the device) + 1`.
+  - It reads the `receipt_no` index keys only, inside the sale's own transaction.
+  - After a reset, the first pull brings the old receipts back and numbering continues after them.
+  - The same applies when the prefix is changed to one another till already printed.
+- Settings shows an ochre, bilingual warning when another device printed receipts with the chosen code. It warns and does not block, because after a reset this till's own old receipts carry a different device_id.
+- Setup now suggests a random letter + digit code (no I/O) instead of always `A1`.
+- **Remaining gap:** a till that is reset and sells *before* its first pull can still repeat numbers. The random default makes this unlikely (1 in 216).
+- Tests: `lib/db/device.test.ts` has 11 tests, including sell → push → reset → re-register → pull → sell against the fake server with no duplicate receipts. With the fix reverted, 3 of them fail.
+- Local: lint ✅ · typecheck ✅ · unit 191 ✅ · build ✅ · e2e 6/6 ✅. CI green on the first try. Squash-merged as `9ac3386`.
+
+**Item 8: indexed outbox status → [PR #16](https://github.com/Alphaguyasa/Suq/pull/16), merged.**
+- Dexie v4 adds an `attempts` index to `outbox`. The pill's blocked check is now `orderBy('attempts').last()` (one seek) instead of reading the whole queue on every change.
+- Upgrade test: v1, v2 and v3 databases are upgraded to v4, and it checks that the index is built over rows queued before v4. `tablesAt()` now de-duplicates a table that a later version redeclares.
+- New `lib/sync/status.test.ts` (empty queue, worst row anywhere, 300-row queue with one stuck row → blocked).
+- Local: lint ✅ · typecheck ✅ · unit 198 ✅ · build ✅ · e2e 6/6 ✅. CI green on the first try. Squash-merged as `3356bd1`.
+
+**Blocked:** the release tag. `git push origin v2026-10-19-1` was refused again (the remote hung up). Rollback SHAs:
+`v2026-10-19-1` = `9ac3386`, `v2026-10-19-2` = `3356bd1`.
+**Process notes:**
+- One session branch again. After #15 merged, I restarted the branch from master, cherry-picked item 8, and folded the old head in with `merge -s ours`, so the push was a fast-forward.
+- The pre-commit hook is still not executable (item 17). I ran `sh .githooks/pre-commit` by hand before each commit: clean.
+- ROADMAP: I moved the two open P1 items (17, 15) to the top of Open, so the next run takes them before the P2/P3 items.
+
+### REPORT — 2026-10-19
+| Field | Content |
+|---|---|
+| Done | Item 7: no duplicate receipt numbers after a device reset or prefix change — [PR #15](https://github.com/Alphaguyasa/Suq/pull/15). Item 8: sync pill finds the worst outbox row by index (Dexie v4) — [PR #16](https://github.com/Alphaguyasa/Suq/pull/16) |
+| Merged | PR #15: yes · PR #16: yes · tags `v2026-10-19-1`/`-2` NOT pushed (refused); SHAs `9ac3386` / `3356bd1` |
+| Failed or blocked | Tag pushes; `received_at` migration still unapplied (connector can't see Suq) |
+| Roadmap | 10 open (items 9–18); no replan needed |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | **Apply the received_at migration** (SQL Editor, 1 min) or reconnect the Supabase connector; tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 15 (server-side last-write-wins on products, P1) and item 17 (pre-commit hook executable + CI secret scan, P1). Then item 9 |
+
+---
+
 ## 2026-10-18 — Run 3 (scheduled)
 
 **Start.** `master` @ `922f951`, CI green, no open PRs. No run on 2026-10-17 (nothing in the log or git history).
