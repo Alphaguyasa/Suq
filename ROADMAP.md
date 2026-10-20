@@ -12,15 +12,6 @@ and the unit test suite).
 
 ## Open
 
-### 17. [P1 · S] Pre-commit secret scanner never runs (hook file not executable)
-`.githooks/pre-commit` is committed as mode 644, so git prints "hook was ignored because it's not set as
-executable" and commits go through unscanned. Fix: `git update-index --chmod=+x .githooks/pre-commit`, and
-add a CI step that runs the scanner over the PR diff so it is enforced even where hooks are not configured.
-
-### 15. [P1 · S] Server does not enforce last-write-wins on products
-A product edit queued offline and pushed late overwrites a newer edit already on the server (plain upsert, no
-`updated_at` guard). Additive fix: a BEFORE UPDATE trigger that keeps the row when `new.updated_at <= old.updated_at`. Migration + test.
-
 ### 9. [P2 · S] Language choice is not remembered
 `I18nProvider` keeps the language in React state; every reload or app launch is back to Amharic. Persist the
 choice locally (device setting) and set `<html lang>` accordingly. Test the toggle round-trip.
@@ -64,6 +55,17 @@ helper into `e2e/helpers.ts` and use it in `offline-launch.spec.ts` and `offline
 fake Supabase routes working), so those tests prove what they claim.
 
 ## Done
+
+- **Server-side last-write-wins on products (item 15)** — additive migration `20261020000000_products_last_write_wins.sql`:
+  a BEFORE UPDATE trigger skips a product update whose `updated_at` is not newer (so a late offline edit no longer
+  overwrites a newer one, and a refused edit is not re-stamped `received_at`). Fake server mirrors it; PGlite + two-till
+  sync tests. **Migration still to be applied to the Suq project** (see NEEDS_APPROVAL).
+  [PR #19](https://github.com/Alphaguyasa/Suq/pull/19) · tag `v2026-10-20-2` not pushed (refused) — commit `d3af6bd`
+
+- **Secret scanner actually runs (item 17)** — `.githooks/pre-commit` committed executable (git had been skipping it);
+  new `--range` mode scans every line added by every commit; CI runs it on every PR and push (a key added then
+  deleted still fails). `scripts/secret-scan.test.ts` drives it through real commits.
+  [PR #18](https://github.com/Alphaguyasa/Suq/pull/18) · tag `v2026-10-20-1` not pushed (refused) — commit `eccfdac`
 
 - **Indexed outbox status (item 8)** — Dexie v4 indexes `outbox.attempts`; the sync pill's blocked check is one
   seek (`orderBy('attempts').last()`) instead of reading the whole queue on every change. Upgrade test covers

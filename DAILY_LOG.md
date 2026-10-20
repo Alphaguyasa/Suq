@@ -4,6 +4,51 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-20 — Run 5 (scheduled)
+
+**Start.** `master` @ `f9807cf`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page.
+Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+**Supabase check.** The connector still lists only `not-alone-scripture` and `erko-staging` (INACTIVE), not Suq.
+Neither the `received_at` migration nor today's migration is applied.
+
+**Item 17: the secret scanner actually runs → [PR #18](https://github.com/Alphaguyasa/Suq/pull/18), merged.**
+- `.githooks/pre-commit` is now committed as mode 100755. Git had been skipping it with a hint, so no commit was ever scanned.
+- New `--range <base>..<head>` mode. It checks every line *added* by every commit in the range, plus any committed `.env*` file, so a key that was added and later deleted still fails.
+- CI runs it as the first step: PR base..head, push before..sha, and `origin/master..sha` for a new branch.
+- I scanned the current tree and the full history of master with the pattern: clean.
+- `scripts/secret-scan.test.ts` (11 tests) drives the hook through real `git commit`s in a throwaway repo. With `chmod -x`, 3 tests fail.
+- Local: lint ✅ · typecheck ✅ · unit 220 ✅ · build ✅. CI green on the first try (Secret scan step ran). Squash-merged as `eccfdac`.
+
+**Item 15: server-side last-write-wins on products → [PR #19](https://github.com/Alphaguyasa/Suq/pull/19), merged.**
+- Additive migration `20261020000000_products_last_write_wins.sql` adds a `BEFORE UPDATE` trigger, `WHEN (new.updated_at <= old.updated_at)`, that returns null.
+  - A late, older offline edit no longer overwrites a newer one on the server.
+  - Because the update is skipped, the `received_at` trigger doesn't fire either, so tills don't re-pull a refused edit.
+  - A tie is skipped, matching `apply.ts`.
+- The fake server mirrors the trigger.
+- Tests: 3 PGlite migration tests and 1 two-till sync test. In the sync test, A's older offline edit is refused, A's outbox empties, and both tills converge. All 4 fail without the fix.
+- Local: secret scan ✅ · lint ✅ · typecheck ✅ · unit 213 ✅. Build and e2e ran in CI.
+- **Not applied to Supabase** (the connector can't see Suq). Added to NEEDS_APPROVAL with the `received_at` one.
+
+**Blocked:** release tags again. `git push origin v2026-10-20-1` → "remote end hung up". Rollback SHAs are in NEEDS_APPROVAL.
+**Process notes:**
+- One session branch. After #18 merged, I rebased item 15 onto master and folded the old head in with `merge -s ours`, so the push was a fast-forward.
+- The item-15 commit was made before the rebase brought in the executable hook, so I ran `sh .githooks/pre-commit --range origin/master..HEAD` by hand: clean. From now on the hook runs on every commit.
+
+### REPORT — 2026-10-20
+| Field | Content |
+|---|---|
+| Done | Item 17: secret scanner runs (executable hook + CI scan of every commit) — [PR #18](https://github.com/Alphaguyasa/Suq/pull/18). Item 15: server keeps the newer product edit (LWW trigger) — [PR #19](https://github.com/Alphaguyasa/Suq/pull/19) |
+| Merged | PR #18: yes · PR #19: yes · tags `v2026-10-20-1`/`-2` NOT pushed (refused); SHAs `eccfdac` / `d3af6bd` |
+| Failed or blocked | Tag pushes; `received_at` + LWW migrations unapplied (connector can't see Suq) |
+| Roadmap | 8 open (items 9–14, 16, 18); no replan needed |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | **Apply the two migrations** (SQL Editor, `received_at` first, then `products_last_write_wins`) or reconnect the Supabase connector; tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 9 (remember language choice), item 10 (accessibility pass with axe) |
+
+---
+
 ## 2026-10-19 — Run 4 (scheduled)
 
 **Start.** `master` @ `b25a9ec`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
