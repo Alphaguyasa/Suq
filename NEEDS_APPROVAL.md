@@ -5,6 +5,11 @@ resolved, move it to **Resolved** with the date and outcome.
 
 ## Open
 
+### ACTION FOR ALPHA: apply migration `20261020000000_products_last_write_wins.sql` too (added 2026-10-20)
+Merged in PR #19. Additive only: one function in `private` and one trigger on `products`; no data changed. It makes
+the server keep the newer product edit when an older offline edit is pushed late. Apply it **after** the
+`received_at` one below, the same way (SQL Editor → paste → Run), or reconnect the connector and a run will do both.
+
 ### ACTION FOR ALPHA: apply migration `20261016000000_received_at.sql` to the Suq project (added 2026-10-16)
 Merged in PR #9. It is additive only: new `received_at` columns with a default, one trigger function in
 `private`, four triggers and four indexes. Nothing is dropped, renamed or deleted. This run could not apply it
@@ -34,7 +39,7 @@ uses more of your plan's usage per run than Opus. Staying on Opus is fine.
 The cloud session's git proxy returns **403** on `git push origin <tag>`; it only allows the session branch.
 Merged commits still roll back by SHA. Pending tags: `v2026-10-15-1` → `c75669a`, `v2026-10-15-2` → `ad3de63`,
 `v2026-10-16-1` → `2c92d3b`, `v2026-10-16-2` → `943f9f0`, `v2026-10-18-1` → `204fb5f`, `v2026-10-18-2` → `7e19f07`,
-`v2026-10-19-1` → `9ac3386`, `v2026-10-19-2` → `3356bd1`.
+`v2026-10-19-1` → `9ac3386`, `v2026-10-19-2` → `3356bd1`, `v2026-10-20-1` → `eccfdac`, `v2026-10-20-2` → `d3af6bd`.
 Options: (a) allow tag pushes for the routine's GitHub access, or (b) accept SHAs as rollback points and drop
 the tagging rule. Until then runs log the SHA instead.
 
