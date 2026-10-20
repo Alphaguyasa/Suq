@@ -4,9 +4,21 @@
 #
 # The service_role key in particular must never reach the repo or the browser
 # bundle — it bypasses every RLS policy written in session 5.
+#
+# CI runs the same scan over a pull request or push, because a hook only
+# protects the clones that enabled it (and a non-executable hook file is
+# silently skipped by git):
+#   sh .githooks/pre-commit --range <base>..<head>
+# That mode checks every line ADDED by every commit in the range, not just the
+# final tree, so a key committed and then deleted in a later commit still
+# fails: it is in the history either way and has to be rotated.
 
-staged=$(git diff --cached --name-only --diff-filter=ACM)
-[ -z "$staged" ] && exit 0
+mode=staged
+if [ "$1" = "--range" ]; then
+  [ -n "$2" ] || { echo "usage: pre-commit [--range <base>..<head>]"; exit 2; }
+  mode=range
+  range=$2
+fi
 
 fail=0
 
@@ -24,11 +36,58 @@ fail=0
 #   4. PEM private keys, OpenAI keys, Slack tokens
 secret_pattern='eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.|sb_secret_[A-Za-z0-9_-]{8,}|(SERVICE_ROLE|SERVICE_KEY|SECRET_KEY|PRIVATE_KEY|ACCESS_TOKEN)[A-Z_]*[[:space:]]*[:=][[:space:]]*.?[A-Za-z0-9._-]{16,}|BEGIN [A-Z ]*PRIVATE KEY|sk-[A-Za-z0-9]{24,}|xox[baprs]-[A-Za-z0-9-]{10,}'
 
+# A file the scan never reads: this one (it holds the pattern) and the
+# committed env template. Prints "skip", "env" or "scan".
+classify() {
+  case "$1" in
+    .githooks/pre-commit) echo skip ;;
+    .env.example|*.env.example) echo skip ;;
+    .env|.env.*|*/.env|*/.env.*) echo env ;;
+    *) echo scan ;;
+  esac
+}
+
+if [ "$mode" = range ]; then
+  files=$(git diff --name-only --diff-filter=ACMR "$range") || exit 2
+  for file in $files; do
+    [ "$(classify "$file")" = env ] && {
+      echo "secret scan: env file '$file' is committed in $range"
+      fail=1
+    }
+  done
+
+  # Added lines per commit, tagged with commit and file so a hit can be found.
+  # Merge commits are skipped: their content is already in the commits merged.
+  hits=$(git log --no-merges --format='commit %h' -p --no-color --no-ext-diff "$range" |
+    awk '
+      /^commit / { c = $2; next }
+      /^\+\+\+ / { f = substr($0, 7); next }
+      /^\+/ { print c " " f ": " substr($0, 2) }
+    ' |
+    grep -vE '^[^ ]+ (\.githooks/pre-commit|.*\.env\.example):' |
+    grep -E "$secret_pattern")
+  if [ -n "$hits" ]; then
+    echo "secret scan: possible secret added in $range:"
+    echo "$hits" | cut -c1-140 | sed 's/^/    /'
+    fail=1
+  fi
+
+  if [ "$fail" -ne 0 ]; then
+    echo ""
+    echo "Remove it, rotate the key (it is in the git history now), and keep the"
+    echo "value in an environment variable or the platform's secret storage."
+    exit 1
+  fi
+  exit 0
+fi
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
 for file in $staged; do
-  case "$file" in
-    .githooks/pre-commit) continue ;;
-    .env.example|*.env.example) continue ;;
-    .env|.env.*|*/.env|*/.env.*)
+  case "$(classify "$file")" in
+    skip) continue ;;
+    env)
       echo "pre-commit: refusing to commit env file '$file'"
       fail=1
       continue

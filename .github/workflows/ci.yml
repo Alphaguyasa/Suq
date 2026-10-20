@@ -28,6 +28,29 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history: the secret scan reads every commit in the range.
+          fetch-depth: 0
+
+      # The pre-commit hook only guards clones that enabled it; this enforces
+      # the same scan on everything that reaches GitHub. It reads every line
+      # added by every commit of the PR (or push), so a key committed and then
+      # deleted still fails. A new branch, or a push whose old head is gone,
+      # is scanned against master.
+      - name: Secret scan
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          if [ -n "$PR_BASE" ]; then
+            range="$PR_BASE..$PR_HEAD"
+          elif [ -n "$PUSH_BEFORE" ] && git cat-file -e "$PUSH_BEFORE^{commit}" 2>/dev/null; then
+            range="$PUSH_BEFORE..$GITHUB_SHA"
+          else
+            range="origin/master..$GITHUB_SHA"
+          fi
+          sh .githooks/pre-commit --range "$range"
 
       - uses: actions/setup-node@v4
         with:
