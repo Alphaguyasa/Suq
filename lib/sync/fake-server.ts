@@ -114,6 +114,11 @@ export class FakeServer {
             throw new Error(`${table}: wrong append-only flag`);
           }
 
+          // The products_last_write_wins trigger: an edit that is not newer
+          // than the row already here is skipped (and not re-stamped).
+          const existing = store.get(id);
+          if (!appendOnly && existing && String(row.updated_at) <= String(existing.updated_at)) continue;
+
           store.set(id, this.stamp(row));
         }
       },
