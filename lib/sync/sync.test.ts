@@ -621,6 +621,37 @@ describe('7. rows that reach the server late', () => {
     expect((await b.db.products.get(product.id))?.sell_price).toBe(4000);
   });
 
+  it('keeps the newer product edit when an older offline edit is pushed late', async () => {
+    const server = new FakeServer();
+    const client = server.client();
+    server.setClock('2026-07-31T10:00:00.000Z');
+
+    const product = makeProduct({ updated_at: '2026-07-31T07:00:00.000Z', sell_price: 3500 });
+    server.seed('products', [product as unknown as Record<string, unknown>]);
+
+    const a = await replica('suq-lww-a', 'A1');
+    const b = await replica('suq-lww-b', 'B1');
+    await pullOnce(client, a.db);
+    await pullOnce(client, b.db);
+
+    // A edits at 08:00 while offline; B edits at 09:00 and pushes first.
+    await localWrite('products', { ...product, sell_price: 4000, updated_at: '2026-07-31T08:00:00.000Z' }, a.db);
+    await localWrite('products', { ...product, sell_price: 4500, updated_at: '2026-07-31T09:00:00.000Z' }, b.db);
+    server.tick(60_000);
+    await drainOutbox(client, b.db);
+    server.tick(60_000);
+    await drainOutbox(client, a.db);
+
+    expect(server.tables.products.get(product.id)?.sell_price, 'late, older edit refused').toBe(4500);
+    expect(await a.db.outbox.count(), 'refused edit is not retried forever').toBe(0);
+
+    server.tick(60_000);
+    await pullOnce(client, a.db);
+    await pullOnce(client, b.db);
+    expect((await a.db.products.get(product.id))?.sell_price, 'A converges').toBe(4500);
+    expect((await b.db.products.get(product.id))?.sell_price).toBe(4500);
+  });
+
   it('re-reads a window behind the watermark for rows that committed late', async () => {
     const server = new FakeServer();
     const client = server.client();

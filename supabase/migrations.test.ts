@@ -19,6 +19,7 @@ const MIGRATIONS = readdirSync(DIR)
   .sort();
 
 const RECEIVED_AT = '20261016000000_received_at.sql';
+const LAST_WRITE_WINS = '20261020000000_products_last_write_wins.sql';
 
 const SHOP = '00000000-0000-4000-8000-0000000000a1';
 const USER = '00000000-0000-4000-8000-0000000000b1';
@@ -207,5 +208,53 @@ describe('received_at migration', { timeout: 30_000 }, () => {
     await expect(
       asMember(db, saleSql('00000000-0000-4000-8000-00000000c004', '2026-07-31T09:50:00Z').replace(SHOP, other)),
     ).rejects.toThrow(/row-level security/);
+  });
+});
+
+describe('products last-write-wins migration', { timeout: 30_000 }, () => {
+  const productId = '00000000-0000-4000-8000-00000000f001';
+
+  async function product(db: PGlite) {
+    const [row] = await asMember<Stamped & { sell_price: string; updated_at: Date }>(
+      db,
+      `select sell_price, updated_at, received_at from public.products where id = '${productId}'`,
+    );
+    return row!;
+  }
+
+  it('keeps the newer edit when an older one arrives late', async () => {
+    const db = await database();
+    await asMember(db, productSql(productId, 3500, '2026-07-31T07:00:00Z'));
+    await asMember(db, productSql(productId, 4500, '2026-07-31T09:00:00Z'));
+    const before = await product(db);
+
+    // Edited offline at 08:00, pushed after the 09:00 edit.
+    await asMember(db, productSql(productId, 4000, '2026-07-31T08:00:00Z'));
+    const after = await product(db);
+
+    expect(Number(after.sell_price)).toBe(4500);
+    expect(after.updated_at.toISOString()).toBe('2026-07-31T09:00:00.000Z');
+    expect(after.received_at.getTime(), 'not re-stamped, so no till re-pulls it').toBe(
+      before.received_at.getTime(),
+    );
+  });
+
+  it('applies a newer edit, and ignores a retry of the same one', async () => {
+    const db = await database();
+    await asMember(db, productSql(productId, 3500, '2026-07-31T07:00:00Z'));
+    await asMember(db, productSql(productId, 4000, '2026-07-31T08:00:00Z'));
+    expect(Number((await product(db)).sell_price)).toBe(4000);
+
+    // Same updated_at, different body: a tie keeps what is there (apply.ts agrees).
+    await asMember(db, productSql(productId, 9999, '2026-07-31T08:00:00Z'));
+    expect(Number((await product(db)).sell_price)).toBe(4000);
+  });
+
+  it('keeps every existing product when applied', async () => {
+    const db = await database(LAST_WRITE_WINS);
+    await asMember(db, productSql(productId, 3500, '2026-07-31T07:00:00Z'));
+    await db.exec(readFileSync(join(DIR, LAST_WRITE_WINS), 'utf8'));
+
+    expect(Number((await product(db)).sell_price)).toBe(3500);
   });
 });
