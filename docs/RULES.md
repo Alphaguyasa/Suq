@@ -45,7 +45,11 @@ All POS routes are client components. There is no server-side data fetching in t
 ```css
 --ink: #16181D;  --paper: #FBFAF7;  --rule: #E2DFD8;
 --birr: #1B7A5A; --ochre: #C9760E;  --alarm: #B3261E;  --muted: #6B7280;
+--birr-ink: #187352;  --ochre-ink: #985503;   /* text only */
 ```
+
+`--birr` and `--ochre` are fills (buttons, dots, borders, tints). Coloured **text**, and any fill that paper-coloured
+text sits on, uses the `-ink` step of the same hue, which meets WCAG AA (4.5:1) where the fill colours do not.
 
 Green = money, confirm, synced. Ochre = offline, pending, low stock. Red = destructive only, and it should appear about twice in the whole app.
 

@@ -35,7 +35,7 @@ export function ProductTile({
           {formatETB(product.sell_price)}
         </span>
         <span
-          className={`num text-xs leading-none ${low ? 'font-semibold text-ochre' : 'text-muted'}`}
+          className={`num text-xs leading-none ${low ? 'font-semibold text-ochre-ink' : 'text-muted'}`}
           title={low ? t.products.lowStock : undefined}
         >
           {formatQty(onHand)}

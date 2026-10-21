@@ -82,11 +82,11 @@ export default function SalesHistoryPage() {
 
                       <span className="flex items-center gap-3">
                         {isVoidRow ? (
-                          <span className="ethiopic text-xs font-medium text-ochre">
+                          <span className="ethiopic text-xs font-medium text-ochre-ink">
                             {t.sales.voidRow}
                           </span>
                         ) : isVoided ? (
-                          <span className="ethiopic text-xs font-medium text-ochre">
+                          <span className="ethiopic text-xs font-medium text-ochre-ink">
                             {t.sales.voided}
                           </span>
                         ) : (

@@ -205,7 +205,7 @@ export default function SettingsPage() {
             <span className="ethiopic">{t.common.save}</span>
           </Button>
           {saved ? (
-            <span className="ethiopic text-sm font-medium text-birr">{t.settings.saved}</span>
+            <span className="ethiopic text-sm font-medium text-birr-ink">{t.settings.saved}</span>
           ) : null}
         </div>
       </form>

@@ -95,7 +95,7 @@ export function LockScreen() {
           </div>
 
           {wrong ? (
-            <p className="ethiopic text-sm font-medium text-ochre">{t.lock.wrongPin}</p>
+            <p className="ethiopic text-sm font-medium text-ochre-ink">{t.lock.wrongPin}</p>
           ) : null}
 
           <div className="grid w-full grid-cols-3 gap-2">
