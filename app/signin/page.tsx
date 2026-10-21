@@ -140,7 +140,7 @@ export default function SignInPage() {
         </form>
       )}
 
-      {notice ? <p className="ethiopic text-sm font-medium text-birr">{notice}</p> : null}
+      {notice ? <p className="ethiopic text-sm font-medium text-birr-ink">{notice}</p> : null}
 
       <p className="ethiopic text-xs text-muted">{t.auth.offlineNote}</p>
     </div>

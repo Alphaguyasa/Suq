@@ -82,9 +82,9 @@ export function CartLines({
             </div>
 
             {oversold ? (
-              <span className="ethiopic text-xs font-medium text-ochre">{t.sell.negativeStock}</span>
+              <span className="ethiopic text-xs font-medium text-ochre-ink">{t.sell.negativeStock}</span>
             ) : low ? (
-              <span className="ethiopic text-xs text-ochre">{t.sell.lowStockHint}</span>
+              <span className="ethiopic text-xs text-ochre-ink">{t.sell.lowStockHint}</span>
             ) : null}
           </li>
         );

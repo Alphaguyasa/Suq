@@ -92,7 +92,7 @@ export default function OwnerPage() {
       </div>
 
       {error ? (
-        <p className="rounded-lg border border-ochre/40 bg-ochre/10 p-3 text-xs text-ochre">
+        <p className="rounded-lg border border-ochre/40 bg-ochre/10 p-3 text-xs text-ochre-ink">
           {error}
         </p>
       ) : null}

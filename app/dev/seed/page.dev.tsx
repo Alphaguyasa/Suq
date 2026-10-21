@@ -62,7 +62,7 @@ export default function SeedPage() {
         <span className="num text-sm text-muted">{existing?.length ?? 0}</span>
       </div>
 
-      {result ? <p className="ethiopic text-sm font-medium text-birr">{result}</p> : null}
+      {result ? <p className="ethiopic text-sm font-medium text-birr-ink">{result}</p> : null}
 
       <table className="w-full text-left">
         <tbody>

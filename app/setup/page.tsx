@@ -227,11 +227,11 @@ export default function SetupPage() {
           />
 
           {importSummary ? (
-            <p className="ethiopic text-sm font-medium text-birr">{importSummary}</p>
+            <p className="ethiopic text-sm font-medium text-birr-ink">{importSummary}</p>
           ) : null}
 
           {importErrors.length > 0 ? (
-            <ul className="flex flex-col gap-1 rounded-lg border border-ochre/40 bg-ochre/10 p-3 text-xs text-ochre">
+            <ul className="flex flex-col gap-1 rounded-lg border border-ochre/40 bg-ochre/10 p-3 text-xs text-ochre-ink">
               {importErrors.slice(0, 5).map((message) => (
                 <li key={message}>{message}</li>
               ))}

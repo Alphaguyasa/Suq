@@ -38,7 +38,7 @@ export function ProductCard({ product, onHand }: { product: Product; onHand: num
           {formatETB(product.sell_price)}
         </span>
         <span
-          className={`num text-sm leading-none ${low ? 'font-semibold text-ochre' : 'text-muted'}`}
+          className={`num text-sm leading-none ${low ? 'font-semibold text-ochre-ink' : 'text-muted'}`}
         >
           {formatQty(onHand)}
           <span className="ethiopic ml-1 text-xs">{t.units[product.unit]}</span>

@@ -70,7 +70,7 @@ export function SyncSheet({ status, onClose }: { status: SyncStatus; onClose: ()
       </dl>
 
       {status.lastError ? (
-        <p className="rounded-lg border border-ochre/40 bg-ochre/10 p-2 text-xs break-words text-ochre">
+        <p className="rounded-lg border border-ochre/40 bg-ochre/10 p-2 text-xs break-words text-ochre-ink">
           {status.lastError}
         </p>
       ) : null}

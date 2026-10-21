@@ -201,15 +201,19 @@ export default function SellPage() {
       </section>
 
       <aside className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-20 lg:self-start">
-        {receipt ? (
-          <Link
-            href={saleHref(receipt.id)}
-            className="flex items-center justify-between gap-2 rounded-lg border border-birr/30 bg-birr/10 px-3 py-2 text-birr"
-          >
-            <span className="ethiopic text-sm font-medium">{t.sell.completed}</span>
-            <span className="num text-sm font-semibold">{receipt.receipt_no}</span>
-          </Link>
-        ) : null}
+        {/* The live region is always mounted so a screen reader announces the
+            confirmation when it appears, not only when it already exists. */}
+        <div role="status" aria-live="polite" className="empty:hidden">
+          {receipt ? (
+            <Link
+              href={saleHref(receipt.id)}
+              className="flex items-center justify-between gap-2 rounded-lg border border-birr/30 bg-birr/10 px-3 py-2 text-birr-ink"
+            >
+              <span className="ethiopic text-sm font-medium">{t.sell.completed}</span>
+              <span className="num text-sm font-semibold">{receipt.receipt_no}</span>
+            </Link>
+          ) : null}
+        </div>
 
         {cart.items.length === 0 ? (
           <div className="flex flex-col items-center gap-1 rounded-xl border border-dashed border-rule px-4 py-10 text-center">

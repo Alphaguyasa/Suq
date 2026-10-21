@@ -35,7 +35,7 @@ export function Field({
 
       {hint && !error ? <p className="ethiopic text-xs text-muted">{hint}</p> : null}
       {/* Ochre, not alarm: a mistyped price needs attention, it has destroyed nothing. */}
-      {error ? <p className="ethiopic text-xs font-medium text-ochre">{error}</p> : null}
+      {error ? <p className="ethiopic text-xs font-medium text-ochre-ink">{error}</p> : null}
     </div>
   );
 }

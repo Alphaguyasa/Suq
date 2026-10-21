@@ -26,19 +26,19 @@ export interface SyncPillProps {
  */
 const STATE_STYLES: Record<SyncState, { pill: string; dot: string }> = {
   synced: {
-    pill: 'border-birr/30 bg-birr/10 text-birr',
+    pill: 'border-birr/30 bg-birr/10 text-birr-ink',
     dot: 'bg-birr',
   },
   syncing: {
-    pill: 'border-birr/30 bg-birr/10 text-birr',
+    pill: 'border-birr/30 bg-birr/10 text-birr-ink',
     dot: 'bg-birr motion-safe:animate-pulse',
   },
   offline: {
-    pill: 'border-ochre/40 bg-ochre/10 text-ochre',
+    pill: 'border-ochre/40 bg-ochre/10 text-ochre-ink',
     dot: 'bg-ochre',
   },
   blocked: {
-    pill: 'border-ochre bg-ochre text-paper',
+    pill: 'border-ochre-ink bg-ochre-ink text-paper',
     dot: 'bg-paper motion-safe:animate-pulse',
   },
 };
@@ -60,38 +60,45 @@ export function SyncPill({ state, pending = 0, onClick }: SyncPillProps) {
     ? `${t.sync.label}: ${label[state]}, ${t.sync.pending(pending)}`
     : `${t.sync.label}: ${label[state]}`;
 
+  /* aria-live on the button itself is unreliable: screen readers rarely
+     announce a changed aria-label. A separate, always-mounted status region
+     announces the state only — not the count, which ticks on every sale. */
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={accessibleLabel}
-      aria-live="polite"
-      // Stable hooks for the e2e suite; the visible text is bilingual and changes.
-      data-testid="sync-pill"
-      data-state={state}
-      data-pending={pending}
-      /* 56px tap target per BUILD_GUIDE 5.3; the visible pill sits inside it. */
-      className="inline-flex min-h-touch items-center rounded-full px-1"
-    >
-      <span
-        className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 transition-colors ${styles.pill}`}
-      >
-        <span className={`size-2 shrink-0 rounded-full ${styles.dot}`} aria-hidden="true" />
-        <span className="ethiopic text-sm leading-none font-medium whitespace-nowrap">
-          {label[state]}
-        </span>
-        {showPending ? (
-          <>
-            <span aria-hidden="true" className="text-current opacity-40">
-              ·
-            </span>
-            <span className="num text-sm leading-none font-semibold">{pending}</span>
-            <span className="ethiopic text-sm leading-none whitespace-nowrap opacity-80">
-              {t.sync.pendingSuffix}
-            </span>
-          </>
-        ) : null}
+    <>
+      <span role="status" className="sr-only">
+        {`${t.sync.label}: ${label[state]}`}
       </span>
-    </button>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={accessibleLabel}
+        // Stable hooks for the e2e suite; the visible text is bilingual and changes.
+        data-testid="sync-pill"
+        data-state={state}
+        data-pending={pending}
+        /* 56px tap target per BUILD_GUIDE 5.3; the visible pill sits inside it. */
+        className="inline-flex min-h-touch items-center rounded-full px-1"
+      >
+        <span
+          className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 transition-colors ${styles.pill}`}
+        >
+          <span className={`size-2 shrink-0 rounded-full ${styles.dot}`} aria-hidden="true" />
+          <span className="ethiopic text-sm leading-none font-medium whitespace-nowrap">
+            {label[state]}
+          </span>
+          {showPending ? (
+            <>
+              <span aria-hidden="true" className="text-current opacity-40">
+                ·
+              </span>
+              <span className="num text-sm leading-none font-semibold">{pending}</span>
+              <span className="ethiopic text-sm leading-none whitespace-nowrap">
+                {t.sync.pendingSuffix}
+              </span>
+            </>
+          ) : null}
+        </span>
+      </button>
+    </>
   );
 }

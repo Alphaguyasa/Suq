@@ -59,7 +59,7 @@ function ProductStock({ id }: { id: string }) {
 
         <div className="flex items-baseline justify-between gap-3">
           <h1 className="ethiopic text-2xl font-semibold">{t.stock.title}</h1>
-          <span className={`num text-4xl font-semibold ${low ? 'text-ochre' : 'text-ink'}`}>
+          <span className={`num text-4xl font-semibold ${low ? 'text-ochre-ink' : 'text-ink'}`}>
             {formatQty(current)}
           </span>
         </div>
@@ -67,7 +67,7 @@ function ProductStock({ id }: { id: string }) {
         <div className="flex items-center justify-between gap-2">
           <span className="ethiopic text-xs text-muted">{t.stock.currentOnHand}</span>
           {low ? (
-            <span className="ethiopic text-xs font-medium text-ochre">{t.products.lowStock}</span>
+            <span className="ethiopic text-xs font-medium text-ochre-ink">{t.products.lowStock}</span>
           ) : null}
         </div>
       </header>

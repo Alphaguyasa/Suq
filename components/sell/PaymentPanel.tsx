@@ -93,11 +93,11 @@ export function PaymentPanel({
 
           {showChange ? (
             <div className="flex items-baseline justify-between gap-3 border-t border-rule pt-2">
-              <span className={`ethiopic text-sm ${change < 0 ? 'text-ochre' : 'text-muted'}`}>
+              <span className={`ethiopic text-sm ${change < 0 ? 'text-ochre-ink' : 'text-muted'}`}>
                 {change < 0 ? t.sell.shortBy : t.sell.change}
               </span>
               <span
-                className={`num text-2xl font-semibold ${change < 0 ? 'text-ochre' : 'text-ink'}`}
+                className={`num text-2xl font-semibold ${change < 0 ? 'text-ochre-ink' : 'text-ink'}`}
               >
                 {formatETB(Math.abs(change))}
               </span>

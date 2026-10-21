@@ -17,6 +17,18 @@
   --color-muted: #6b7280;
 
   /*
+   * Text only. --birr and --ochre are fill colours: as text on --paper ochre
+   * is 3.3:1 and birr on its own 10% tint 4.4:1, both under WCAG AA (4.5:1),
+   * read in glare on a cheap screen. These are the same hues, darker, and
+   * are what every coloured word wears (and what paper text sits on):
+   *   ochre-ink on paper 5.5:1, on ochre/10 4.8:1
+   *   birr-ink  on paper 5.6:1, on birr/10  4.8:1
+   * e2e/a11y.spec.ts runs axe on the till so this cannot quietly regress.
+   */
+  --color-ochre-ink: #985503;
+  --color-birr-ink: #187352;
+
+  /*
    * Chart fills only. --birr (#1B7A5A) fails the chroma floor as a data fill —
    * at 0.1 chroma it reads gray in a bar — so charts use the nearest step of
    * the same hue that passes all six checks against --paper:
@@ -44,6 +56,8 @@
   --ochre: var(--color-ochre);
   --alarm: var(--color-alarm);
   --muted: var(--color-muted);
+  --ochre-ink: var(--color-ochre-ink);
+  --birr-ink: var(--color-birr-ink);
 }
 
 /* Every price, quantity, total and receipt number wears this. */
