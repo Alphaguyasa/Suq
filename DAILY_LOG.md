@@ -4,6 +4,50 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-21 — Run 6 (scheduled)
+
+**Start.** `master` @ `84d33b3`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page.
+Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+**Supabase check.** The connector still lists only `not-alone-scripture` and `erko-staging` (INACTIVE), not Suq.
+The `received_at` and products last-write-wins migrations are still unapplied.
+
+**Item 9: the language choice is remembered → [PR #21](https://github.com/Alphaguyasa/Suq/pull/21), merged.**
+- The language is a device setting in `localStorage` (`suq.lang`). It is written only once the user picks, and read right after hydration, because the pages are prerendered in Amharic.
+- `<html lang>` follows the current language.
+- Blocked storage or an unknown stored value fall back to Amharic.
+- Tests: 4 unit tests (3 fail without the fix) and an e2e test: Settings → English → reload. The PIN lock is already in English. Then back to Amharic → reload.
+- Local: lint ✅ · typecheck ✅ · unit ✅ · build ✅ · e2e 7/7 ✅. CI green on the first try. Squash-merged as `4d502b9`.
+
+**Item 10: accessibility pass → [PR #22](https://github.com/Alphaguyasa/Suq/pull/22), merged.**
+- axe (WCAG 2.1 A/AA) on the sale screen, receipt, products, reports, settings and PIN lock. It found no missing labels, only contrast failures:
+  - ochre text 3.3:1;
+  - the blocked sync pill 3.3:1 and 2.7:1;
+  - the green "sale complete" box 4.4:1.
+- The fix: text-only tokens `--ochre-ink` #985503 (5.5:1) and `--birr-ink` #187352 (5.6:1), the same hues, darker. Fills keep the brand colours.
+- The sale confirmation and the sync state are now in always-mounted `role="status"` live regions, so a screen reader announces them.
+- `e2e/a11y.spec.ts` keeps an axe gate on every main screen, with the offline pill included. It waits for CSS transitions first, because the first run caught the pill mid-fade.
+- New dev dependency: `@axe-core/playwright` 4.13.0 (MPL-2.0). I pinned it instead of 4.14.0, which was only 6 days old. `npm install` worked this time (no arborist crash).
+- Not done: a manual keyboard focus-order check, which axe can't judge. It is noted in ROADMAP.
+- Local: lint ✅ · typecheck ✅ · unit 217 ✅ · build ✅ · e2e 9/9 ✅. CI green on the first try. Squash-merged as `0d81145`.
+
+**Blocked:** release tags again. `git push origin v2026-10-21-1` → "remote end hung up". Rollback SHAs are in NEEDS_APPROVAL.
+**Process notes:** one session branch again. After #21 merged I moved item 10 onto master and folded the old head in with `merge -s ours`, so the push was a fast-forward.
+
+### REPORT — 2026-10-21
+| Field | Content |
+|---|---|
+| Done | Item 9: language choice remembered across reloads — [PR #21](https://github.com/Alphaguyasa/Suq/pull/21). Item 10: accessibility pass (contrast fixed, live regions, axe gate in e2e) — [PR #22](https://github.com/Alphaguyasa/Suq/pull/22) |
+| Merged | PR #21: yes · PR #22: yes · tags `v2026-10-21-1`/`-2` NOT pushed (refused); SHAs `4d502b9` / `0d81145` |
+| Failed or blocked | Tag pushes; `received_at` + LWW migrations still unapplied (connector can't see Suq) |
+| Roadmap | 6 open (items 11–14, 16, 18); no replan needed (replan when < 5) |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | **Apply the two migrations** (SQL Editor, `received_at` first, then `products_last_write_wins`) or reconnect the Supabase connector; tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 11 (error boundaries + storage-failure message), item 12 (optional camera barcode scanning) |
+
+---
+
 ## 2026-10-20 — Run 5 (scheduled)
 
 **Start.** `master` @ `f9807cf`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.

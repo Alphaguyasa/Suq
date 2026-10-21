@@ -52,7 +52,7 @@ fake Supabase routes working), so those tests prove what they claim.
   text 3.3:1, the blocked pill 3.3:1 / 2.7:1, green confirmation 4.4:1. New text tokens `--ochre-ink` (#985503,
   5.5:1) and `--birr-ink` (#187352, 5.6:1), same hues darker; fills unchanged. Always-mounted `role="status"` live
   regions for the sale confirmation and the sync state. `e2e/a11y.spec.ts` keeps the axe gate. Not covered by axe:
-  keyboard focus order (manual check still to do). [PR #22](https://github.com/Alphaguyasa/Suq/pull/22)
+  keyboard focus order (manual check still to do). [PR #22](https://github.com/Alphaguyasa/Suq/pull/22) · tag `v2026-10-21-2` not pushed (refused) — commit `0d81145`
 
 - **Language choice remembered (item 9)** — the picked language is a device setting in `localStorage`
   (`suq.lang`), written only once the user chooses, applied right after hydration, and `<html lang>` follows it.
