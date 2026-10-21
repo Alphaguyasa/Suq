@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, createElement, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { am } from './am';
 import type { Dict } from './am';
@@ -13,6 +13,37 @@ export type Lang = keyof typeof dictionaries;
 
 /** Amharic is the default. English is the secondary language, not the base. */
 export const DEFAULT_LANG: Lang = 'am';
+
+/**
+ * The language is a device setting, not an account one: the same phone sits
+ * at the same counter every day, often before anyone has signed in. A plain
+ * localStorage key is enough: one synchronous read right after hydration, so
+ * the language switches before the first interaction, with no IndexedDB
+ * round trip.
+ */
+export const LANG_STORAGE_KEY = 'suq.lang';
+
+function isLang(value: string | null): value is Lang {
+  return value === 'am' || value === 'en';
+}
+
+export function readStoredLang(): Lang | null {
+  try {
+    const stored = localStorage.getItem(LANG_STORAGE_KEY);
+    return isLang(stored) ? stored : null;
+  } catch {
+    // Storage blocked (private mode, policy): fall back to the default.
+    return null;
+  }
+}
+
+function storeLang(lang: Lang): void {
+  try {
+    localStorage.setItem(LANG_STORAGE_KEY, lang);
+  } catch {
+    // Storage blocked: the choice lasts until the next reload, nothing worse.
+  }
+}
 
 interface I18nValue {
   lang: Lang;
@@ -30,15 +61,37 @@ export function I18nProvider({
   children: ReactNode;
   initialLang?: Lang;
 }) {
-  const [lang, setLang] = useState<Lang>(initialLang);
+  const [lang, setLangState] = useState<Lang>(initialLang);
+  /* Only write the key once the user has chosen, so a till that never touched
+     the toggle keeps following DEFAULT_LANG. */
+  const chosen = useRef(false);
+
+  /* The pages are prerendered in the default language, so the stored choice
+     is applied after hydration rather than in the first render (which must
+     match the server HTML). */
+  useEffect(() => {
+    const stored = readStoredLang();
+    if (stored) setLangState(stored);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    if (chosen.current) storeLang(lang);
+  }, [lang]);
+
+  const setLang = useCallback((next: Lang) => {
+    chosen.current = true;
+    setLangState(next);
+  }, []);
 
   const toggleLang = useCallback(() => {
-    setLang((current) => (current === 'am' ? 'en' : 'am'));
+    chosen.current = true;
+    setLangState((current) => (current === 'am' ? 'en' : 'am'));
   }, []);
 
   const value = useMemo<I18nValue>(
     () => ({ lang, t: dictionaries[lang], setLang, toggleLang }),
-    [lang, toggleLang],
+    [lang, setLang, toggleLang],
   );
 
   return createElement(I18nContext.Provider, { value }, children);

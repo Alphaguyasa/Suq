@@ -12,10 +12,6 @@ and the unit test suite).
 
 ## Open
 
-### 9. [P2 · S] Language choice is not remembered
-`I18nProvider` keeps the language in React state; every reload or app launch is back to Amharic. Persist the
-choice locally (device setting) and set `<html lang>` accordingly. Test the toggle round-trip.
-
 ### 10. [P2 · M] Accessibility pass on the till
 Audit with axe in Playwright (sale screen, settings, receipt): labels on icon-only buttons, focus order, colour
 contrast of `--muted` on `--paper`, `aria-live` for the sync pill and the sale-complete confirmation. Fix
@@ -55,6 +51,12 @@ helper into `e2e/helpers.ts` and use it in `offline-launch.spec.ts` and `offline
 fake Supabase routes working), so those tests prove what they claim.
 
 ## Done
+
+- **Language choice remembered (item 9)** — the picked language is a device setting in `localStorage`
+  (`suq.lang`), written only once the user chooses, applied right after hydration, and `<html lang>` follows it.
+  Blocked storage or a garbage value fall back to Amharic. Unit tests (round-trip, garbage, blocked storage) +
+  e2e (Settings → English → reload: the PIN lock is already English → back to Amharic → reload).
+  [PR #21](https://github.com/Alphaguyasa/Suq/pull/21)
 
 - **Server-side last-write-wins on products (item 15)** — additive migration `20261020000000_products_last_write_wins.sql`:
   a BEFORE UPDATE trigger skips a product update whose `updated_at` is not newer (so a late offline edit no longer
