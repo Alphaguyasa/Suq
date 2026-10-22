@@ -6,8 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CartLines } from '@/components/sell/CartLines';
 import { PaymentPanel } from '@/components/sell/PaymentPanel';
 import { ProductTile } from '@/components/sell/ProductTile';
-import { ensureDevice, productsRepo, salesRepo, stockRepo } from '@/lib/db';
-import type { PaymentMethod, Product } from '@/lib/db';
+import { classifyWriteError, ensureDevice, productsRepo, salesRepo, stockRepo } from '@/lib/db';
+import type { PaymentMethod, Product, WriteFailure } from '@/lib/db';
 import { formatETB, parseETBOrZero } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { saleHref } from '@/lib/routes';
@@ -26,6 +26,7 @@ export default function SellPage() {
   const [received, setReceived] = useState('');
   const [receipt, setReceipt] = useState<{ id: string; receipt_no: string }>();
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<WriteFailure>();
 
   const products = useLiveQuery(() => productsRepo.list(), []);
   const onHand = useLiveQuery(() => stockRepo.onHandAll(), []);
@@ -111,6 +112,7 @@ export default function SellPage() {
     if (cart.items.length === 0 || busy) return;
 
     setBusy(true);
+    setSaveError(undefined);
     try {
       await ensureDevice();
 
@@ -136,10 +138,22 @@ export default function SellPage() {
       setReceived('');
       setTerm('');
       focusSearch();
+    } catch (cause) {
+      // The sale transaction is all-or-nothing, so nothing was half-written.
+      // The cart is deliberately left as it was: the cashier frees space or
+      // reopens the app and taps pay again, without re-scanning anything.
+      console.error('[sell] sale not saved', cause);
+      setReceipt(undefined);
+      setSaveError(classifyWriteError(cause));
     } finally {
       setBusy(false);
     }
   }, [busy, cart, focusSearch, method, received]);
+
+  /* Clearing the cart (Escape, or removing the last line) drops a stale error. */
+  useEffect(() => {
+    if (cart.items.length === 0) setSaveError(undefined);
+  }, [cart.items.length]);
 
   useEffect(() => {
     if (!receipt) return;
@@ -212,6 +226,32 @@ export default function SellPage() {
               <span className="ethiopic text-sm font-medium">{t.sell.completed}</span>
               <span className="num text-sm font-semibold">{receipt.receipt_no}</span>
             </Link>
+          ) : null}
+        </div>
+
+        {/* A failed sale must never look like a completed one, or like nothing
+            happened. Inverted ochre, like the blocked sync pill: loud, but red
+            stays reserved for destructive actions (docs/RULES.md). */}
+        <div role="alert" data-testid="sale-error" className="empty:hidden">
+          {saveError ? (
+            <div className="flex flex-col gap-2 rounded-lg border border-ochre-ink bg-ochre-ink px-3 py-2 text-paper">
+              <p className="ethiopic text-sm font-semibold">{t.sell.saveFailed}</p>
+              <p className="ethiopic text-sm">
+                {saveError === 'quota'
+                  ? t.sell.saveFailedQuota
+                  : saveError === 'unavailable'
+                    ? t.sell.saveFailedUnavailable
+                    : t.sell.saveFailedUnknown}
+              </p>
+              <button
+                type="button"
+                onClick={() => void complete()}
+                disabled={busy || cart.items.length === 0}
+                className="ethiopic min-h-touch self-start rounded-lg border border-paper px-4 text-sm font-medium disabled:opacity-50"
+              >
+                {t.sell.retry}
+              </button>
+            </div>
           ) : null}
         </div>
 
