@@ -19,6 +19,7 @@ import {
   updateSettings,
   db,
 } from '@/lib/db';
+import { backupFileName, buildBackup, downloadFile, salesCsv } from '@/lib/backup/export';
 import { useBilingual, useLang } from '@/lib/i18n';
 import { lockNow } from '@/lib/lock/lock';
 import { persistState, requestAndRecord } from '@/lib/storage/persist';
@@ -212,6 +213,8 @@ export default function SettingsPage() {
 
       <StorageSection />
 
+      <BackupSection />
+
       <CashierSection cashiers={cashiers ?? []} />
 
       <section className="flex flex-col gap-3">
@@ -233,6 +236,62 @@ export default function SettingsPage() {
         <span className="ethiopic">{t.lock.lockNow}</span>
       </Button>
     </div>
+  );
+}
+
+/**
+ * For a shop that never signs in, this is the only copy of its history that
+ * is not on the till itself. Built from IndexedDB on tap; works offline.
+ */
+function BackupSection() {
+  const { t, other } = useBilingual();
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ ok: true; sales: number; products: number } | { ok: false }>();
+
+  async function handleExport(kind: 'json' | 'csv') {
+    setBusy(true);
+    setResult(undefined);
+    try {
+      const backup = await buildBackup();
+      if (kind === 'json') {
+        downloadFile(backupFileName(backup, 'json'), JSON.stringify(backup, null, 2), 'application/json');
+      } else {
+        downloadFile(backupFileName(backup, 'csv'), salesCsv(backup), 'text/csv;charset=utf-8');
+      }
+      // Void rows are sales too, but not ones the owner would count.
+      const sales = backup.sales.filter((sale) => !sale.voids_sale_id).length;
+      setResult({ ok: true, sales, products: backup.products.length });
+    } catch (cause) {
+      console.error('[settings] backup failed', cause);
+      setResult({ ok: false });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="flex flex-col gap-3" aria-labelledby="backup-heading">
+      <h2 id="backup-heading" className="ethiopic text-lg font-semibold">
+        {t.settings.backupSection}
+        <span className="ml-2 text-sm font-normal text-muted">{other.settings.backupSection}</span>
+      </h2>
+      <p className="ethiopic max-w-prose text-sm text-muted">{t.settings.backupHint}</p>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="quiet" disabled={busy} onClick={() => void handleExport('json')}>
+          <span className="ethiopic">{t.settings.backupJson}</span>
+        </Button>
+        <Button type="button" variant="quiet" disabled={busy} onClick={() => void handleExport('csv')}>
+          <span className="ethiopic">{t.settings.backupCsv}</span>
+        </Button>
+      </div>
+      <p role="status" data-testid="backup-result" className="ethiopic text-sm empty:hidden">
+        {result?.ok
+          ? t.settings.backupDone(result.sales, result.products)
+          : result
+            ? t.settings.backupFailed
+            : null}
+      </p>
+    </section>
   );
 }
 
