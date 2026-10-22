@@ -127,6 +127,11 @@ export const am = {
     lowStockHint: 'ክምችት እያለቀ ነው',
     negativeStock: 'ከክምችት በላይ እየሸጡ ነው',
     noProducts: 'ገና ምርት የለም',
+    saveFailed: 'ሽያጩ አልተቀመጠም',
+    saveFailedQuota: 'የመሣሪያው ማከማቻ ሞልቷል። ቦታ ያስለቅቁ (ፎቶዎች፣ ሌሎች መተግበሪያዎች)፣ ከዚያ እንደገና ይሞክሩ። ጋሪው አልጠፋም።',
+    saveFailedUnavailable: 'የመሣሪያው ማከማቻ አይገኝም። መተግበሪያውን እንደገና ይክፈቱ፣ ከዚያ እንደገና ይሞክሩ። ጋሪው አልጠፋም።',
+    saveFailedUnknown: 'ያልታወቀ ስህተት ተፈጥሯል። እንደገና ይሞክሩ። ጋሪው አልጠፋም።',
+    retry: 'እንደገና ሞክር',
   },
   payment: {
     cash: 'ጥሬ ገንዘብ',
@@ -274,6 +279,12 @@ export const am = {
     finish: 'ጨርስ',
     skip: 'ዝለል',
     done: 'ዝግጅቱ ተጠናቅቋል',
+  },
+  errors: {
+    title: 'የሆነ ችግር ተፈጥሯል',
+    body: 'ይህ ገጽ መሥራት አቆመ። የተቀመጡ ሽያጮች በዚህ መሣሪያ ላይ ደህና ናቸው።',
+    reload: 'እንደገና ጫን',
+    toSell: 'ወደ ሽያጭ ተመለስ',
   },
   offline: {
     title: 'ከመስመር ውጭ',

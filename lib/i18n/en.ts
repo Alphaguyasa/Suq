@@ -122,6 +122,11 @@ export const en: Dict = {
     lowStockHint: 'Running low',
     negativeStock: 'Selling more than you have',
     noProducts: 'No products yet',
+    saveFailed: 'The sale was not saved',
+    saveFailedQuota: 'This device is out of storage. Free some space (photos, other apps), then try again. The cart is still here.',
+    saveFailedUnavailable: "This device's storage is not available. Reopen the app, then try again. The cart is still here.",
+    saveFailedUnknown: 'Something went wrong. Try again. The cart is still here.',
+    retry: 'Try again',
   },
   payment: {
     cash: 'Cash',
@@ -272,6 +277,12 @@ export const en: Dict = {
     finish: 'Finish',
     skip: 'Skip',
     done: 'Setup complete',
+  },
+  errors: {
+    title: 'Something went wrong',
+    body: 'This page stopped working. Sales already saved are safe on this device.',
+    reload: 'Reload',
+    toSell: 'Back to selling',
   },
   offline: {
     title: 'Offline',
