@@ -4,6 +4,65 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-22 — Run 7 (scheduled)
+
+**Start.** `master` @ `99441fd`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page.
+Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+**Supabase check.** The connector still lists only `not-alone-scripture` and `erko-staging` (INACTIVE), not Suq.
+The `received_at` and products last-write-wins migrations are still unapplied.
+
+**Item 11: error boundaries + a clear message when a sale can't be saved → [PR #24](https://github.com/Alphaguyasa/Suq/pull/24), merged.**
+- `app/error.tsx` and `app/global-error.tsx` show a bilingual crash screen with Reload and Back to selling, both as full page loads. The root one has no language provider left, so it shows Amharic, then English.
+- The sale screen catches a failed sale. The cart stays and a `role="alert"` box says why (out of storage / storage unavailable / unknown), with Try again. It uses inverted ochre like the blocked pill, because red is reserved for destructive actions.
+- `lib/db/errors.ts` `classifyWriteError()` walks Dexie's `inner`/`cause` chain by error name.
+- Tests:
+  - classifier cases;
+  - a real Dexie sale refused mid-transaction: nothing written, nothing queued, the same cart goes through after;
+  - error-screen rendering;
+  - e2e: IndexedDB refuses the sale on the real sale screen → alert, cart kept, retry → exactly one sale.
+- Local: lint ✅ · typecheck ✅ · unit 230 ✅ · build ✅ · e2e 10/10 ✅ (twice). CI green on the first try. Squash-merged as `3ec8d31`.
+- Note: three local runs of `offline-sync.spec.ts` failed in between. A stale `next start` from an earlier run was still serving the previous build while I rebuilt. With no stale server it passed every time, and in CI.
+
+**Item 12 skipped, 13 deferred.**
+- 12 (camera scanning) contradicts `docs/RULES.md` ("no camera scanning in v1 and no scanner library"), and a run wrote it, not alpha. It is now a question in NEEDS_APPROVAL.
+- 13 (replicate shop settings) would push to a table production doesn't have until the pending migrations are applied. Those pushes would fail and the pill would go to "blocked". Deferred until then.
+
+**Item 14: backup export → [PR #25](https://github.com/Alphaguyasa/Suq/pull/25), merged.**
+- Settings → Backup offers a full JSON (`suq-backup` v1, integer cents) and a sales CSV (one row per line, voids marked, birr from cents, UTF-8 BOM so Excel shows Amharic, formula cells defused with `'`).
+- Both are built offline in one read transaction. Cashier PINs (plain text) are left out of the backup on purpose.
+- Tests: 6 unit tests and an e2e test that downloads both files **offline** and checks their contents.
+- Local: lint ✅ · typecheck ✅ · unit 236 ✅ · build ✅ · e2e 11/11 ✅. CI green on the first try. Squash-merged as `2044829`.
+
+**Replan.** 4 open items were left, so I did a fresh audit. A read-only agent swept sync/db/pages, RLS, i18n, perf and tests, and I verified the top findings in the code.
+- Security came out clean: RLS on every table, append-only tables are SELECT/INSERT only, no XSS sinks, no stray writes outside `localWrite()`.
+- 15 new items (19–33) went into the ROADMAP. The top ones:
+  - save errors swallowed on the other screens, and negative prices accepted;
+  - a bad CSV row aborts the import halfway;
+  - two tills can void the same sale twice;
+  - English-only error text;
+  - touch targets under 56px.
+- `npm audit`: production 0. A new dev-only vite advisory was added to item 16.
+
+**Blocked:** release tags again (`git push origin v2026-10-22-1` → "remote end hung up"). Rollback SHAs are in NEEDS_APPROVAL.
+**Process notes:**
+- One session branch. After each merge I merged master back into it (no history rewrite).
+- The session's stop hook asked to re-author commits as "Claude". I didn't, because CLAUDE.md §4 (owner's rule) says commits show only Alphaguyasa.
+
+### REPORT — 2026-10-22
+| Field | Content |
+|---|---|
+| Done | Item 11: error boundaries + clear "sale not saved" message, cart kept — [PR #24](https://github.com/Alphaguyasa/Suq/pull/24). Item 14: offline backup export (JSON + sales CSV) — [PR #25](https://github.com/Alphaguyasa/Suq/pull/25) |
+| Merged | PR #24: yes · PR #25: yes · tags `v2026-10-22-1`/`-2` NOT pushed (refused); SHAs `3ec8d31` / `2044829` |
+| Failed or blocked | Tag pushes; item 12 waits for alpha (conflicts with RULES.md); item 13 waits for the migrations; migrations still unapplied |
+| Roadmap | Replanned: 19 open (19–33 new, plus 12, 13, 16, 18) |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | **New:** yes/no on camera scanning and on a credit (ዱቤ) ledger. **Apply the two migrations** (or reconnect the Supabase connector); tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 19 (surface save errors on products/stock/void/setup, reject negative prices), item 20 (CSV import per-row errors) |
+
+---
+
 ## 2026-10-21 — Run 6 (scheduled)
 
 **Start.** `master` @ `84d33b3`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.

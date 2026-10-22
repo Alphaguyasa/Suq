@@ -12,26 +12,27 @@ and the unit test suite).
 
 ## Open
 
-### 11. [P2 · M] Error boundary and storage-failure handling
-No `app/error.tsx` / `global-error.tsx`: a thrown error in any client page blanks the till. IndexedDB quota
-or `QuotaExceededError` on a sale is not surfaced. Add bilingual error boundaries with a reload action, and a
-clear message (not a silent failure) when a sale cannot be written.
+Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
+"after the pending migrations". As of 2026-10-22 that is item 19, then 20.
 
-### 12. [P3 · M] Optional camera barcode scanning (@zxing/browser)
+### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
+`docs/RULES.md` says "no camera scanning in v1 and no scanner library", and this item was written by a run, not
+approved by alpha. Not started until alpha decides. If yes: prefer the browser's built-in `BarcodeDetector`
+(Chrome on Android has it, no dependency), with @zxing/browser only as an optional fallback.
+
 Many shops have no USB scanner. Add a camera scan button on the sale screen and product form, lazily loaded
 (dynamic import, so it never weighs on the till's first load), behind feature detection. Works offline.
 (Note: `docs/RULES.md` lists camera scanning as not in v1; this item is the explicit decision to add it as
 optional. MIT-licensed, Apache-2.0 for zxing core.)
 
-### 13. [P3 · M] Replicate shop settings so the owner dashboard shows the shop name
+### 13. [P3 · M] Replicate shop settings so the owner dashboard shows the shop name — after the pending migrations are applied
+Do not ship before the Supabase migrations in NEEDS_APPROVAL are applied: tills would push to a table that does not
+exist in production yet, every push of it would fail and the sync pill would go to "blocked".
 `shop_settings` is local-only; the owner view on a second device cannot show which shop it is looking at.
 Additive migration (new table, RLS like the others) + LWW sync like `products`. Migration file + test.
 
-### 14. [P3 · S] Daily backup export (CSV/JSON) from Settings
-For shops that never sign in to sync, a one-tap export of sales and stock movements is the only backup.
-Offline, no server needed (Blob download). Bilingual.
-
-### 16. [P2 · S] Dev-tooling advisories (vitest, undici via jsdom, braces via eslint-config-next)
+### 16. [P2 · S] Dev-tooling advisories (vitest, undici via jsdom, braces via eslint-config-next, vite)
+2026-10-22: `npm audit` also lists vite 8.2.0–8.2.2 (high, dev only). Production: 0 advisories.
 `npm audit` (dev included) still reports high/moderate advisories in test/lint tooling only — nothing that
 ships to a till. `npm install` currently crashes in npm 10's arborist (`Cannot read properties of null
 (reading 'edgesOut')`, peer-set resolution of vitest's optional `jsdom` peer) when bumping vitest to 4.1.11
@@ -45,7 +46,89 @@ worker makes itself, so a page missing from the precache can still load "offline
 helper into `e2e/helpers.ts` and use it in `offline-launch.spec.ts` and `offline-sync.spec.ts` (keep the
 fake Supabase routes working), so those tests prove what they claim.
 
+## Replan 2026-10-22 (audit: sync/db/pages, RLS, i18n, perf, tests, features)
+RLS is on for every table, append-only tables allow only SELECT/INSERT, no XSS sinks, and the only writes outside
+`localWrite()` are the sanctioned `lib/sync/apply.ts` and the dev-only demo seed. Items below are ordered by priority.
+
+### 19. [P1 · S] Save errors are swallowed on every screen except the sale screen
+`try/finally` with no `catch` (or no try): product form save/delete (`components/products/ProductForm.tsx`), restock
+and adjust (`app/products/stock/page.tsx`), void (`app/sales/view/page.tsx`), setup finish (`app/setup/page.tsx`),
+settings save. A quota error or a thrown validation error = unhandled rejection, button re-enables, no message.
+Also `parseETB` accepts negative prices ("-5"), so the repository's `assertCents` throws later instead of the form
+saying "invalid price". Fix: reuse `classifyWriteError()` + bilingual inline errors; reject negatives in the form.
+
+### 20. [P1 · S] CSV import: one bad row aborts halfway and the summary is wrong
+`lib/seed/import.ts` has no per-row catch: a bad row throws after earlier rows were saved, and setup shows "import
+failed". `toCents` accepts negatives. The success message counts `created + skipped` as imported. Fix: validate
+≥ 0 in the parser, collect per-row errors, report created / skipped / failed separately.
+
+### 21. [P1 · M] Two tills can void the same sale twice
+`voidSale` checks `isVoided` outside its transaction, and nothing stops two offline tills from voiding the same
+receipt; reports then subtract it twice and stock comes back twice. Fix: re-check inside the transaction; on the
+derived side count only the earliest void per `voids_sale_id` (reports, voided status), surface duplicates, and
+append a compensating movement. Tests with two tills on the fake server.
+
+### 22. [P1 · S] English-only error text shown to Amharic users
+CSV row errors (`lib/seed/csv.ts`) rendered in setup, raw Supabase messages on sign-in, raw `last_error` in the sync
+sheet, `cause.message` in Settings (cashier errors). Fix: error codes + params, rendered through `am.ts`/`en.ts`;
+keep the raw text only as a secondary detail where it helps support.
+
+### 23. [P1 · S] Touch targets under 56px
+Quick-cash buttons in `components/sell/PaymentPanel.tsx` (`px-3 py-2 text-xs`, ~34px) and the back links on
+`/sales/view` and `/products/stock`. Fix: `min-h-touch`; add a size check to the axe e2e.
+
+### 24. [P2 · S] Reset device: show what is not synced yet, offer the backup first
+`lib/db/reset.ts` clears everything; Settings only asks for the shop name. Show the outbox count and, when it is
+above 0, put the (new) backup download right there and say plainly what will be lost.
+
+### 25. [P2 · M] Sale screen re-reads every stock movement after each write
+`stockRepo.onHandAll()` iterates the whole `stock_movements` table on every change; `stock_cache` is maintained but
+never read, and pulled movements don't refresh it. `recentProductIds` makes ~40 sequential queries. Fix: read
+`stock_cache` (refresh it in `apply.ts` for touched products), one `anyOf` query for recents. Keep stock derived.
+
+### 26. [P2 · M] Reports and sales history read whole tables
+`app/reports/page.tsx` loads all sales and sale lines to show one period; `app/sales/page.tsx` renders every sale.
+After a year of trading that is seconds on a cheap phone. Fix: `created_at` index range queries; paginate history.
+
+### 27. [P2 · S] Gross profit uses today's cost, not the cost at the time of sale
+`lib/reports/compute.ts` says so in a comment. Fix: `cost_snapshot` on `sale_items` (Dexie v5 + upgrade test,
+additive nullable column migration); old lines fall back to current cost.
+
+### 28. [P2 · M] Test gaps
+No tests for `importProducts`, `recentProductIds`, `adoptShopFromMembership`, `lib/reports/period.ts`, the
+`MissingColumnError` legacy pull fallback, and the void/restock/adjust UI error paths. Also check (unverified) that a
+scanner typing a code + Enter cannot add the item twice (`handleTermChange` and `handleSearchKeyDown` both look up).
+
+### 29. [P2 · S] Owner page polls Supabase every 15s even when hidden
+`app/owner/page.tsx`. Pause on `visibilitychange`; saves battery and the free-tier quota.
+
+### 30. [P3 · M] Saved end-of-day close
+The cash-up sheet exists but float and counted cash live only in React state; nothing is recorded, so past
+shortfalls are invisible. Append-only `cash_closes` record (local first; sync after the migrations are applied).
+
+### 31. [P3 · S] Share a receipt as text (Web Share / Telegram)
+For shops without a thermal printer; today only `window.print()`. Bilingual, offline-capable via `navigator.share`.
+
+### 32. [P3 · M] Owner PIN for voids, price edits and reset
+Any cashier PIN can void, change prices or reset the device. Add an owner role for those actions. (PINs are plain
+text by design — `lib/db/cashiers.ts` explains why; revisit only together with this item.)
+
+### 33. [P3 · L] Credit (ዱቤ) customer ledger — WAITING FOR ALPHA
+`credit` is already a payment method but records no customer. `docs/RULES.md` lists customer credit accounts as out
+of scope for v1, so this needs alpha's decision (see NEEDS_APPROVAL).
+
 ## Done
+
+- **Backup export (item 14)** — Settings → Backup: full JSON (products, sales, lines, movements, shop details;
+  integer cents; `suq-backup` v1) and a sales CSV (one row per line, voids marked, birr from cents, UTF-8 BOM for
+  Excel, formula cells defused), built offline in one read transaction. Cashier PINs left out. Unit + offline e2e.
+  [PR #25](https://github.com/Alphaguyasa/Suq/pull/25) · tag `v2026-10-22-2` not pushed (refused) — commit `2044829`
+
+- **Error boundaries + sale-save failure (item 11)** — `app/error.tsx` / `app/global-error.tsx` bilingual crash
+  screen (Reload, Back to selling). A sale IndexedDB refuses keeps the cart and says why (out of storage /
+  unavailable / unknown) with Try again; `classifyWriteError()` reads Dexie's inner/cause chain. Unit tests incl. a
+  real Dexie quota abort (nothing written) + e2e on the sale screen. Other screens: item 19.
+  [PR #24](https://github.com/Alphaguyasa/Suq/pull/24) · tag `v2026-10-22-1` not pushed (refused) — commit `3ec8d31`
 
 - **Accessibility pass on the till (item 10)** — axe (WCAG 2.1 A/AA) on the sale screen (empty, cart, sale complete,
   offline), receipt, products, reports, settings and the PIN lock. No missing labels; it found contrast only: ochre
