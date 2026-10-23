@@ -19,8 +19,11 @@ import {
 } from '@/lib/db';
 import type { WriteFailure } from '@/lib/db';
 import { useBilingual } from '@/lib/i18n';
+import type { Dict } from '@/lib/i18n';
 import { parseProductCsv } from '@/lib/seed/csv';
+import type { CsvError } from '@/lib/seed/csv';
 import { importProducts } from '@/lib/seed/import';
+import type { ImportResult } from '@/lib/seed/import';
 
 const TOTAL_STEPS = 4;
 
@@ -42,8 +45,10 @@ export default function SetupPage() {
   const [prefix, setPrefix] = useState('');
   const [cashierName, setCashierName] = useState('');
   const [pin, setPin] = useState('');
-  const [importSummary, setImportSummary] = useState<string>();
-  const [importErrors, setImportErrors] = useState<string[]>([]);
+  /* Kept as data, not text, so switching language re-renders the report. */
+  const [importResult, setImportResult] = useState<ImportResult>();
+  const [importErrors, setImportErrors] = useState<CsvError[]>([]);
+  const [importUnreadable, setImportUnreadable] = useState(false);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState<WriteFailure>();
@@ -115,15 +120,17 @@ export default function SetupPage() {
     if (!file) return;
 
     setBusy(true);
+    setImportResult(undefined);
     setImportErrors([]);
+    setImportUnreadable(false);
     try {
       const { products, errors } = parseProductCsv(await file.text());
-      const { created, skipped } = await importProducts(products);
-
-      setImportSummary(t.setup.imported(created + skipped));
       setImportErrors(errors);
-    } catch {
-      setError(t.setup.importFailed);
+      // Never throws for a row: failed rows come back in the result.
+      setImportResult(await importProducts(products));
+    } catch (cause) {
+      console.error('[setup] import file unreadable', cause);
+      setImportUnreadable(true);
     } finally {
       setBusy(false);
     }
@@ -252,15 +259,38 @@ export default function SetupPage() {
             className="ethiopic min-h-touch w-full rounded-lg border border-rule p-3 text-sm"
           />
 
-          {importSummary ? (
-            <p className="ethiopic text-sm font-medium text-birr-ink">{importSummary}</p>
+          {importUnreadable ? (
+            <p role="alert" className="ethiopic text-sm font-medium text-ochre-ink">
+              {t.setup.importFailed}
+            </p>
           ) : null}
 
-          {importErrors.length > 0 ? (
+          {importResult ? (
+            <p data-testid="import-summary" className="ethiopic flex flex-wrap gap-x-3 text-sm font-medium">
+              <span className="text-birr-ink">{t.setup.imported(importResult.created)}</span>
+              {importResult.skipped > 0 ? (
+                <span className="text-muted">{t.setup.importSkipped(importResult.skipped)}</span>
+              ) : null}
+              {importResult.failed.length > 0 ? (
+                <span className="text-ochre-ink">{t.setup.importNotSaved(importResult.failed.length)}</span>
+              ) : null}
+            </p>
+          ) : null}
+
+          <SaveError failure={importResult?.failed[0]?.failure} testId="import-error" />
+
+          {importErrors.length > 0 || (importResult?.failed.length ?? 0) > 0 ? (
             <ul className="flex flex-col gap-1 rounded-lg border border-ochre/40 bg-ochre/10 p-3 text-xs text-ochre-ink">
-              {importErrors.slice(0, 5).map((message) => (
-                <li key={message}>{message}</li>
-              ))}
+              {[
+                ...importErrors.map((csvError) => csvErrorText(t, csvError)),
+                ...(importResult?.failed ?? []).map((row) => t.setup.csvErrors.notSaved(row.row, row.name)),
+              ]
+                .slice(0, 5)
+                .map((message) => (
+                  <li key={message} className="ethiopic">
+                    {message}
+                  </li>
+                ))}
             </ul>
           ) : null}
         </section>
@@ -281,4 +311,19 @@ export default function SetupPage() {
       </div>
     </div>
   );
+}
+
+function csvErrorText(t: Dict, error: CsvError): string {
+  switch (error.code) {
+    case 'empty':
+      return t.setup.csvErrors.empty;
+    case 'noNameColumn':
+      return t.setup.csvErrors.noNameColumn;
+    case 'noName':
+      return t.setup.csvErrors.noName(error.row);
+    case 'badPrice':
+      return t.setup.csvErrors.badPrice(error.row, error.column, error.value);
+    case 'badQuantity':
+      return t.setup.csvErrors.badQuantity(error.row, error.column, error.value);
+  }
 }

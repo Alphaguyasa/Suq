@@ -2,6 +2,8 @@ import type { Unit } from '@/lib/db';
 import { parseETB } from '@/lib/format';
 
 export interface CsvProduct {
+  /** 1-based line in the file (the header is row 1), for error reports. */
+  row: number;
   name: string;
   name_am: string;
   barcode: string | null;
@@ -12,10 +14,28 @@ export interface CsvProduct {
   opening_qty: number;
 }
 
+/**
+ * Why a file or a row was rejected, as a code plus what was wrong, never as
+ * English text: setup renders it through the dictionaries so an Amharic
+ * shopkeeper reads it in Amharic (lib/i18n, `csvErrors`).
+ */
+export type CsvError =
+  | { code: 'empty' }
+  | { code: 'noNameColumn' }
+  | { code: 'noName'; row: number }
+  | { code: 'badPrice' | 'badQuantity'; row: number; column: string; value: string };
+
 export interface CsvParseResult {
   products: CsvProduct[];
-  /** One line per rejected row, saying which row and why. */
-  errors: string[];
+  /** One entry per rejected row (or one for an unusable file). */
+  errors: CsvError[];
+}
+
+class CsvRowError extends Error {
+  constructor(readonly detail: CsvError) {
+    super(detail.code);
+    this.name = 'CsvRowError';
+  }
 }
 
 const UNITS: Unit[] = ['pcs', 'kg', 'l', 'pack'];
@@ -62,10 +82,11 @@ function toCents(raw: string, label: string, row: number): number {
   const value = raw.trim();
   if (!value) return 0;
 
+  // parseETB rejects negatives too: no price or cost is below zero.
   try {
     return parseETB(value);
   } catch {
-    throw new Error(`row ${row}: ${label} "${raw}" is not a price`);
+    throw new CsvRowError({ code: 'badPrice', row, column: label, value: raw });
   }
 }
 
@@ -75,7 +96,7 @@ function toQuantity(raw: string, label: string, row: number): number {
 
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) {
-    throw new Error(`row ${row}: ${label} "${raw}" is not a quantity`);
+    throw new CsvRowError({ code: 'badQuantity', row, column: label, value: raw });
   }
   return parsed;
 }
@@ -91,7 +112,7 @@ export function parseProductCsv(text: string): CsvParseResult {
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 
-  if (lines.length === 0) return { products: [], errors: ['The file is empty'] };
+  if (lines.length === 0) return { products: [], errors: [{ code: 'empty' }] };
 
   const header = splitCsvLine(lines[0] as string).map((column) => column.toLowerCase());
   const index = (name: string) => header.indexOf(name);
@@ -100,7 +121,7 @@ export function parseProductCsv(text: string): CsvParseResult {
   const nameAmAt = index('name_am');
 
   if (nameAt === -1 && nameAmAt === -1) {
-    return { products: [], errors: ['Needs at least a "name" or "name_am" column'] };
+    return { products: [], errors: [{ code: 'noNameColumn' }] };
   }
 
   const barcodeAt = index('barcode');
@@ -111,7 +132,7 @@ export function parseProductCsv(text: string): CsvParseResult {
   const openingAt = index('opening_qty');
 
   const products: CsvProduct[] = [];
-  const errors: string[] = [];
+  const errors: CsvError[] = [];
 
   for (let i = 1; i < lines.length; i += 1) {
     const fields = splitCsvLine(lines[i] as string);
@@ -123,7 +144,7 @@ export function parseProductCsv(text: string): CsvParseResult {
       const nameAm = at(nameAmAt);
 
       if (!name && !nameAm) {
-        errors.push(`row ${rowNumber}: no name`);
+        errors.push({ code: 'noName', row: rowNumber });
         continue;
       }
 
@@ -131,6 +152,7 @@ export function parseProductCsv(text: string): CsvParseResult {
       const unit = (UNITS as string[]).includes(rawUnit) ? (rawUnit as Unit) : 'pcs';
 
       products.push({
+        row: rowNumber,
         // Either column alone is enough; the other mirrors it so nothing
         // renders blank on a receipt.
         name: name || nameAm,
@@ -143,7 +165,8 @@ export function parseProductCsv(text: string): CsvParseResult {
         opening_qty: toQuantity(at(openingAt), 'opening_qty', rowNumber),
       });
     } catch (cause) {
-      errors.push(cause instanceof Error ? cause.message : String(cause));
+      if (!(cause instanceof CsvRowError)) throw cause;
+      errors.push(cause.detail);
     }
   }
 

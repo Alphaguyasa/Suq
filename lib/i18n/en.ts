@@ -281,7 +281,19 @@ export const en: Dict = {
     importFormat:
       'Columns: name, name_am, barcode, unit, cost_price, sell_price, reorder_level, opening_qty',
     imported: (n: number) => `${n} products imported`,
+    importSkipped: (n: number) => `${n} already here, skipped`,
+    importNotSaved: (n: number) => `${n} not saved`,
     importFailed: 'Could not read that file',
+    csvErrors: {
+      empty: 'The file is empty',
+      noNameColumn: 'Needs at least a "name" or "name_am" column',
+      noName: (row: number) => `Row ${row}: no name`,
+      badPrice: (row: number, column: string, value: string) =>
+        `Row ${row}: ${column} "${value}" is not a price`,
+      badQuantity: (row: number, column: string, value: string) =>
+        `Row ${row}: ${column} "${value}" is not a quantity`,
+      notSaved: (row: number, name: string) => `Row ${row} (${name}): not saved`,
+    },
     next: 'Continue',
     back: 'Back',
     finish: 'Finish',

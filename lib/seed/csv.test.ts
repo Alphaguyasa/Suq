@@ -30,6 +30,7 @@ describe('parseProductCsv', () => {
     expect(errors).toEqual([]);
     expect(products).toHaveLength(1);
     expect(products[0]).toEqual({
+      row: 2,
       name: 'Ambo Water 1L',
       name_am: 'አምቦ ውሃ 1 ሊትር',
       barcode: '6130001000017',
@@ -52,9 +53,23 @@ describe('parseProductCsv', () => {
     );
 
     expect(products.map((row) => row.name)).toEqual(['Good One', 'Another Good']);
-    expect(errors).toHaveLength(1);
-    expect(errors[0]).toContain('row 3');
-    expect(errors[0]).toContain('cost_price');
+    expect(errors).toEqual([{ code: 'badPrice', row: 3, column: 'cost_price', value: 'abc' }]);
+    expect(products.map((row) => row.row)).toEqual([2, 4]);
+  });
+
+  it('rejects negative prices and quantities instead of importing them', () => {
+    const { products, errors } = parseProductCsv(
+      [header, 'Neg Price,ሀ,1,pcs,-5,10,0,0', 'Neg Qty,ለ,2,pcs,5,10,0,-3', 'No Name,,3,pcs,1,2,0,0'].join(
+        '\n',
+      ).replace('No Name,', ','),
+    );
+
+    expect(products).toEqual([]);
+    expect(errors).toEqual([
+      { code: 'badPrice', row: 2, column: 'cost_price', value: '-5' },
+      { code: 'badQuantity', row: 3, column: 'opening_qty', value: '-3' },
+      { code: 'noName', row: 4 },
+    ]);
   });
 
   it('mirrors a missing name across languages rather than leaving one blank', () => {
@@ -83,8 +98,8 @@ describe('parseProductCsv', () => {
   });
 
   it('explains itself when the file is unusable', () => {
-    expect(parseProductCsv('').errors[0]).toContain('empty');
-    expect(parseProductCsv('price,qty\n1,2').errors[0]).toContain('name');
+    expect(parseProductCsv('').errors).toEqual([{ code: 'empty' }]);
+    expect(parseProductCsv('price,qty\n1,2').errors).toEqual([{ code: 'noNameColumn' }]);
   });
 
   it('tolerates CRLF and a trailing newline', () => {
