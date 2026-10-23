@@ -6,9 +6,11 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Field, Select, TextInput } from '@/components/ui/Field';
+import { SaveError } from '@/components/ui/SaveError';
 import {
   DuplicateCashierError,
   addCashier,
+  classifyWriteError,
   getDevice,
   getSettings,
   isPrefixUsedByAnotherDevice,
@@ -19,6 +21,7 @@ import {
   updateSettings,
   db,
 } from '@/lib/db';
+import type { WriteFailure } from '@/lib/db';
 import { backupFileName, buildBackup, downloadFile, salesCsv } from '@/lib/backup/export';
 import { useBilingual, useLang } from '@/lib/i18n';
 import { lockNow } from '@/lib/lock/lock';
@@ -44,6 +47,7 @@ export default function SettingsPage() {
   });
   const [prefix, setPrefix] = useState('');
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<WriteFailure>();
 
   /*
    * Warn, don't block: after a reset this till's own old receipts carry a
@@ -74,19 +78,27 @@ export default function SettingsPage() {
 
   async function handleSave(event: FormEvent) {
     event.preventDefault();
+    setSaveError(undefined);
 
-    await updateSettings({
-      shop_name: form.shop_name.trim(),
-      shop_name_am: form.shop_name_am.trim(),
-      phone: form.phone.trim(),
-      address: form.address.trim(),
-      receipt_footer_am: form.receipt_footer_am.trim(),
-      printer_width: form.printer_width === '58' ? 58 : 80,
-    });
+    try {
+      await updateSettings({
+        shop_name: form.shop_name.trim(),
+        shop_name_am: form.shop_name_am.trim(),
+        phone: form.phone.trim(),
+        address: form.address.trim(),
+        receipt_footer_am: form.receipt_footer_am.trim(),
+        printer_width: form.printer_width === '58' ? 58 : 80,
+      });
 
-    const cleaned = prefix.trim().toUpperCase();
-    if (cleaned && device && cleaned !== device.device_prefix) {
-      await db.device_meta.update(device.id, { device_prefix: cleaned });
+      const cleaned = prefix.trim().toUpperCase();
+      if (cleaned && device && cleaned !== device.device_prefix) {
+        await db.device_meta.update(device.id, { device_prefix: cleaned });
+      }
+    } catch (cause) {
+      console.error('[settings] not saved', cause);
+      setSaved(false);
+      setSaveError(classifyWriteError(cause));
+      return;
     }
 
     setSaved(true);
@@ -200,6 +212,8 @@ export default function SettingsPage() {
             <option value="en">{t.lang.english}</option>
           </Select>
         </Field>
+
+        <SaveError failure={saveError} testId="settings-save-error" />
 
         <div className="flex items-center gap-3">
           <Button type="submit" variant="money">
@@ -370,9 +384,11 @@ function CashierSection({ cashiers }: { cashiers: { id: string; name: string }[]
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string>();
+  const [saveError, setSaveError] = useState<WriteFailure>();
 
   async function handleAdd(event: FormEvent) {
     event.preventDefault();
+    setSaveError(undefined);
 
     if (!name.trim()) return setError(t.common.required);
     if (!isValidPin(pin)) return setError(t.settings.pinHint);
@@ -381,13 +397,15 @@ function CashierSection({ cashiers }: { cashiers: { id: string; name: string }[]
     try {
       await addCashier(name, pin);
     } catch (cause) {
-      setError(
-        cause instanceof DuplicateCashierError
-          ? t.settings.duplicateCashier
-          : cause instanceof Error
-            ? cause.message
-            : String(cause),
-      );
+      // Name and PIN were checked above, so anything but a duplicate is the
+      // storage refusing the write: say so in the cashier's language, never
+      // with the browser's English message.
+      if (cause instanceof DuplicateCashierError) {
+        setError(t.settings.duplicateCashier);
+      } else {
+        console.error('[settings] cashier not added', cause);
+        setSaveError(classifyWriteError(cause));
+      }
       return;
     }
 
@@ -408,7 +426,13 @@ function CashierSection({ cashiers }: { cashiers: { id: string; name: string }[]
               <span className="ethiopic text-sm">{cashier.name}</span>
               <button
                 type="button"
-                onClick={() => void removeCashier(cashier.id)}
+                onClick={() => {
+                  setSaveError(undefined);
+                  removeCashier(cashier.id).catch((cause: unknown) => {
+                    console.error('[settings] cashier not removed', cause);
+                    setSaveError(classifyWriteError(cause));
+                  });
+                }}
                 className="ethiopic min-h-touch px-2 text-sm text-muted"
               >
                 {t.settings.removeCashier}
@@ -443,6 +467,8 @@ function CashierSection({ cashiers }: { cashiers: { id: string; name: string }[]
           <span className="ethiopic">{t.settings.addCashier}</span>
         </Button>
       </form>
+
+      <SaveError failure={saveError} testId="cashier-error" />
     </section>
   );
 }
@@ -451,6 +477,7 @@ function DangerSection({ shopName, onReset }: { shopName: string; onReset: () =>
   const { t, other } = useBilingual();
   const [typed, setTyped] = useState('');
   const [error, setError] = useState<string>();
+  const [saveError, setSaveError] = useState<WriteFailure>();
 
   const armed = typed.trim() === shopName.trim() && shopName.trim() !== '';
 
@@ -483,11 +510,17 @@ function DangerSection({ shopName, onReset }: { shopName: string; onReset: () =>
         disabled={!armed}
         onClick={() => {
           if (!armed) return setError(t.settings.resetMismatch);
-          void onReset();
+          setSaveError(undefined);
+          onReset().catch((cause: unknown) => {
+            console.error('[settings] reset failed', cause);
+            setSaveError(classifyWriteError(cause));
+          });
         }}
       >
         <span className="ethiopic">{t.settings.resetDevice}</span>
       </Button>
+
+      <SaveError failure={saveError} testId="reset-error" />
     </section>
   );
 }

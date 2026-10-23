@@ -39,6 +39,12 @@ describe('parseETB', () => {
     expect(() => parseETB('1.2.3')).toThrow(TypeError);
   });
 
+  it('rejects negative amounts', () => {
+    expect(() => parseETB('-5')).toThrow(TypeError);
+    expect(() => parseETB('-0.50')).toThrow(TypeError);
+    expect(() => parseETB(' -1,000 ')).toThrow(TypeError);
+  });
+
   it('round-trips without drift across many values', () => {
     for (let cents = 0; cents < 20000; cents += 7) {
       expect(parseETB(formatETB(cents))).toBe(cents);

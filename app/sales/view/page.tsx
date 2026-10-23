@@ -7,7 +7,9 @@ import { Suspense, useState } from 'react';
 import { Receipt } from '@/components/Receipt';
 import { Button } from '@/components/ui/Button';
 import { Field, TextInput } from '@/components/ui/Field';
-import { getSettings, salesRepo } from '@/lib/db';
+import { SaveError } from '@/components/ui/SaveError';
+import { classifyWriteError, getSettings, salesRepo } from '@/lib/db';
+import type { WriteFailure } from '@/lib/db';
 import { useBilingual, useT } from '@/lib/i18n';
 import { saleHref } from '@/lib/routes';
 
@@ -102,6 +104,7 @@ function VoidControl({ saleId }: { saleId: string }) {
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<WriteFailure>();
 
   if (!open) {
     return (
@@ -118,11 +121,17 @@ function VoidControl({ saleId }: { saleId: string }) {
     }
 
     setError(undefined);
+    setSaveError(undefined);
     setBusy(true);
     try {
       await salesRepo.voidSale(saleId, reason.trim());
       setOpen(false);
       setReason('');
+    } catch (cause) {
+      // The void is one transaction: either the void row, its lines and the
+      // stock coming back were all written, or none of them were.
+      console.error('[sales] void not saved', cause);
+      setSaveError(classifyWriteError(cause));
     } finally {
       setBusy(false);
     }
@@ -147,6 +156,8 @@ function VoidControl({ saleId }: { saleId: string }) {
           className="ethiopic"
         />
       </Field>
+
+      <SaveError failure={saveError} testId="void-error" />
 
       <div className="flex gap-3">
         <Button type="button" variant="danger" disabled={busy} onClick={() => void handleVoid()}>

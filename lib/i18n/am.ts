@@ -41,6 +41,10 @@ export const am = {
     saving: 'በማስቀመጥ ላይ',
     required: 'ያስፈልጋል',
     optional: 'አማራጭ',
+    saveFailed: 'አልተቀመጠም',
+    saveFailedQuota: 'የመሣሪያው ማከማቻ ሞልቷል። ቦታ ያስለቅቁ (ፎቶዎች፣ ሌሎች መተግበሪያዎች)፣ ከዚያ እንደገና ይሞክሩ።',
+    saveFailedUnavailable: 'የመሣሪያው ማከማቻ አይገኝም። መተግበሪያውን እንደገና ይክፈቱ፣ ከዚያ እንደገና ይሞክሩ።',
+    saveFailedUnknown: 'ያልታወቀ ስህተት ተፈጥሯል። እንደገና ይሞክሩ።',
   },
   units: {
     pcs: 'ቁራጭ',

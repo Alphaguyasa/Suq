@@ -5,8 +5,9 @@ import { useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Field, NumberInput, Select, TextInput } from '@/components/ui/Field';
-import { ensureDevice, productsRepo, stockRepo } from '@/lib/db';
-import type { Product, Unit } from '@/lib/db';
+import { SaveError } from '@/components/ui/SaveError';
+import { classifyWriteError, ensureDevice, productsRepo, stockRepo } from '@/lib/db';
+import type { Product, Unit, WriteFailure } from '@/lib/db';
 import { formatETB, parseETB } from '@/lib/format';
 import { useBilingual } from '@/lib/i18n';
 
@@ -43,6 +44,7 @@ export function ProductForm({ product }: { product?: Product }) {
   });
   const [errors, setErrors] = useState<Partial<Record<keyof FormValues, string>>>({});
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<WriteFailure>();
 
   function set<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -68,6 +70,7 @@ export function ProductForm({ product }: { product?: Product }) {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    setSaveError(undefined);
 
     const found: Partial<Record<keyof FormValues, string>> = {};
     let cost = 0;
@@ -108,7 +111,14 @@ export function ProductForm({ product }: { product?: Product }) {
 
     const barcode = values.barcode.trim();
     if (barcode) {
-      const clash = await productsRepo.getByBarcode(barcode);
+      let clash: Product | undefined;
+      try {
+        clash = await productsRepo.getByBarcode(barcode);
+      } catch (cause) {
+        console.error('[products] barcode check failed', cause);
+        setSaveError(classifyWriteError(cause));
+        return;
+      }
       if (clash && clash.id !== product?.id) {
         found.barcode = t.productForm.duplicateBarcode;
       }
@@ -140,6 +150,12 @@ export function ProductForm({ product }: { product?: Product }) {
       }
 
       router.push('/products');
+    } catch (cause) {
+      // The form keeps what was typed, so the owner frees space and taps save
+      // again. A product saved without its opening stock is still listed and
+      // can be restocked from its stock page.
+      console.error('[products] not saved', cause);
+      setSaveError(classifyWriteError(cause));
     } finally {
       setSaving(false);
     }
@@ -149,7 +165,14 @@ export function ProductForm({ product }: { product?: Product }) {
     if (!product) return;
     if (!window.confirm(t.products.deleteConfirm)) return;
 
-    await productsRepo.softDelete(product.id);
+    setSaveError(undefined);
+    try {
+      await productsRepo.softDelete(product.id);
+    } catch (cause) {
+      console.error('[products] not deleted', cause);
+      setSaveError(classifyWriteError(cause));
+      return;
+    }
     router.push('/products');
   }
 
@@ -304,6 +327,8 @@ export function ProductForm({ product }: { product?: Product }) {
           <span className="text-xs text-muted">{other.productForm.isActive}</span>
         </span>
       </label>
+
+      <SaveError failure={saveError} />
 
       <div className="flex flex-wrap items-center gap-3 pt-2">
         <Button type="submit" variant="money" disabled={saving} className="flex-1">
