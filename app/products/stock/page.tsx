@@ -7,8 +7,9 @@ import { Suspense, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Field, NumberInput, Select, TextInput } from '@/components/ui/Field';
-import { productsRepo, stockRepo } from '@/lib/db';
-import type { MovementReason, StockMovement } from '@/lib/db';
+import { SaveError } from '@/components/ui/SaveError';
+import { classifyWriteError, productsRepo, stockRepo } from '@/lib/db';
+import type { MovementReason, StockMovement, WriteFailure } from '@/lib/db';
 import { formatDateTime, formatQty } from '@/lib/format';
 import { useBilingual, useT } from '@/lib/i18n';
 import { productHref } from '@/lib/routes';
@@ -91,6 +92,7 @@ function RestockForm({ productId }: { productId: string }) {
   const [note, setNote] = useState('');
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<WriteFailure>();
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -102,11 +104,16 @@ function RestockForm({ productId }: { productId: string }) {
     }
 
     setError(undefined);
+    setSaveError(undefined);
     setBusy(true);
     try {
       await stockRepo.restock({ productId, qty: value, note: note.trim() || undefined });
       setQty('');
       setNote('');
+    } catch (cause) {
+      // Nothing was written (one transaction); the typed quantity stays.
+      console.error('[stock] restock not saved', cause);
+      setSaveError(classifyWriteError(cause));
     } finally {
       setBusy(false);
     }
@@ -138,6 +145,8 @@ function RestockForm({ productId }: { productId: string }) {
         />
       </Field>
 
+      <SaveError failure={saveError} testId="restock-error" />
+
       <Button type="submit" variant="primary" disabled={busy}>
         <span className="ethiopic">{t.stock.restock}</span>
       </Button>
@@ -153,6 +162,7 @@ function AdjustForm({ productId, current }: { productId: string; current: number
   const [error, setError] = useState<string>();
   const [message, setMessage] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<WriteFailure>();
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -164,6 +174,8 @@ function AdjustForm({ productId, current }: { productId: string; current: number
     }
 
     setError(undefined);
+    setSaveError(undefined);
+    setMessage(undefined);
     setBusy(true);
     try {
       // Writes the delta needed to reach the counted number, so the history
@@ -178,6 +190,9 @@ function AdjustForm({ productId, current }: { productId: string; current: number
       setMessage(movement === null ? t.stock.noChange : undefined);
       setCounted('');
       setNote('');
+    } catch (cause) {
+      console.error('[stock] adjustment not saved', cause);
+      setSaveError(classifyWriteError(cause));
     } finally {
       setBusy(false);
     }
@@ -231,6 +246,8 @@ function AdjustForm({ productId, current }: { productId: string; current: number
       </Field>
 
       {message ? <p className="ethiopic text-xs text-muted">{message}</p> : null}
+
+      <SaveError failure={saveError} testId="adjust-error" />
 
       <Button type="submit" variant="primary" disabled={busy}>
         <span className="ethiopic">{t.stock.adjust}</span>

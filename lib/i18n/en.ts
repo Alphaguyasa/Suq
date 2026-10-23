@@ -36,6 +36,10 @@ export const en: Dict = {
     saving: 'Saving',
     required: 'Required',
     optional: 'Optional',
+    saveFailed: 'Not saved',
+    saveFailedQuota: 'This device is out of storage. Free some space (photos, other apps), then try again.',
+    saveFailedUnavailable: "This device's storage is not available. Reopen the app, then try again.",
+    saveFailedUnknown: 'Something went wrong. Try again.',
   },
   units: {
     pcs: 'pcs',

@@ -64,19 +64,19 @@ export function formatQty(qty: number): string {
  * Parse a price the cashier typed into integer cents: "12.35" -> 1235.
  * Accepts thousands separators and up to two decimal places. Throws on
  * anything else rather than silently rounding — a wrong price is worse
- * than a rejected keystroke.
+ * than a rejected keystroke. Negative amounts are rejected too: no price,
+ * cost, discount or cash received is ever below zero, and letting "-5"
+ * through only moved the failure to the repository, where the form could
+ * no longer say which field was wrong.
  */
 export function parseETB(input: string): number {
   const cleaned = input.trim().replace(/[,\s]/g, '');
 
-  if (!/^-?\d+(\.\d{1,2})?$|^-?\.\d{1,2}$/.test(cleaned)) {
+  if (!/^\d+(\.\d{1,2})?$|^\.\d{1,2}$/.test(cleaned)) {
     throw new TypeError(`parseETB cannot parse "${input}" as a price`);
   }
 
-  const negative = cleaned.startsWith('-');
-  const [major = '0', minor = ''] = cleaned.replace('-', '').split('.');
+  const [major = '0', minor = ''] = cleaned.split('.');
 
-  const cents = Number(major || '0') * 100 + Number(minor.padEnd(2, '0') || '0');
-
-  return negative ? -cents : cents;
+  return Number(major || '0') * 100 + Number(minor.padEnd(2, '0') || '0');
 }

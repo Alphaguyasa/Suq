@@ -5,15 +5,19 @@ import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Field, TextInput } from '@/components/ui/Field';
+import { SaveError } from '@/components/ui/SaveError';
 import {
   addCashier,
+  classifyWriteError,
   db,
+  DuplicateCashierError,
   ensureDevice,
   ensureSettings,
   isValidPin,
   suggestDevicePrefix,
   updateSettings,
 } from '@/lib/db';
+import type { WriteFailure } from '@/lib/db';
 import { useBilingual } from '@/lib/i18n';
 import { parseProductCsv } from '@/lib/seed/csv';
 import { importProducts } from '@/lib/seed/import';
@@ -42,14 +46,36 @@ export default function SetupPage() {
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<WriteFailure>();
 
   // Random, so it can't match the server-rendered HTML: filled in after mount.
   useEffect(() => {
     setPrefix((current) => current || suggestDevicePrefix());
   }, []);
 
+  /* Each step writes to IndexedDB. A failed write keeps the owner on the same
+     step with what they typed, and says why; busy also stops a double tap
+     from adding the first cashier twice. */
   async function next() {
+    if (busy) return;
     setError(undefined);
+    setSaveError(undefined);
+    setBusy(true);
+    try {
+      await advance();
+    } catch (cause) {
+      if (cause instanceof DuplicateCashierError) {
+        setError(t.settings.duplicateCashier);
+      } else {
+        console.error('[setup] not saved', cause);
+        setSaveError(classifyWriteError(cause));
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function advance() {
 
     if (step === 1) {
       if (!shopNameAm.trim() && !shopName.trim()) return setError(t.common.required);
@@ -239,6 +265,8 @@ export default function SetupPage() {
           ) : null}
         </section>
       ) : null}
+
+      <SaveError failure={saveError} />
 
       <div className="flex items-center gap-3">
         {step > 1 ? (
