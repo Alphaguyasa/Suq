@@ -13,7 +13,7 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-10-22 that is item 19, then 20.
+"after the pending migrations". As of 2026-10-23 that is item 21, then 22.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
 `docs/RULES.md` says "no camera scanning in v1 and no scanner library", and this item was written by a run, not
@@ -50,18 +50,6 @@ fake Supabase routes working), so those tests prove what they claim.
 RLS is on for every table, append-only tables allow only SELECT/INSERT, no XSS sinks, and the only writes outside
 `localWrite()` are the sanctioned `lib/sync/apply.ts` and the dev-only demo seed. Items below are ordered by priority.
 
-### 19. [P1 · S] Save errors are swallowed on every screen except the sale screen
-`try/finally` with no `catch` (or no try): product form save/delete (`components/products/ProductForm.tsx`), restock
-and adjust (`app/products/stock/page.tsx`), void (`app/sales/view/page.tsx`), setup finish (`app/setup/page.tsx`),
-settings save. A quota error or a thrown validation error = unhandled rejection, button re-enables, no message.
-Also `parseETB` accepts negative prices ("-5"), so the repository's `assertCents` throws later instead of the form
-saying "invalid price". Fix: reuse `classifyWriteError()` + bilingual inline errors; reject negatives in the form.
-
-### 20. [P1 · S] CSV import: one bad row aborts halfway and the summary is wrong
-`lib/seed/import.ts` has no per-row catch: a bad row throws after earlier rows were saved, and setup shows "import
-failed". `toCents` accepts negatives. The success message counts `created + skipped` as imported. Fix: validate
-≥ 0 in the parser, collect per-row errors, report created / skipped / failed separately.
-
 ### 21. [P1 · M] Two tills can void the same sale twice
 `voidSale` checks `isVoided` outside its transaction, and nothing stops two offline tills from voiding the same
 receipt; reports then subtract it twice and stock comes back twice. Fix: re-check inside the transaction; on the
@@ -69,8 +57,8 @@ derived side count only the earliest void per `voids_sale_id` (reports, voided s
 append a compensating movement. Tests with two tills on the fake server.
 
 ### 22. [P1 · S] English-only error text shown to Amharic users
-CSV row errors (`lib/seed/csv.ts`) rendered in setup, raw Supabase messages on sign-in, raw `last_error` in the sync
-sheet, `cause.message` in Settings (cashier errors). Fix: error codes + params, rendered through `am.ts`/`en.ts`;
+CSV row errors (PR #28) and Settings cashier errors (PR #27) are done. Left: raw Supabase messages on sign-in and
+raw `last_error` in the sync sheet. Fix: error codes + params, rendered through `am.ts`/`en.ts`;
 keep the raw text only as a secondary detail where it helps support.
 
 ### 23. [P1 · S] Touch targets under 56px
@@ -95,8 +83,9 @@ After a year of trading that is seconds on a cheap phone. Fix: `created_at` inde
 additive nullable column migration); old lines fall back to current cost.
 
 ### 28. [P2 · M] Test gaps
-No tests for `importProducts`, `recentProductIds`, `adoptShopFromMembership`, `lib/reports/period.ts`, the
-`MissingColumnError` legacy pull fallback, and the void/restock/adjust UI error paths. Also check (unverified) that a
+No tests for `recentProductIds`, `adoptShopFromMembership`, `lib/reports/period.ts`, the `MissingColumnError`
+legacy pull fallback, and the adjust/setup/settings UI error paths (`importProducts`, void and restock are covered
+since PRs #27/#28). Also check (unverified) that a
 scanner typing a code + Enter cannot add the item twice (`handleTermChange` and `handleSearchKeyDown` both look up).
 
 ### 29. [P2 · S] Owner page polls Supabase every 15s even when hidden
@@ -118,6 +107,19 @@ text by design — `lib/db/cashiers.ts` explains why; revisit only together with
 of scope for v1, so this needs alpha's decision (see NEEDS_APPROVAL).
 
 ## Done
+
+- **CSV import: per-row errors, honest summary (item 20)** — each row is one transaction (product + opening stock
+  together, so a failed row leaves nothing a re-import would skip); failed rows reported, the rest carry on, and
+  after a quota/unavailable failure the remaining rows are reported untried. Setup shows created / already here /
+  not saved; CSV row errors are codes rendered through am.ts/en.ts (the CSV part of item 22); the unreadable-file
+  message now renders. Unit + Amharic e2e.
+  [PR #28](https://github.com/Alphaguyasa/Suq/pull/28) · tag `v2026-10-23-2` not pushed (refused) — commit `e1efd21`
+
+- **Save errors shown on every screen (item 19)** — `components/ui/SaveError.tsx` (bilingual quota / unavailable /
+  unknown via `classifyWriteError()`) on the product form (save, delete, barcode check), restock, adjust, void,
+  setup (plus a double-tap guard), settings save, add/remove cashier and reset; what was typed is kept. Cashier
+  errors no longer show the browser's English message. `parseETB` rejects negative amounts. Unit + e2e (refused
+  void and restock, then retry). [PR #27](https://github.com/Alphaguyasa/Suq/pull/27) · tag `v2026-10-23-1` not pushed (refused) — commit `1608538`
 
 - **Backup export (item 14)** — Settings → Backup: full JSON (products, sales, lines, movements, shop details;
   integer cents; `suq-backup` v1) and a sales CSV (one row per line, voids marked, birr from cents, UTF-8 BOM for

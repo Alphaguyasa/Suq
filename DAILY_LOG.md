@@ -4,6 +4,54 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-23 — Run 8 (scheduled)
+
+**Start.** `master` @ `cd37ad8`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page.
+Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+**Supabase check.** The connector still lists only `not-alone-scripture` and `erko-staging` (INACTIVE), not Suq.
+The `received_at` and products last-write-wins migrations are still unapplied.
+
+**Item 19: save errors shown on every screen → [PR #27](https://github.com/Alphaguyasa/Suq/pull/27), merged.**
+- New `components/ui/SaveError.tsx`: an always-mounted `role="alert"` box in inverted ochre that explains a failed write as quota / unavailable / unknown.
+- Wired into the product form (save, delete, barcode check), restock, adjust, void, setup, settings save, add/remove cashier and reset. What was typed is kept.
+- Setup's Next is guarded against a double tap, which could add the first cashier twice.
+- Cashier errors no longer show the browser's English `cause.message`.
+- `parseETB` rejects negative amounts. Nothing needed them: discount and cash received were clamped or zeroed anyway.
+- Tests: SaveError (am/en, 3 reasons), ProductForm (negative price; quota → form kept → retry saves), parseETB negatives; e2e: IndexedDB refuses a void and a restock → alert, input kept, retry goes through once.
+- Local: lint ✅ · typecheck ✅ · unit 244 ✅ · build ✅ · e2e 13/13 ✅.
+- CI: the pull_request run passed. The push run on the same commit failed in `next/font` while downloading Google Fonts (`TypeError … google/loader.js:122`). That is a network flake in a file this PR doesn't touch. One re-run passed. Squash-merged as `1608538`.
+
+**Item 20: CSV import per-row errors, honest summary → [PR #28](https://github.com/Alphaguyasa/Suq/pull/28), merged.**
+- Each row is one transaction, so a product and its opening stock land together. Before, a failure in between left a product with no stock, and re-importing skipped it by barcode, so it could never be repaired.
+- Failed rows are reported and the import carries on. After a quota/unavailable failure, the remaining rows are reported without being tried.
+- Setup shows created / already here / not saved separately. Before, skipped rows were counted as "imported".
+- CSV row errors are now codes rendered through am.ts/en.ts (the CSV part of item 22).
+- The "could not read that file" message used to be set on a field step 4 never shows. It now renders.
+- Tests:
+  - import: create; re-import is skipped and stock is not doubled; a failing row rolls back whole while the rest import, then a retry creates it; quota stops after the first row;
+  - CSV error codes;
+  - Amharic e2e.
+- Local: lint ✅ · typecheck ✅ · unit 249 ✅ · build ✅ · e2e 14/14 ✅. CI green on the first try. Squash-merged as `e1efd21`.
+
+**Blocked:** release tags again (`git push origin v2026-10-23-1` → "remote end hung up"). Rollback SHAs are in NEEDS_APPROVAL.
+**Process notes:** one session branch, master merged back into it after each merge (no history rewrite). PRs opened as
+draft, marked ready once every check was green, then squash-merged with an explicit message (no AI trailers).
+
+### REPORT — 2026-10-23
+| Field | Content |
+|---|---|
+| Done | Item 19: a clear "not saved" message on every screen that writes, negative prices rejected — [PR #27](https://github.com/Alphaguyasa/Suq/pull/27). Item 20: CSV import keeps going past a bad row, honest summary, Amharic row errors — [PR #28](https://github.com/Alphaguyasa/Suq/pull/28) |
+| Merged | PR #27: yes · PR #28: yes · tags `v2026-10-23-1`/`-2` NOT pushed (refused); SHAs `1608538` / `e1efd21` |
+| Failed or blocked | Tag pushes; one CI flake on PR #27 (Google Fonts download), green on re-run; item 12 still waits for alpha; item 13 waits for the migrations; migrations still unapplied |
+| Roadmap | 17 open (12, 13, 16, 18, 21–33); no replan needed |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Yes/no on camera scanning and on a credit (ዱቤ) ledger; **apply the two migrations** (or reconnect the Supabase connector); tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 21 (two tills can void the same sale twice), item 22 (remaining English-only errors: sign-in, sync sheet) |
+
+---
+
 ## 2026-10-22 — Run 7 (scheduled)
 
 **Start.** `master` @ `99441fd`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
