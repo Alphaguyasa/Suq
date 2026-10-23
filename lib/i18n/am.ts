@@ -283,7 +283,19 @@ export const am = {
     importHint: 'የCSV ፋይል ይምረጡ። አሁን ባይኖርም በኋላ ማስገባት ይችላሉ።',
     importFormat: 'ዓምዶች፦ name, name_am, barcode, unit, cost_price, sell_price, reorder_level, opening_qty',
     imported: (n: number) => `${n} ምርቶች ገብተዋል`,
+    importSkipped: (n: number) => `${n} ቀድሞ ስለነበሩ ተዘለዋል`,
+    importNotSaved: (n: number) => `${n} አልተቀመጡም`,
     importFailed: 'ፋይሉን ማንበብ አልተቻለም',
+    csvErrors: {
+      empty: 'ፋይሉ ባዶ ነው',
+      noNameColumn: 'ቢያንስ "name" ወይም "name_am" ዓምድ ያስፈልጋል',
+      noName: (row: number) => `ረድፍ ${row}፦ ስም የለም`,
+      badPrice: (row: number, column: string, value: string) =>
+        `ረድፍ ${row}፦ ${column} "${value}" ትክክለኛ ዋጋ አይደለም`,
+      badQuantity: (row: number, column: string, value: string) =>
+        `ረድፍ ${row}፦ ${column} "${value}" ትክክለኛ ብዛት አይደለም`,
+      notSaved: (row: number, name: string) => `ረድፍ ${row} (${name})፦ አልተቀመጠም`,
+    },
     next: 'ቀጥል',
     back: 'ተመለስ',
     finish: 'ጨርስ',
