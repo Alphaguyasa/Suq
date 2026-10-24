@@ -162,10 +162,22 @@ export async function itemsFor(saleId: string): Promise<SaleItem[]> {
   return db.sale_items.where('sale_id').equals(saleId).toArray();
 }
 
-/** Voided status is derived, not stored — the void row is the evidence. */
+/**
+ * Voided status is derived, not stored — the void row is the evidence.
+ *
+ * Two tills can each void the same receipt while offline, so a sale may end
+ * up with more than one void row. The earliest one (created_at, then id, so
+ * every device picks the same row) is THE void; any later one is a duplicate
+ * that reconcileDuplicateVoids() reverses.
+ */
 export async function findVoidOf(saleId: string): Promise<Sale | null> {
-  const found = await db.sales.where('voids_sale_id').equals(saleId).first();
-  return found ?? null;
+  const found = await db.sales.where('voids_sale_id').equals(saleId).toArray();
+  return found.sort(byCreation)[0] ?? null;
+}
+
+function byCreation(a: Sale, b: Sale): number {
+  if (a.created_at !== b.created_at) return a.created_at < b.created_at ? -1 : 1;
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
 export async function isVoided(saleId: string): Promise<boolean> {
@@ -228,19 +240,34 @@ export async function voidSale(saleId: string, reason: string): Promise<Sale> {
   if (original.voids_sale_id !== null) {
     throw new Error(`Sale ${original.receipt_no} is itself a void row and cannot be voided.`);
   }
-  if (await isVoided(saleId)) {
-    throw new Error(`Sale ${original.receipt_no} is already voided.`);
-  }
 
-  const originalItems = await itemsFor(saleId);
+  return appendReversal(original, reason, 'return', () => {
+    throw new Error(`Sale ${original.receipt_no} is already voided.`);
+  });
+}
+
+/**
+ * Writes a mirror image of `target` (negated totals and lines) and the stock
+ * movements that undo its movements, in one transaction.
+ *
+ * The "already reversed?" check runs INSIDE the transaction: checked outside,
+ * a double tap (or two tabs) could both pass it before either wrote.
+ */
+async function appendReversal(
+  target: Sale,
+  note: string | null,
+  movementReason: 'return' | 'sale',
+  onAlreadyReversed: () => never,
+): Promise<Sale> {
+  const targetItems = await itemsFor(target.id);
   const meta = await getDevice();
-  const voidId = newId();
+  const reversalId = newId();
   const created_at = nowIso();
 
-  const items: SaleItem[] = originalItems.map((item) => ({
+  const items: SaleItem[] = targetItems.map((item) => ({
     id: newId(),
-    shop_id: original.shop_id,
-    sale_id: voidId,
+    shop_id: target.shop_id,
+    sale_id: reversalId,
     product_id: item.product_id,
     name_snapshot: item.name_snapshot,
     unit_price: item.unit_price,
@@ -249,48 +276,110 @@ export async function voidSale(saleId: string, reason: string): Promise<Sale> {
     created_at,
   }));
 
-  const movements = originalItems.map((item) =>
+  // A sale's lines took goods out, so reversing it puts item.qty back; a void's
+  // lines carry negative qty, so reversing a void takes them out again.
+  const movements = targetItems.map((item) =>
     makeMovement(meta, {
       productId: item.product_id,
       qtyDelta: item.qty,
-      reason: 'return',
-      refId: voidId,
-      note: reason,
+      reason: movementReason,
+      refId: reversalId,
+      note,
     }),
   );
 
-  let voidRow!: Sale;
+  let reversal!: Sale;
 
   await db.transaction(
     'rw',
     [db.sales, db.sale_items, db.stock_movements, db.outbox, db.device_meta, db.stock_cache],
     async () => {
-      voidRow = {
-        id: voidId,
-        shop_id: original.shop_id,
+      if ((await db.sales.where('voids_sale_id').equals(target.id).count()) > 0) {
+        onAlreadyReversed();
+      }
+
+      reversal = {
+        id: reversalId,
+        shop_id: target.shop_id,
         device_id: meta.device_id,
         receipt_no: await nextReceiptNo(),
-        subtotal: -original.subtotal,
-        discount: -original.discount,
-        total: -original.total,
-        payment_method: original.payment_method,
+        subtotal: -target.subtotal,
+        discount: -target.discount,
+        total: -target.total,
+        payment_method: target.payment_method,
         cashier_name: meta.cashier_name,
         voided_by: null,
-        voids_sale_id: saleId,
+        voids_sale_id: target.id,
         cash_received: null,
         created_at,
         synced_at: null,
       };
 
-      await localWrite('sales', voidRow);
+      await localWrite('sales', reversal);
       if (items.length > 0) await localWriteMany('sale_items', items);
       if (movements.length > 0) await localWriteMany('stock_movements', movements);
 
-      for (const productId of new Set(originalItems.map((item) => item.product_id))) {
+      for (const productId of new Set(targetItems.map((item) => item.product_id))) {
         await recomputeCache(productId);
       }
     },
   );
 
-  return voidRow;
+  return reversal;
+}
+
+class AlreadyReconciled extends Error {}
+
+/**
+ * Two offline tills voided the same sale: after they sync, every device holds
+ * two void rows, so takings drop twice and the goods come back twice. Rows are
+ * immutable, so the fix is another row — a reversal of the duplicate void,
+ * which takes its money and stock back out.
+ *
+ * Only the device that wrote a duplicate reverses it. Every device sees the
+ * same rows and picks the same earliest void (findVoidOf), so exactly one
+ * device is responsible for each duplicate and no two tills can write the
+ * same correction twice. That device learns about the clash on its next pull,
+ * which is when the sync engine calls this. Reports need no special case:
+ * once the reversal exists, plain sums are right again.
+ *
+ * Known gap: if that device is reset before it pulls, nobody corrects it.
+ *
+ * Returns the reversal rows written.
+ */
+export async function reconcileDuplicateVoids(): Promise<Sale[]> {
+  const meta = await getDevice();
+
+  // Rows with voids_sale_id = null are not in that index at all (null is not
+  // a valid IndexedDB key), so this reads void rows only.
+  const voidRows = await db.sales.orderBy('voids_sale_id').toArray();
+
+  const byTarget = new Map<string, Sale[]>();
+  for (const row of voidRows) {
+    const target = row.voids_sale_id as string;
+    byTarget.set(target, [...(byTarget.get(target) ?? []), row]);
+  }
+
+  const written: Sale[] = [];
+
+  for (const rows of byTarget.values()) {
+    if (rows.length < 2) continue;
+
+    for (const duplicate of rows.sort(byCreation).slice(1)) {
+      if (duplicate.device_id !== meta.device_id) continue;
+      if (byTarget.has(duplicate.id)) continue;
+
+      try {
+        written.push(
+          await appendReversal(duplicate, null, 'sale', () => {
+            throw new AlreadyReconciled();
+          }),
+        );
+      } catch (cause) {
+        if (!(cause instanceof AlreadyReconciled)) throw cause;
+      }
+    }
+  }
+
+  return written;
 }
