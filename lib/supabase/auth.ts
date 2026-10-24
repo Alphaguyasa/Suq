@@ -1,4 +1,5 @@
 import { getSupabase } from './client';
+import { AuthFailureError, classifyAuthError } from './errors';
 
 export interface AuthUser {
   id: string;
@@ -7,14 +8,14 @@ export interface AuthUser {
 
 export async function signIn(email: string, password: string): Promise<AuthUser> {
   const { data, error } = await getSupabase().auth.signInWithPassword({ email, password });
-  if (error) throw new Error(error.message);
+  if (error) throw new AuthFailureError(classifyAuthError(error), error.message);
   return { id: data.user.id, email: data.user.email ?? null };
 }
 
 /** Returns null when the project requires email confirmation first. */
 export async function signUp(email: string, password: string): Promise<AuthUser | null> {
   const { data, error } = await getSupabase().auth.signUp({ email, password });
-  if (error) throw new Error(error.message);
+  if (error) throw new AuthFailureError(classifyAuthError(error), error.message);
   return data.user ? { id: data.user.id, email: data.user.email ?? null } : null;
 }
 

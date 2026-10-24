@@ -7,6 +7,7 @@ import { formatDateTime, formatETB } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { currentUser } from '@/lib/supabase/auth';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { SyncErrorMessage } from '@/components/ui/SyncErrorMessage';
 
 /**
  * The owner's read-only view, and the last beat of DEMO_SCRIPT.md: "this is
@@ -91,11 +92,7 @@ export default function OwnerPage() {
         </span>
       </div>
 
-      {error ? (
-        <p className="rounded-lg border border-ochre/40 bg-ochre/10 p-3 text-xs text-ochre-ink">
-          {error}
-        </p>
-      ) : null}
+      {error ? <SyncErrorMessage raw={error} testId="owner-error" /> : null}
 
       {sales === null ? null : sales.length === 0 ? (
         <p className="ethiopic py-8 text-center text-sm text-muted">{t.owner.noSalesYet}</p>

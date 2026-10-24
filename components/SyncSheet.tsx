@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { SyncErrorMessage } from '@/components/ui/SyncErrorMessage';
 import { formatDateTime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
@@ -69,11 +70,7 @@ export function SyncSheet({ status, onClose }: { status: SyncStatus; onClose: ()
         />
       </dl>
 
-      {status.lastError ? (
-        <p className="rounded-lg border border-ochre/40 bg-ochre/10 p-2 text-xs break-words text-ochre-ink">
-          {status.lastError}
-        </p>
-      ) : null}
+      {status.lastError ? <SyncErrorMessage raw={status.lastError} /> : null}
 
       {!isSupabaseConfigured() ? (
         <p className="ethiopic text-xs text-muted">{t.syncSheet.notConfigured}</p>
