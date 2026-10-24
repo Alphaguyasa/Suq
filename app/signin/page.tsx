@@ -4,9 +4,12 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Field, TextInput } from '@/components/ui/Field';
+import { SyncErrorMessage } from '@/components/ui/SyncErrorMessage';
 import { useBilingual } from '@/lib/i18n';
 import type { AuthUser } from '@/lib/supabase/auth';
 import { currentUser, signIn, signOut, signUp } from '@/lib/supabase/auth';
+import type { AuthFailure } from '@/lib/supabase/errors';
+import { AuthFailureError, authErrorText, classifyAuthError } from '@/lib/supabase/errors';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 import { adoptShopFromMembership } from '@/lib/sync/shop';
 
@@ -21,8 +24,10 @@ export default function SignInPage() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<{ failure: AuthFailure; raw: string }>();
   const [notice, setNotice] = useState<string>();
+  /** Signed in, but connecting the shop failed: a server problem, not a login one. */
+  const [shopError, setShopError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -35,7 +40,7 @@ export default function SignInPage() {
       const { outcome } = await adoptShopFromMembership();
       setNotice(outcome === 'no-membership' ? t.auth.noShop : t.auth.shopAdopted);
     } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : String(cause));
+      setShopError(cause instanceof Error ? cause.message : String(cause));
     }
   }
 
@@ -43,6 +48,7 @@ export default function SignInPage() {
     event.preventDefault();
     setError(undefined);
     setNotice(undefined);
+    setShopError(undefined);
     setBusy(true);
 
     try {
@@ -56,7 +62,7 @@ export default function SignInPage() {
         else setNotice(t.auth.checkEmail);
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t.auth.failed);
+      setError(describeAuthFailure(cause));
     } finally {
       setBusy(false);
     }
@@ -112,7 +118,7 @@ export default function SignInPage() {
             htmlFor="password"
             label={t.auth.password}
             sublabel={other.auth.password}
-            error={error}
+            error={error ? authErrorText(error, t.auth.errors) : undefined}
           >
             <TextInput
               id="password"
@@ -140,9 +146,17 @@ export default function SignInPage() {
         </form>
       )}
 
+      {shopError ? <SyncErrorMessage raw={shopError} testId="shop-error" /> : null}
+
       {notice ? <p className="ethiopic text-sm font-medium text-birr-ink">{notice}</p> : null}
 
       <p className="ethiopic text-xs text-muted">{t.auth.offlineNote}</p>
     </div>
   );
+}
+
+function describeAuthFailure(cause: unknown): { failure: AuthFailure; raw: string } {
+  if (cause instanceof AuthFailureError) return { failure: cause.failure, raw: cause.message };
+  const raw = cause instanceof Error ? cause.message : String(cause);
+  return { failure: classifyAuthError({ message: raw }), raw };
 }
