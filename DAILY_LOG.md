@@ -4,6 +4,59 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-24 — Run 9 (scheduled)
+
+**Start.** `master` @ `2e90ef3`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page.
+Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+**Supabase check.** The connector still lists only `not-alone-scripture` and `erko-staging` (INACTIVE), not Suq.
+The `received_at` and products last-write-wins migrations are still unapplied.
+
+**CI gate went red overnight (fixed).** A new advisory, GHSA-mrhx-c7xc-m3w5 (zod < 4.6.6, high, memory exhaustion), is in a
+production dependency: `@serwist/next` 9.5.13 (latest) pins `zod@4.6.5` exactly. `npm audit --omit=dev --audit-level=high`
+failed every PR, and master would have too. Fix: `overrides.zod = ^4.6.6` (now 4.6.7), like the `postcss` override.
+zod only validates the Serwist config at build time. Build and all 14 e2e (service worker / offline included) pass with it.
+It went into PR #30 as its own `security:` commit because this session can only push one branch.
+
+**Item 21: a sale voided on two tills → [PR #30](https://github.com/Alphaguyasa/Suq/pull/30), merged.**
+- `voidSale` re-checks for an existing void inside its write transaction. A racing double void used to write two rows; there is a test for that, and it fails on the old code.
+- New `reconcileDuplicateVoids()`, which the sync engine runs after every pull.
+  - The earliest void (by created_at, then id, the same on every till) is the void.
+  - The device that wrote a later duplicate appends a reversal: positive totals, plus lines and movements that take the goods back out.
+  - Only that device writes it, so corrections can't duplicate, and reports need no special case.
+  - `findVoidOf()` returns the earliest void.
+- I chose not to add "count only the earliest void" on the derived side, which the roadmap suggested. With the reversal records it would subtract twice.
+- Gap: if the device that wrote the duplicate is reset before it pulls, nobody corrects it.
+- Tests: race; reversal after pulling an earlier void (stock, takings, outbox, idempotent); the other till's later void left alone; tie broken by id; two tills on the fake server through the real `syncNow`. That last test fails without the engine hook.
+- Local: lint ✅ · typecheck ✅ · unit 254 ✅ · build ✅ · e2e 14/14 ✅. CI: the first run failed on the zod audit (above); green after the override. Squash-merged as `6422211`.
+
+**Item 22: sign-in and sync errors in the UI language → [PR #31](https://github.com/Alphaguyasa/Suq/pull/31), merged.**
+- Auth errors are classified, using supabase-js error codes first and the message as a fallback:
+  - wrong credentials, email not confirmed, weak password, already registered, rate limited, network, unknown;
+  - each is rendered through am.ts/en.ts, and an unknown one keeps the server text in brackets.
+- Sync errors on the sync sheet, the owner page and the shop lookup after sign-in are classified as network / signed out / permission / server / unknown. Each is explained in the UI language, with the raw text in small print underneath.
+- A failed shop lookup is no longer shown in the green success style.
+- Tests: both classifiers, the message in am and en, and the sign-in page in Amharic.
+- Local: lint ✅ · typecheck ✅ · unit 273 ✅ · build ✅ · e2e 14/14 ✅. CI green on the first try. Squash-merged as `88d5c26`.
+
+**Blocked:** release tags again (`git push origin v2026-10-24-1` → "remote end hung up"). Rollback SHAs are in NEEDS_APPROVAL.
+**Process notes:** one session branch. After #30 merged, master was merged back into it (a force-push to restart it was refused) and item 22's
+commit was cherry-picked on top. PRs were opened as draft, marked ready once every check was green, then squash-merged with an explicit message.
+
+### REPORT — 2026-10-24
+| Field | Content |
+|---|---|
+| Done | Item 21: a sale voided on two tills is voided once — [PR #30](https://github.com/Alphaguyasa/Suq/pull/30) (+ fix for the red CI audit gate: zod advisory). Item 22: sign-in and sync errors in Amharic/English instead of raw English — [PR #31](https://github.com/Alphaguyasa/Suq/pull/31) |
+| Merged | PR #30: yes (`6422211`) · PR #31: yes (`88d5c26`) · tags `v2026-10-24-1`/`-2` NOT pushed (refused) |
+| Failed or blocked | CI audit gate red from a new zod advisory (fixed in #30); tag pushes; item 12 still waits for alpha; item 13 waits for the migrations; migrations still unapplied |
+| Roadmap | 15 open (12, 13, 16, 18, 23–33); no replan needed |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Yes/no on camera scanning and on a credit (ዱቤ) ledger; **apply the two migrations** (or reconnect the Supabase connector); tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 23 (touch targets under 56px), item 24 (reset device: show unsynced data, offer the backup first) |
+
+---
+
 ## 2026-10-23 — Run 8 (scheduled)
 
 **Start.** `master` @ `cd37ad8`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.

@@ -13,7 +13,7 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-10-23 that is item 21, then 22.
+"after the pending migrations". As of 2026-10-24 that is item 23, then 24.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
 `docs/RULES.md` says "no camera scanning in v1 and no scanner library", and this item was written by a run, not
@@ -49,17 +49,6 @@ fake Supabase routes working), so those tests prove what they claim.
 ## Replan 2026-10-22 (audit: sync/db/pages, RLS, i18n, perf, tests, features)
 RLS is on for every table, append-only tables allow only SELECT/INSERT, no XSS sinks, and the only writes outside
 `localWrite()` are the sanctioned `lib/sync/apply.ts` and the dev-only demo seed. Items below are ordered by priority.
-
-### 21. [P1 · M] Two tills can void the same sale twice
-`voidSale` checks `isVoided` outside its transaction, and nothing stops two offline tills from voiding the same
-receipt; reports then subtract it twice and stock comes back twice. Fix: re-check inside the transaction; on the
-derived side count only the earliest void per `voids_sale_id` (reports, voided status), surface duplicates, and
-append a compensating movement. Tests with two tills on the fake server.
-
-### 22. [P1 · S] English-only error text shown to Amharic users
-CSV row errors (PR #28) and Settings cashier errors (PR #27) are done. Left: raw Supabase messages on sign-in and
-raw `last_error` in the sync sheet. Fix: error codes + params, rendered through `am.ts`/`en.ts`;
-keep the raw text only as a secondary detail where it helps support.
 
 ### 23. [P1 · S] Touch targets under 56px
 Quick-cash buttons in `components/sell/PaymentPanel.tsx` (`px-3 py-2 text-xs`, ~34px) and the back links on
@@ -107,6 +96,21 @@ text by design — `lib/db/cashiers.ts` explains why; revisit only together with
 of scope for v1, so this needs alpha's decision (see NEEDS_APPROVAL).
 
 ## Done
+
+- **Sign-in and sync errors in the UI language (item 22)** — auth errors classified (supabase-js error codes first,
+  message as fallback: wrong credentials / email not confirmed / weak password / already registered / rate limited /
+  network / unknown) and rendered through am.ts/en.ts; sync errors (sync sheet, owner page, shop lookup after
+  sign-in) classified as network / signed out / permission / server / unknown, explained in the UI language with the
+  raw text in small print underneath. Unit tests incl. the sign-in page in Amharic.
+  [PR #31](https://github.com/Alphaguyasa/Suq/pull/31) · tag `v2026-10-24-2` not pushed (refused) — commit `88d5c26`
+
+- **A sale voided on two tills is voided once (item 21)** — the already-voided check runs inside the write
+  transaction; after every pull `reconcileDuplicateVoids()` lets the device that wrote a later duplicate void append
+  a reversal of it (earliest void by created_at, then id, is the void on every till), so sums, stock and the server
+  agree again with no special case in reports. Two-till fake-server test through the real sync engine. Same PR:
+  `zod` overridden to ^4.6.6 (GHSA-mrhx-c7xc-m3w5, high, pinned by @serwist/next) — the CI audit gate was red.
+  Gap: a duplicate whose device is reset before its next pull stays uncorrected.
+  [PR #30](https://github.com/Alphaguyasa/Suq/pull/30) · tag `v2026-10-24-1` not pushed (refused) — commit `6422211`
 
 - **CSV import: per-row errors, honest summary (item 20)** — each row is one transaction (product + opening stock
   together, so a failed row leaves nothing a re-import would skip); failed rows reported, the rest carry on, and
