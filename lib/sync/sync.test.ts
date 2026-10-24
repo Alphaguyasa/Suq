@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DEVICE_META_ID, localWrite } from '@/lib/db';
+import { DEVICE_META_ID, clearAllTables, db, localWrite, registerDevice, salesRepo } from '@/lib/db';
+import { resetEngineState, setAuthed, syncNow } from './engine';
 import { FakeServer } from './fake-server';
 import { PUSH_BATCH_SIZE, drainOutbox, pushOnce } from './push';
 import { PULL_OVERLAP_MS, PULL_PAGE_SIZE, pullOnce } from './pull';
@@ -715,5 +716,111 @@ describe('7. rows that reach the server late', () => {
     const sent = upsert.mock.calls[0]?.[1] as Record<string, unknown>[];
     expect(sent[0]).toBeDefined();
     expect('received_at' in sent[0]!).toBe(false);
+  });
+});
+
+/* ------------------------------------------------------------------ 8 ---- */
+
+describe('8. two tills void the same sale while offline', () => {
+  afterEach(() => resetEngineState());
+
+  it('ends with one void on the server and on both tills, nothing deleted', async () => {
+    const server = new FakeServer();
+    const client = server.client();
+
+    // Till A is a replica; till B is the app's own database, so B runs the
+    // real repository and the real sync engine.
+    const a = await replica('suq-double-void-a', 'A1');
+    await clearAllTables();
+    await registerDevice({ shop_id: SHOP, device_prefix: 'B1', cashier_name: 'ሰላም' });
+    setAuthed(true);
+
+    const product = makeProduct();
+    await localWrite('products', product, a.db);
+    await localWrite(
+      'stock_movements',
+      {
+        id: 'opening-double-void',
+        shop_id: SHOP,
+        product_id: product.id,
+        qty_delta: 40,
+        reason: 'opening',
+        ref_id: null,
+        note: null,
+        created_at: '2026-07-31T08:00:00.000Z',
+        device_id: a.deviceId,
+      },
+      a.db,
+    );
+
+    const { sale, item } = await sellOn(a, { productId: product.id, qty: 6 });
+    await drainOutbox(client, a.db);
+    server.tick();
+    await syncNow(client);
+    expect(await onHandIn(db, product.id)).toBe(34);
+
+    // Both offline. A voids first (by its clock), B a minute later.
+    const voidedAt = new Date(Date.now() - 60_000).toISOString();
+    await localWrite(
+      'sales',
+      {
+        ...sale,
+        id: 'void-on-a',
+        receipt_no: 'A1-000002',
+        subtotal: -sale.subtotal,
+        total: -sale.total,
+        voids_sale_id: sale.id,
+        created_at: voidedAt,
+      },
+      a.db,
+    );
+    await localWrite(
+      'sale_items',
+      { ...item, id: 'void-item-on-a', sale_id: 'void-on-a', qty: -6, line_total: -item.line_total, created_at: voidedAt },
+      a.db,
+    );
+    await localWrite(
+      'stock_movements',
+      {
+        id: 'void-movement-on-a',
+        shop_id: SHOP,
+        product_id: product.id,
+        qty_delta: 6,
+        reason: 'return',
+        ref_id: 'void-on-a',
+        note: null,
+        created_at: voidedAt,
+        device_id: a.deviceId,
+      },
+      a.db,
+    );
+    const voidOnB = await salesRepo.voidSale(sale.id, 'wrong item');
+
+    // Back online: A pushes, then B syncs (push its void, pull A's, reconcile),
+    // then B's next sync pushes the reversal, then A pulls.
+    await drainOutbox(client, a.db);
+    server.tick();
+    await syncNow(client);
+    server.tick();
+    await syncNow(client);
+    server.tick();
+    await pullOnce(client, a.db);
+
+    const serverSales = server.rows('sales');
+    const net = serverSales.reduce((sum, row) => sum + Number(row.total), 0);
+
+    expect(serverSales, 'sale, two voids, one reversal').toHaveLength(4);
+    expect(net, 'the sale is voided once').toBe(0);
+    expect(server.onHand(product.id), 'goods came back once').toBe(40);
+    expect(await onHandIn(a.db, product.id)).toBe(40);
+    expect(await onHandIn(db, product.id)).toBe(40);
+    expect(await a.db.sales.count()).toBe(4);
+    expect(await db.sales.count()).toBe(4);
+    expect(await db.outbox.count(), 'B pushed everything').toBe(0);
+
+    const reversal = serverSales.find((row) => row.voids_sale_id === voidOnB.id);
+    expect(reversal, 'B reversed its own duplicate').toMatchObject({ device_id: voidOnB.device_id });
+    expect(serverSales.filter((row) => row.voids_sale_id === 'void-on-a'), 'A\'s void stands').toHaveLength(0);
+    expect((await salesRepo.findVoidOf(sale.id))?.id).toBe('void-on-a');
   });
 });

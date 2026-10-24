@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { applyAppendOnly } from '@/lib/sync/apply';
+import { newId } from '../id';
 import { db } from '../schema';
+import type { Sale } from '../schema';
 import { cartLine, freshDatabase, seedProduct } from '../test-helpers';
 import * as salesRepo from './sales';
 import * as stockRepo from './stock';
@@ -177,6 +180,127 @@ describe('voiding', () => {
 
     expect(sale.receipt_no).toBe('A1-000001');
     expect(voidRow.receipt_no).toBe('A1-000002');
+  });
+});
+
+/**
+ * What another till's void of `sale` looks like once a pull has applied it:
+ * the same rows voidSale() writes, from a different device, at `createdAt`.
+ */
+async function pullForeignVoid(sale: Sale, createdAt: string): Promise<Sale> {
+  const items = await salesRepo.itemsFor(sale.id);
+  const voidRow: Sale = {
+    ...sale,
+    id: newId(),
+    device_id: 'other-till',
+    receipt_no: 'B1-000007',
+    subtotal: -sale.subtotal,
+    discount: -sale.discount,
+    total: -sale.total,
+    voids_sale_id: sale.id,
+    cash_received: null,
+    created_at: createdAt,
+  };
+
+  await applyAppendOnly('sales', [{ ...voidRow }]);
+  await applyAppendOnly(
+    'sale_items',
+    items.map((item) => ({ ...item, id: newId(), sale_id: voidRow.id, qty: -item.qty, line_total: -item.line_total, created_at: createdAt })),
+  );
+  await applyAppendOnly(
+    'stock_movements',
+    items.map((item) => ({
+      id: newId(),
+      shop_id: sale.shop_id,
+      product_id: item.product_id,
+      qty_delta: item.qty,
+      reason: 'return',
+      ref_id: voidRow.id,
+      note: null,
+      created_at: createdAt,
+      device_id: 'other-till',
+    })),
+  );
+  await stockRepo.recomputeCache();
+
+  return voidRow;
+}
+
+async function netTakings(): Promise<number> {
+  return (await db.sales.toArray()).reduce((sum, sale) => sum + sale.total, 0);
+}
+
+describe('the same sale voided on two tills', () => {
+  it('writes one void row when two voids race on this till', async () => {
+    const product = await seedProduct();
+    const sale = await salesRepo.create([cartLine(product, 1)], { method: 'cash' });
+
+    const results = await Promise.allSettled([
+      salesRepo.voidSale(sale.id, 'double tap'),
+      salesRepo.voidSale(sale.id, 'double tap'),
+    ]);
+
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(await db.sales.where('voids_sale_id').equals(sale.id).count()).toBe(1);
+    expect((await db.stock_movements.toArray()).filter((m) => m.reason === 'return')).toHaveLength(1);
+  });
+
+  it('reverses this till\'s later void once the earlier one arrives', async () => {
+    const product = await seedProduct();
+    await stockRepo.openingStock({ productId: product.id, qty: 40 });
+    const sale = await salesRepo.create([cartLine(product, 6)], { method: 'cash' });
+
+    // This till voids it, then a pull brings the other till's void, made earlier.
+    const mine = await salesRepo.voidSale(sale.id, 'wrong item');
+    const theirs = await pullForeignVoid(sale, sale.created_at);
+
+    expect(await stockRepo.onHand(product.id), 'goods came back twice').toBe(46);
+    expect(await netTakings(), 'takings dropped twice').toBe(-sale.total);
+
+    const written = await salesRepo.reconcileDuplicateVoids();
+
+    expect(written).toHaveLength(1);
+    expect(written[0]).toMatchObject({ voids_sale_id: mine.id, total: sale.total, receipt_no: 'A1-000003' });
+    expect(await stockRepo.onHand(product.id)).toBe(40);
+    expect(await stockRepo.cachedOnHand(product.id)).toBe(40);
+    expect(await netTakings()).toBe(0);
+    expect(await salesRepo.findVoidOf(sale.id), 'the earliest void is the void').toMatchObject({ id: theirs.id });
+    expect(await salesRepo.isVoided(mine.id), 'the duplicate shows as reversed').toBe(true);
+
+    const movement = await db.stock_movements.where('ref_id').equals(written[0]!.id).first();
+    expect(movement).toMatchObject({ qty_delta: -6, reason: 'sale' });
+
+    // Queued for push like any other write, and nothing was updated or deleted.
+    const queued = await db.outbox.where('row_id').equals(written[0]!.id).count();
+    expect(queued).toBe(1);
+    expect(await db.sales.count()).toBe(4);
+
+    // Running it again (every pull does) writes nothing more.
+    expect(await salesRepo.reconcileDuplicateVoids()).toHaveLength(0);
+    expect(await db.sales.count()).toBe(4);
+  });
+
+  it('leaves the reversal to the other till when its void is the later one', async () => {
+    const product = await seedProduct();
+    await stockRepo.openingStock({ productId: product.id, qty: 10 });
+    const sale = await salesRepo.create([cartLine(product, 2)], { method: 'cash' });
+
+    const mine = await salesRepo.voidSale(sale.id, 'wrong item');
+    await pullForeignVoid(sale, new Date(Date.parse(mine.created_at) + 60_000).toISOString());
+
+    expect(await salesRepo.reconcileDuplicateVoids()).toHaveLength(0);
+    expect(await salesRepo.findVoidOf(sale.id)).toMatchObject({ id: mine.id });
+  });
+
+  it('breaks a created_at tie by id, the same way on every till', async () => {
+    const product = await seedProduct();
+    const sale = await salesRepo.create([cartLine(product, 1)], { method: 'cash' });
+
+    const first = await pullForeignVoid(sale, '2026-10-24T08:00:00.000Z');
+    const second = await pullForeignVoid(sale, '2026-10-24T08:00:00.000Z');
+    const expected = [first.id, second.id].sort()[0];
+
+    expect((await salesRepo.findVoidOf(sale.id))?.id).toBe(expected);
   });
 });
 

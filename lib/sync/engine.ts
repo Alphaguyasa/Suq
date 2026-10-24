@@ -1,6 +1,6 @@
 'use client';
 
-import { onLocalWrite } from '@/lib/db';
+import { onLocalWrite, salesRepo } from '@/lib/db';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 import type { SyncClient } from './client';
 import { supabaseSyncClient } from './client';
@@ -69,7 +69,12 @@ async function runSync(client: SyncClient, alsoPull: boolean): Promise<void> {
       if (push.error) {
         setState({ lastError: push.error });
       } else {
-        if (alsoPull) await pullOnce(client);
+        if (alsoPull) {
+          await pullOnce(client);
+          // A pull is when this till learns another till voided a sale it
+          // also voided. The reversal it writes goes out on the next push.
+          await salesRepo.reconcileDuplicateVoids();
+        }
         setState({ lastSyncAt: new Date().toISOString(), lastError: null });
       }
     } catch (cause) {
