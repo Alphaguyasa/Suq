@@ -54,7 +54,7 @@ function ProductStock({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <Link href={productHref(id)} className="ethiopic text-xs text-muted">
+        <Link href={productHref(id)} className="ethiopic flex min-h-touch min-w-touch items-center self-start text-sm text-muted">
           {product.name_am}
         </Link>
 

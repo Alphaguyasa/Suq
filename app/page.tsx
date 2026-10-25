@@ -221,7 +221,7 @@ export default function SellPage() {
           {receipt ? (
             <Link
               href={saleHref(receipt.id)}
-              className="flex items-center justify-between gap-2 rounded-lg border border-birr/30 bg-birr/10 px-3 py-2 text-birr-ink"
+              className="flex min-h-touch items-center justify-between gap-2 rounded-lg border border-birr/30 bg-birr/10 px-3 text-birr-ink"
             >
               <span className="ethiopic text-sm font-medium">{t.sell.completed}</span>
               <span className="num text-sm font-semibold">{receipt.receipt_no}</span>
@@ -286,7 +286,7 @@ export default function SellPage() {
                   type="button"
                   onClick={() => cart.setDiscountMode(mode)}
                   aria-pressed={cart.discountMode === mode}
-                  className={`ethiopic rounded-full border px-2.5 py-1.5 text-xs font-medium ${
+                  className={`ethiopic min-h-touch min-w-touch rounded-lg border px-3 text-sm font-medium ${
                     cart.discountMode === mode
                       ? 'border-ink bg-ink text-paper'
                       : 'border-rule text-muted'
@@ -303,7 +303,7 @@ export default function SellPage() {
                 onChange={(event) => cart.setDiscountInput(event.target.value)}
                 aria-label={t.sell.discount}
                 placeholder="0"
-                className="num w-20 rounded-lg border border-rule bg-paper px-2 py-1.5 text-right"
+                className="num min-h-touch w-24 rounded-lg border border-rule bg-paper px-3 text-right text-lg"
               />
             </div>
           </div>
