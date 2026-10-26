@@ -216,6 +216,68 @@ export async function recentProductIds(limit = 12): Promise<string[]> {
   return [...ids];
 }
 
+/**
+ * Sales whose created_at falls in [from, to), oldest first, read through the
+ * created_at index: a report for today should not load a year of trading.
+ */
+export async function between(from: string, to: string): Promise<Sale[]> {
+  return db.sales.where('created_at').between(from, to, true, false).toArray();
+}
+
+/** Every line of the given sales, in one query. */
+export async function itemsForSales(saleIds: string[]): Promise<SaleItem[]> {
+  if (saleIds.length === 0) return [];
+  return db.sale_items.where('sale_id').anyOf(saleIds).toArray();
+}
+
+export interface HistoryPage {
+  /** Newest first, always whole local days, so each day's total is the real one. */
+  sales: Sale[];
+  /** Older sales exist beyond the last day returned. */
+  hasMore: boolean;
+}
+
+/**
+ * The newest `limit` sales for the history screen, extended back to the start
+ * of the oldest day they touch. Cutting a day in half would print a day total
+ * that is wrong. Index range reads only; older days stay on disk.
+ */
+export async function history(limit: number): Promise<HistoryPage> {
+  const newest = await db.sales.orderBy('created_at').reverse().limit(limit).toArray();
+  const oldest = newest[newest.length - 1];
+  if (newest.length < limit || !oldest) return { sales: newest, hasMore: false };
+
+  const dayStart = new Date(oldest.created_at);
+  dayStart.setHours(0, 0, 0, 0);
+  const from = dayStart.toISOString();
+
+  const sales = await db.sales.where('created_at').aboveOrEqual(from).reverse().toArray();
+  const hasMore = (await db.sales.where('created_at').below(from).limit(1).count()) > 0;
+
+  return { sales, hasMore };
+}
+
+/**
+ * Receipts whose number contains `term`, newest first, at most `limit`. Not
+ * indexable (a substring), so it scans — but only while someone is searching.
+ */
+export async function searchByReceipt(term: string, limit: number): Promise<Sale[]> {
+  const needle = term.trim().toLowerCase();
+  return db.sales
+    .orderBy('created_at')
+    .reverse()
+    .filter((sale) => sale.receipt_no.toLowerCase().includes(needle))
+    .limit(limit)
+    .toArray();
+}
+
+/** Which of these sales have a void row pointing at them. */
+export async function voidedAmong(saleIds: string[]): Promise<Set<string>> {
+  if (saleIds.length === 0) return new Set();
+  const voids = await db.sales.where('voids_sale_id').anyOf(saleIds).toArray();
+  return new Set(voids.map((row) => row.voids_sale_id as string));
+}
+
 export interface SaleListOptions {
   limit?: number;
   /** Hide void rows themselves from the list. */

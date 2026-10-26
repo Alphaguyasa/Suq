@@ -326,45 +326,45 @@ describe('sales.list', () => {
   });
 });
 
-describe('recentProductIds', () => {
-  /** A sale from another till at a fixed time, so the order is not left to the clock. */
-  async function pulledSale(at: string, productIds: string[], voids: string | null = null) {
-    const id = newId();
-    await applyAppendOnly('sales', [
-      {
-        id,
-        shop_id: 'shop-test',
-        device_id: 'other-till',
-        receipt_no: `B1-${id.slice(0, 6)}`,
-        subtotal: 100,
-        discount: 0,
-        total: 100,
-        payment_method: 'cash',
-        cashier_name: 'x',
-        voided_by: null,
-        voids_sale_id: voids,
-        cash_received: null,
-        created_at: at,
-        synced_at: null,
-      },
-    ]);
-    await applyAppendOnly(
-      'sale_items',
-      productIds.map((product_id) => ({
-        id: newId(),
-        shop_id: 'shop-test',
-        sale_id: id,
-        product_id,
-        name_snapshot: product_id,
-        unit_price: 100,
-        qty: 1,
-        line_total: 100,
-        created_at: at,
-      })),
-    );
-    return id;
-  }
+/** A sale from another till at a fixed time, so the order is not left to the clock. */
+async function pulledSale(at: string, productIds: string[], voids: string | null = null) {
+  const id = newId();
+  await applyAppendOnly('sales', [
+    {
+      id,
+      shop_id: 'shop-test',
+      device_id: 'other-till',
+      receipt_no: `B1-${id.slice(0, 6)}`,
+      subtotal: 100,
+      discount: 0,
+      total: 100,
+      payment_method: 'cash',
+      cashier_name: 'x',
+      voided_by: null,
+      voids_sale_id: voids,
+      cash_received: null,
+      created_at: at,
+      synced_at: null,
+    },
+  ]);
+  await applyAppendOnly(
+    'sale_items',
+    productIds.map((product_id) => ({
+      id: newId(),
+      shop_id: 'shop-test',
+      sale_id: id,
+      product_id,
+      name_snapshot: product_id,
+      unit_price: 100,
+      qty: 1,
+      line_total: 100,
+      created_at: at,
+    })),
+  );
+  return id;
+}
 
+describe('recentProductIds', () => {
   it('lists products most recently sold first, each once, skipping void rows', async () => {
     const old = await pulledSale('2026-10-26T08:00:00.000Z', ['bread', 'milk']);
     await pulledSale('2026-10-26T09:00:00.000Z', ['soap']);
@@ -389,5 +389,52 @@ describe('recentProductIds', () => {
 
   it('is empty before the first sale', async () => {
     expect(await salesRepo.recentProductIds()).toEqual([]);
+  });
+});
+
+describe('reading a period and the history page', () => {
+  it('reads only the sales of a period, with their lines', async () => {
+    await pulledSale('2026-10-25T23:59:59.999Z', ['before']);
+    const inside = await pulledSale('2026-10-26T00:00:00.000Z', ['bread', 'milk']);
+    await pulledSale('2026-10-27T00:00:00.000Z', ['after']);
+
+    const sales = await salesRepo.between('2026-10-26T00:00:00.000Z', '2026-10-27T00:00:00.000Z');
+    expect(sales.map((sale) => sale.id)).toEqual([inside]);
+
+    const lines = await salesRepo.itemsForSales(sales.map((sale) => sale.id));
+    expect(lines.map((line) => line.product_id).sort()).toEqual(['bread', 'milk']);
+    expect(await salesRepo.itemsForSales([])).toEqual([]);
+  });
+
+  it('pages history by whole days, newest first, and says when more exist', async () => {
+    const day = (d: number, h: number) => new Date(2026, 9, d, h).toISOString();
+    const oldDay = await pulledSale(day(24, 9), ['a']);
+    const yesterday = [await pulledSale(day(25, 9), ['b']), await pulledSale(day(25, 15), ['c'])];
+    const today = await pulledSale(day(26, 10), ['d']);
+
+    // A limit of 2 lands mid-yesterday; the page grows to all of yesterday.
+    const page = await salesRepo.history(2);
+    expect(page.sales.map((sale) => sale.id)).toEqual([today, yesterday[1], yesterday[0]]);
+    expect(page.hasMore).toBe(true);
+
+    const all = await salesRepo.history(10);
+    expect(all.sales.map((sale) => sale.id)).toEqual([today, yesterday[1], yesterday[0], oldDay]);
+    expect(all.hasMore).toBe(false);
+
+    const exact = await salesRepo.history(4);
+    expect(exact.sales).toHaveLength(4);
+    expect(exact.hasMore).toBe(false);
+  });
+
+  it('searches receipts anywhere in history and finds voids of the results', async () => {
+    const product = await seedProduct();
+    const sale = await salesRepo.create([cartLine(product, 1)], { method: 'cash' });
+    await salesRepo.create([cartLine(product, 1)], { method: 'cash' });
+    const voidRow = await salesRepo.voidSale(sale.id, 'mistake');
+
+    const found = await salesRepo.searchByReceipt(sale.receipt_no.slice(-3), 10);
+    expect(found.map((row) => row.id)).toEqual([sale.id]);
+    expect(await salesRepo.voidedAmong([sale.id, voidRow.id])).toEqual(new Set([sale.id]));
+    expect(await salesRepo.searchByReceipt(sale.receipt_no, 0)).toEqual([]);
   });
 });

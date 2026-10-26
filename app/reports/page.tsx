@@ -8,8 +8,8 @@ import { CashUpSheet } from '@/components/reports/CashUpSheet';
 import { LineChart } from '@/components/reports/LineChart';
 import { Button } from '@/components/ui/Button';
 import { NumberInput } from '@/components/ui/Field';
-import { db, getSettings, productsRepo, stockRepo } from '@/lib/db';
-import type { PaymentMethod } from '@/lib/db';
+import { getSettings, productsRepo, salesRepo, stockRepo } from '@/lib/db';
+import type { PaymentMethod, Sale, SaleItem } from '@/lib/db';
 import { formatETB, formatQty, parseETBOrZero } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { productStockHref } from '@/lib/routes';
@@ -23,10 +23,12 @@ import {
   topProducts,
 } from '@/lib/reports/compute';
 import type { PeriodKey } from '@/lib/reports/period';
-import { daysIn, periodFor, previousPeriod, withinPeriod } from '@/lib/reports/period';
+import { daysIn, periodFor, previousPeriod } from '@/lib/reports/period';
 
 const PERIODS: PeriodKey[] = ['today', 'week', 'month'];
 const METHODS: PaymentMethod[] = ['cash', 'telebirr', 'card', 'credit'];
+const EMPTY: Sale[] = [];
+const EMPTY_ITEMS: SaleItem[] = [];
 
 export default function ReportsPage() {
   const t = useT();
@@ -35,30 +37,24 @@ export default function ReportsPage() {
   const [floatInput, setFloatInput] = useState('');
   const [countedInput, setCountedInput] = useState('');
 
+  const period = useMemo(() => periodFor(periodKey), [periodKey]);
+  const prior = useMemo(() => previousPeriod(periodKey), [periodKey]);
+
   // Everything reads local Dexie, so reports work offline like the rest.
-  const sales = useLiveQuery(() => db.sales.toArray(), []);
-  const items = useLiveQuery(() => db.sale_items.toArray(), []);
+  // Only the two periods on screen are read, through the created_at index,
+  // not every sale and line the shop ever recorded.
+  const current = useLiveQuery(async () => {
+    const sales = await salesRepo.between(period.from, period.to);
+    const items = await salesRepo.itemsForSales(sales.map((sale) => sale.id));
+    return { sales, items };
+  }, [period]);
+  const inPrior = useLiveQuery(() => salesRepo.between(prior.from, prior.to), [prior]) ?? EMPTY;
   const products = useLiveQuery(() => productsRepo.list(), []);
   const onHand = useLiveQuery(() => stockRepo.cachedOnHandAll(), []);
   const settings = useLiveQuery(() => getSettings(), []);
 
-  const period = useMemo(() => periodFor(periodKey), [periodKey]);
-  const prior = useMemo(() => previousPeriod(periodKey), [periodKey]);
-
-  const inPeriod = useMemo(
-    () => (sales ?? []).filter((sale) => withinPeriod(sale.created_at, period)),
-    [sales, period],
-  );
-  const inPrior = useMemo(
-    () => (sales ?? []).filter((sale) => withinPeriod(sale.created_at, prior)),
-    [sales, prior],
-  );
-
-  const saleIds = useMemo(() => new Set(inPeriod.map((sale) => sale.id)), [inPeriod]);
-  const periodItems = useMemo(
-    () => (items ?? []).filter((item) => saleIds.has(item.sale_id)),
-    [items, saleIds],
-  );
+  const inPeriod = current?.sales ?? EMPTY;
+  const periodItems = current?.items ?? EMPTY_ITEMS;
 
   const costByProduct = useMemo(
     () => new Map((products ?? []).map((product) => [product.id, product.cost_price])),
@@ -92,7 +88,7 @@ export default function ReportsPage() {
     [inPeriod, floatInput, countedInput],
   );
 
-  if (sales === undefined || settings === undefined) return null;
+  if (current === undefined || settings === undefined) return null;
 
   return (
     <div className="flex flex-col gap-8">
