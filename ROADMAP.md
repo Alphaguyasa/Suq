@@ -13,7 +13,7 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-10-26 that is item 25, then 26.
+"after the pending migrations". As of 2026-10-26 (run 11) that is item 27, then 28.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
 `docs/RULES.md` says "no camera scanning in v1 and no scanner library", and this item was written by a run, not
@@ -50,21 +50,12 @@ fake Supabase routes working), so those tests prove what they claim.
 RLS is on for every table, append-only tables allow only SELECT/INSERT, no XSS sinks, and the only writes outside
 `localWrite()` are the sanctioned `lib/sync/apply.ts` and the dev-only demo seed. Items below are ordered by priority.
 
-### 25. [P2 · M] Sale screen re-reads every stock movement after each write
-`stockRepo.onHandAll()` iterates the whole `stock_movements` table on every change; `stock_cache` is maintained but
-never read, and pulled movements don't refresh it. `recentProductIds` makes ~40 sequential queries. Fix: read
-`stock_cache` (refresh it in `apply.ts` for touched products), one `anyOf` query for recents. Keep stock derived.
-
-### 26. [P2 · M] Reports and sales history read whole tables
-`app/reports/page.tsx` loads all sales and sale lines to show one period; `app/sales/page.tsx` renders every sale.
-After a year of trading that is seconds on a cheap phone. Fix: `created_at` index range queries; paginate history.
-
 ### 27. [P2 · S] Gross profit uses today's cost, not the cost at the time of sale
-`lib/reports/compute.ts` says so in a comment. Fix: `cost_snapshot` on `sale_items` (Dexie v5 + upgrade test,
+`lib/reports/compute.ts` says so in a comment. Fix: `cost_snapshot` on `sale_items` (Dexie v6 — v5 is taken by item 25's cache rebuild — + upgrade test,
 additive nullable column migration); old lines fall back to current cost.
 
 ### 28. [P2 · M] Test gaps
-No tests for `recentProductIds`, `adoptShopFromMembership`, `lib/reports/period.ts`, the `MissingColumnError`
+No tests for `adoptShopFromMembership`, `lib/reports/period.ts`, the `MissingColumnError`
 legacy pull fallback, and the adjust/setup/settings UI error paths (`importProducts`, void and restock are covered
 since PRs #27/#28). Also check (unverified) that a
 scanner typing a code + Enter cannot add the item twice (`handleTermChange` and `handleSearchKeyDown` both look up).
@@ -87,7 +78,26 @@ text by design — `lib/db/cashiers.ts` explains why; revisit only together with
 `credit` is already a payment method but records no customer. `docs/RULES.md` lists customer credit accounts as out
 of scope for v1, so this needs alpha's decision (see NEEDS_APPROVAL).
 
+### 34. [P2 · S] Pulled timestamps are not in the till's ISO format (found 2026-10-26, run 11)
+Local rows carry `toISOString()` (`…T08:00:00.123Z`); rows pulled from PostgREST probably carry Postgres's
+`timestamptz` text (`…T08:00:00.123+00:00`, trailing zeros trimmed). Unverified against the live project. Every
+`created_at` range and sort (reports periods, history paging, `findVoidOf`, recents) compares strings, so a pulled
+sale can sort a millisecond out of place or land in the wrong period right at a boundary. Fix: normalise
+`created_at`/`updated_at` to `new Date(x).toISOString()` in `lib/sync/apply.ts`; a test with a `+00:00` row.
+
 ## Done
+
+- **Reports and sales history read only what they show (item 26)** — reports read the current and previous period
+  through the `created_at` index plus only those sales' lines (one `anyOf`); history shows the newest 100 sales
+  extended to whole days (honest day totals) with "show older sales"; receipt search still covers all history, and
+  voided marks come from the `voids_sale_id` index. Unit + e2e. [PR #38](https://github.com/Alphaguyasa/Suq/pull/38) ·
+  tag `v2026-10-26-4` not pushed (refused) — commit `da6578a`
+
+- **Screens read stock from the cache (item 25)** — sale, products and reports read `stock_cache` (one row per
+  product) instead of summing every movement; pulled movements now refresh the cache in the same transaction (they
+  never did, so multi-till caches had drifted); Dexie v5 rebuilds the cache once from movements. `recentProductIds`
+  is one `anyOf` query. Stock stays derived. [PR #37](https://github.com/Alphaguyasa/Suq/pull/37) · tag
+  `v2026-10-26-3` not pushed (refused) — commit `84c8908`
 
 - **Reset says what has not synced, offers the backup first (item 24)** — `unsyncedSummary()` reads the outbox; the
   danger section shows live how many records (and sales) exist only on this device and will be lost, with a
