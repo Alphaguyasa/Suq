@@ -24,7 +24,7 @@ The two migrations are still unapplied.
 - New e2e gate: every visible control on the main screens, at 360px and 1280px, plus no sideways scroll on the phone.
 - Local: lint ✅ · typecheck ✅ · unit 273 ✅ · build ✅ · e2e 16/16 ✅. CI green on the first try. Squash-merged as `89eaf6e`.
 
-**Item 24: reset shows what has not synced → [PR #35](https://github.com/Alphaguyasa/Suq/pull/35), RESULT35.**
+**Item 24: reset shows what has not synced → [PR #35](https://github.com/Alphaguyasa/Suq/pull/35), merged.**
 - `unsyncedSummary()` counts the outbox and the sales in it. The danger section reads it live:
   - outbox not empty: an ochre box says how many records (and sales) exist only here and will be lost for good,
     with a "download a backup first (JSON)" button right there. It has its own label, so it is never confused
