@@ -106,7 +106,7 @@ export default function ReportsPage() {
               type="button"
               onClick={() => setPeriodKey(key)}
               aria-pressed={periodKey === key}
-              className={`ethiopic min-h-touch rounded-full border px-4 text-sm font-medium ${
+              className={`ethiopic min-h-touch min-w-touch rounded-full border px-4 text-sm font-medium ${
                 periodKey === key ? 'border-ink bg-ink text-paper' : 'border-rule text-muted'
               }`}
             >
@@ -186,7 +186,7 @@ export default function ReportsPage() {
                 type="button"
                 onClick={() => setRankBy(key)}
                 aria-pressed={rankBy === key}
-                className={`ethiopic rounded-full border px-3 py-2 text-xs font-medium ${
+                className={`ethiopic min-h-touch min-w-touch rounded-full border px-4 text-sm font-medium ${
                   rankBy === key ? 'border-ink bg-ink text-paper' : 'border-rule text-muted'
                 }`}
               >

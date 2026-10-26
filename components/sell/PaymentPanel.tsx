@@ -75,7 +75,7 @@ export function PaymentPanel({
             <button
               type="button"
               onClick={() => onReceived(formatETB(total))}
-              className="ethiopic rounded-full border border-rule px-3 py-2 text-xs font-medium"
+              className="ethiopic min-h-touch min-w-touch rounded-lg border border-rule px-3 text-sm font-medium"
             >
               {t.sell.total}
             </button>
@@ -84,7 +84,7 @@ export function PaymentPanel({
                 key={note}
                 type="button"
                 onClick={() => onReceived(formatETB(note))}
-                className="num rounded-full border border-rule px-3 py-2 text-xs font-medium"
+                className="num min-h-touch min-w-touch rounded-lg border border-rule px-3 text-sm font-medium"
               >
                 {formatETB(note)}
               </button>

@@ -56,7 +56,7 @@ function SaleDetail({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-5">
       <header data-print-hide="" className="flex items-center justify-between gap-3">
-        <Link href="/sales" className="ethiopic text-sm text-muted">
+        <Link href="/sales" className="ethiopic flex min-h-touch min-w-touch items-center text-sm text-muted">
           {t.sales.title}
         </Link>
         <span className="num text-sm font-semibold">{sale.receipt_no}</span>
@@ -68,7 +68,10 @@ function SaleDetail({ id }: { id: string }) {
           className="flex items-center justify-between gap-2 rounded-lg border border-ochre/40 bg-ochre/10 px-3 py-2"
         >
           <span className="ethiopic text-sm font-medium text-ochre-ink">{t.sales.voidedAs}</span>
-          <Link href={saleHref(voidedBy.id)} className="num text-sm font-semibold text-ochre-ink">
+          <Link
+            href={saleHref(voidedBy.id)}
+            className="num flex min-h-touch min-w-touch items-center justify-end text-sm font-semibold text-ochre-ink"
+          >
             {voidedBy.receipt_no}
           </Link>
         </p>

@@ -42,7 +42,7 @@ export function CartLines({
                 type="button"
                 onClick={() => onRemove(item.product_id)}
                 aria-label={`${t.sell.remove} ${item.name}`}
-                className="-mt-1 -mr-1 flex size-9 shrink-0 items-center justify-center rounded-lg text-muted"
+                className="-mt-3 -mr-2 flex size-touch shrink-0 items-center justify-center rounded-lg text-xl text-muted"
               >
                 ×
               </button>
