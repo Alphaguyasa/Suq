@@ -69,7 +69,7 @@ export default function ProductsPage() {
               type="button"
               onClick={() => setSort(key)}
               aria-pressed={sort === key}
-              className={`ethiopic rounded-full border px-3 py-2 text-xs font-medium ${
+              className={`ethiopic min-h-touch min-w-touch rounded-full border px-4 text-sm font-medium ${
                 sort === key ? 'border-ink bg-ink text-paper' : 'border-rule text-muted'
               }`}
             >
