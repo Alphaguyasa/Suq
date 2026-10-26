@@ -270,6 +270,10 @@ export const en: Dict = {
     resetConfirmLabel: 'Type the shop name to confirm',
     resetDevice: 'Reset',
     resetMismatch: 'That does not match',
+    resetUnsynced: (total: number, sales: number) =>
+      `${total} records${sales > 0 ? ` (${sales} of them sales)` : ''} have not reached the server yet. They exist only on this device and will be lost for good.`,
+    resetBackupFirst: 'Download a backup first (JSON)',
+    resetAllSynced: 'Everything on this device has reached the server. After a reset, sign in and sync to get it back.',
     backupSection: 'Backup',
     backupHint: 'Download a copy of the sales and stock records to this device. No internet needed. Keep the copy somewhere other than this phone (a computer, a flash drive).',
     backupJson: 'Download full backup (JSON)',
