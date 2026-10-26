@@ -156,6 +156,7 @@ export const en: Dict = {
     voidExplain: 'The sale is not deleted. A correcting record is added.',
     voidedAs: 'Voided by',
     original: 'Original sale',
+    showMore: 'Show older sales',
   },
   receipt: {
     cashier: 'Cashier',

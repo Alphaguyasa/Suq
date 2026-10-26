@@ -161,6 +161,7 @@ export const am = {
     voidExplain: 'ሽያጩ አይጠፋም። የሚስተካከል መዝገብ ይጨመራል።',
     voidedAs: 'የተሰረዘው በ',
     original: 'ዋናው ሽያጭ',
+    showMore: 'የቆዩ ሽያጮችን አሳይ',
   },
   receipt: {
     cashier: 'ሻጭ',

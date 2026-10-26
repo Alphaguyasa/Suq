@@ -3,6 +3,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { Button } from '@/components/ui/Button';
 import { TextInput } from '@/components/ui/Field';
 import { salesRepo } from '@/lib/db';
 import { formatDateTime, formatETB } from '@/lib/format';
@@ -10,29 +11,36 @@ import { useT } from '@/lib/i18n';
 import { saleHref } from '@/lib/routes';
 import { groupByDay } from '@/lib/sales/grouping';
 
+/**
+ * Sales rendered per step. A year of trading is thousands of rows; a cheap
+ * phone should draw today's, not all of them, and fetch older days on request.
+ */
+const PAGE_SIZE = 100;
+
 export default function SalesHistoryPage() {
   const t = useT();
   const [term, setTerm] = useState('');
+  const [limit, setLimit] = useState(PAGE_SIZE);
 
-  const sales = useLiveQuery(() => salesRepo.list(), []);
+  const needle = term.trim();
 
-  /** A sale is voided when some other row points at it. */
-  const voidedIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const sale of sales ?? []) {
-      if (sale.voids_sale_id) ids.add(sale.voids_sale_id);
-    }
-    return ids;
-  }, [sales]);
+  const page = useLiveQuery(async () => {
+    const { sales, hasMore } = needle
+      ? await salesRepo
+          .searchByReceipt(needle, limit + 1)
+          .then((found) => ({ sales: found.slice(0, limit), hasMore: found.length > limit }))
+      : await salesRepo.history(limit);
 
-  const days = useMemo(() => {
-    const needle = term.trim().toLowerCase();
-    const filtered = needle
-      ? (sales ?? []).filter((sale) => sale.receipt_no.toLowerCase().includes(needle))
-      : (sales ?? []);
+    // A sale is voided when some other row points at it. Asked of the index,
+    // because a search result's void row need not be among the rows shown.
+    const voidedIds = await salesRepo.voidedAmong(sales.map((sale) => sale.id));
+    return { sales, hasMore, voidedIds };
+  }, [needle, limit]);
 
-    return groupByDay(filtered);
-  }, [sales, term]);
+  const sales = page?.sales;
+  const voidedIds = page?.voidedIds ?? new Set<string>();
+
+  const days = useMemo(() => groupByDay(sales ?? []), [sales]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -41,7 +49,10 @@ export default function SalesHistoryPage() {
       <TextInput
         type="search"
         value={term}
-        onChange={(event) => setTerm(event.target.value)}
+        onChange={(event) => {
+          setTerm(event.target.value);
+          setLimit(PAGE_SIZE);
+        }}
         placeholder={t.sales.searchPlaceholder}
         aria-label={t.sales.searchPlaceholder}
         className="num"
@@ -49,7 +60,7 @@ export default function SalesHistoryPage() {
 
       {sales === undefined ? null : days.length === 0 ? (
         <p className="ethiopic py-8 text-center text-sm text-muted">
-          {sales.length === 0 ? t.sales.empty : t.sales.noResults}
+          {needle === '' ? t.sales.empty : t.sales.noResults}
         </p>
       ) : (
         days.map((day) => (
@@ -110,6 +121,12 @@ export default function SalesHistoryPage() {
           </section>
         ))
       )}
+
+      {page?.hasMore ? (
+        <Button type="button" onClick={() => setLimit((current) => current + PAGE_SIZE)}>
+          <span className="ethiopic">{t.sales.showMore}</span>
+        </Button>
+      ) : null}
     </div>
   );
 }
