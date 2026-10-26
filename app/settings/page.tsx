@@ -18,6 +18,7 @@ import {
   listCashiers,
   removeCashier,
   resetDevice,
+  unsyncedSummary,
   updateSettings,
   db,
 } from '@/lib/db';
@@ -253,16 +254,18 @@ export default function SettingsPage() {
   );
 }
 
-/**
- * For a shop that never signs in, this is the only copy of its history that
- * is not on the till itself. Built from IndexedDB on tap; works offline.
- */
-function BackupSection() {
-  const { t, other } = useBilingual();
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ ok: true; sales: number; products: number } | { ok: false }>();
+type BackupResult = { ok: true; sales: number; products: number } | { ok: false };
 
-  async function handleExport(kind: 'json' | 'csv') {
+/**
+ * Builds a backup from IndexedDB on tap and hands it over as a file; works
+ * offline. Shared by the backup section and the reset warning, which offers
+ * the same download right where the data is about to be lost.
+ */
+function useBackupExport() {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<BackupResult>();
+
+  async function exportBackup(kind: 'json' | 'csv') {
     setBusy(true);
     setResult(undefined);
     try {
@@ -283,6 +286,23 @@ function BackupSection() {
     }
   }
 
+  return { busy, result, exportBackup };
+}
+
+function BackupResultText({ result }: { result: BackupResult | undefined }) {
+  const { t } = useBilingual();
+  if (!result) return null;
+  return <>{result.ok ? t.settings.backupDone(result.sales, result.products) : t.settings.backupFailed}</>;
+}
+
+/**
+ * For a shop that never signs in, this is the only copy of its history that
+ * is not on the till itself.
+ */
+function BackupSection() {
+  const { t, other } = useBilingual();
+  const { busy, result, exportBackup } = useBackupExport();
+
   return (
     <section className="flex flex-col gap-3" aria-labelledby="backup-heading">
       <h2 id="backup-heading" className="ethiopic text-lg font-semibold">
@@ -291,19 +311,15 @@ function BackupSection() {
       </h2>
       <p className="ethiopic max-w-prose text-sm text-muted">{t.settings.backupHint}</p>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="quiet" disabled={busy} onClick={() => void handleExport('json')}>
+        <Button type="button" variant="quiet" disabled={busy} onClick={() => void exportBackup('json')}>
           <span className="ethiopic">{t.settings.backupJson}</span>
         </Button>
-        <Button type="button" variant="quiet" disabled={busy} onClick={() => void handleExport('csv')}>
+        <Button type="button" variant="quiet" disabled={busy} onClick={() => void exportBackup('csv')}>
           <span className="ethiopic">{t.settings.backupCsv}</span>
         </Button>
       </div>
       <p role="status" data-testid="backup-result" className="ethiopic text-sm empty:hidden">
-        {result?.ok
-          ? t.settings.backupDone(result.sales, result.products)
-          : result
-            ? t.settings.backupFailed
-            : null}
+        <BackupResultText result={result} />
       </p>
     </section>
   );
@@ -479,12 +495,42 @@ function DangerSection({ shopName, onReset }: { shopName: string; onReset: () =>
   const [error, setError] = useState<string>();
   const [saveError, setSaveError] = useState<WriteFailure>();
 
+  // Live: a push that lands while this screen is open changes what a reset would lose.
+  const unsynced = useLiveQuery(() => unsyncedSummary(), []);
+  const backup = useBackupExport();
+
   const armed = typed.trim() === shopName.trim() && shopName.trim() !== '';
 
   return (
     <section className="flex flex-col gap-3 rounded-xl border border-alarm/40 p-4">
       <h2 className="ethiopic text-lg font-semibold text-alarm">{t.settings.dangerSection}</h2>
       <p className="ethiopic max-w-prose text-sm text-muted">{t.settings.resetWarning}</p>
+
+      {unsynced === undefined ? null : unsynced.total > 0 ? (
+        <div
+          data-testid="reset-unsynced"
+          className="flex flex-col gap-3 rounded-lg border border-ochre/40 bg-ochre/10 p-3"
+        >
+          <p className="ethiopic max-w-prose text-sm font-medium text-ochre-ink">
+            {t.settings.resetUnsynced(unsynced.total, unsynced.sales)}
+          </p>
+          <Button
+            type="button"
+            variant="quiet"
+            disabled={backup.busy}
+            onClick={() => void backup.exportBackup('json')}
+          >
+            <span className="ethiopic">{t.settings.resetBackupFirst}</span>
+          </Button>
+          <p role="status" data-testid="reset-backup-result" className="ethiopic text-sm empty:hidden">
+            <BackupResultText result={backup.result} />
+          </p>
+        </div>
+      ) : (
+        <p data-testid="reset-all-synced" className="ethiopic max-w-prose text-sm text-birr-ink">
+          {t.settings.resetAllSynced}
+        </p>
+      )}
 
       <Field
         htmlFor="reset-confirm"

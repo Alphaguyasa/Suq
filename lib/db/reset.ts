@@ -17,3 +17,25 @@ export async function resetDevice(): Promise<void> {
     await Promise.all(db.tables.map((table) => table.clear()));
   });
 }
+
+export interface UnsyncedSummary {
+  /** Every outbox row: sales, their lines, stock movements, product edits. */
+  total: number;
+  /** Of those, sale rows (voids included), the ones an owner counts. */
+  sales: number;
+}
+
+/**
+ * What a reset would destroy for good: the outbox is the only record of
+ * changes the server has never seen. Everything else on the device comes
+ * back with the first pull after signing in again.
+ */
+export async function unsyncedSummary(): Promise<UnsyncedSummary> {
+  return db.transaction('r', db.outbox, async () => {
+    const [total, sales] = await Promise.all([
+      db.outbox.count(),
+      db.outbox.where('table').equals('sales').count(),
+    ]);
+    return { total, sales };
+  });
+}
