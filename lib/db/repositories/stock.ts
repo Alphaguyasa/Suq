@@ -1,7 +1,7 @@
 import { getDevice } from '../device';
 import { newId, nowIso } from '../id';
 import { db } from '../schema';
-import type { MovementReason, StockMovement } from '../schema';
+import type { MovementReason, StockMovement, SuqDatabase } from '../schema';
 import { localWrite } from '../write';
 
 /**
@@ -89,9 +89,47 @@ export async function recomputeCache(productId?: string): Promise<void> {
   });
 }
 
+/**
+ * Refresh the cache entries of the given products from their movements, on
+ * any database (the sync engine applies pulls to the one it is handed). Runs
+ * inside the caller's transaction when there is one; the caller must include
+ * stock_movements and stock_cache in it.
+ */
+export async function recomputeCacheFor(
+  productIds: Iterable<string>,
+  database: SuqDatabase = db,
+): Promise<void> {
+  const computed_at = nowIso();
+
+  for (const product_id of new Set(productIds)) {
+    let on_hand = 0;
+    await database.stock_movements
+      .where('product_id')
+      .equals(product_id)
+      .each((movement) => {
+        on_hand += movement.qty_delta;
+      });
+    await database.stock_cache.put({ product_id, on_hand, computed_at });
+  }
+}
+
 export async function cachedOnHand(productId: string): Promise<number> {
   const entry = await db.stock_cache.get(productId);
   return entry?.on_hand ?? 0;
+}
+
+/**
+ * Stock for every product, as the screens show it. Reads the cache, one row
+ * per product, instead of summing every movement the shop has ever recorded:
+ * the sale screen re-runs this after every write, and a year of trading is
+ * tens of thousands of movements on a cheap phone. The number is still the
+ * movement sum, because every path that adds a movement refreshes the cache
+ * in the same transaction (local writes here and in sales.ts, pulled rows in
+ * lib/sync/apply.ts), and schema v5 rebuilt it once on every till.
+ */
+export async function cachedOnHandAll(): Promise<Map<string, number>> {
+  const entries = await db.stock_cache.toArray();
+  return new Map(entries.map((entry) => [entry.product_id, entry.on_hand]));
 }
 
 /** Append one movement and refresh that product's cache entry, atomically. */

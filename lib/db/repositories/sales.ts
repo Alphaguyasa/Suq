@@ -190,19 +190,30 @@ export async function isVoided(saleId: string): Promise<boolean> {
  * should find them without hunting.
  */
 export async function recentProductIds(limit = 12): Promise<string[]> {
-  const recent = await db.sales.orderBy('created_at').reverse().limit(40).toArray();
-  const ids: string[] = [];
+  const recent = (await db.sales.orderBy('created_at').reverse().limit(40).toArray()).filter(
+    (sale) => sale.voids_sale_id === null,
+  );
 
+  // One query for every line of those sales, not one per sale: this runs
+  // after every write on the sale screen.
+  const lines = await db.sale_items
+    .where('sale_id')
+    .anyOf(recent.map((sale) => sale.id))
+    .toArray();
+  const linesBySale = new Map<string, SaleItem[]>();
+  for (const line of lines) {
+    linesBySale.set(line.sale_id, [...(linesBySale.get(line.sale_id) ?? []), line]);
+  }
+
+  const ids = new Set<string>();
   for (const sale of recent) {
-    if (sale.voids_sale_id !== null) continue;
-
-    for (const item of await itemsFor(sale.id)) {
-      if (!ids.includes(item.product_id)) ids.push(item.product_id);
-      if (ids.length >= limit) return ids;
+    for (const item of linesBySale.get(sale.id) ?? []) {
+      ids.add(item.product_id);
+      if (ids.size >= limit) return [...ids];
     }
   }
 
-  return ids;
+  return [...ids];
 }
 
 export interface SaleListOptions {

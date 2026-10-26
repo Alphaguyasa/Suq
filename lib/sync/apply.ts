@@ -1,6 +1,6 @@
 import type { EntityTable } from 'dexie';
 import type { Product, SuqDatabase, SyncedTable } from '@/lib/db';
-import { db as defaultDb } from '@/lib/db';
+import { db as defaultDb, stockRepo } from '@/lib/db';
 
 /**
  * ============================================================================
@@ -39,7 +39,12 @@ export async function applyAppendOnly(
   // overload from the generic alone. Safe because all three are keyed by id.
   const target = db[table] as unknown as EntityTable<{ id: string }, 'id'>;
 
-  await db.transaction('rw', db[table], async () => {
+  // A pulled movement changes stock just like a local one, so the screens'
+  // stock cache is refreshed for the products it touched, in the same
+  // transaction: no moment where the movement exists and the cache is stale.
+  const tables = table === 'stock_movements' ? [db.stock_movements, db.stock_cache] : [db[table]];
+
+  await db.transaction('rw', tables, async () => {
     const ids = rows.map((row) => row.id as string);
     const existing = new Set(
       (await target.bulkGet(ids)).filter(Boolean).map((row) => (row as { id: string }).id),
@@ -51,6 +56,13 @@ export async function applyAppendOnly(
 
     if (fresh.length > 0) {
       await target.bulkPut(fresh as unknown as { id: string }[]);
+
+      if (table === 'stock_movements') {
+        await stockRepo.recomputeCacheFor(
+          fresh.map((row) => row.product_id as string),
+          db,
+        );
+      }
     }
   });
 

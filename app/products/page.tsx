@@ -18,7 +18,7 @@ export default function ProductsPage() {
   // Reactive: the grid re-renders the moment a movement or edit lands,
   // which is what makes the low-stock dot appear while you watch it.
   const products = useLiveQuery(() => productsRepo.search(term), [term]);
-  const onHand = useLiveQuery(() => stockRepo.onHandAll(), []);
+  const onHand = useLiveQuery(() => stockRepo.cachedOnHandAll(), []);
 
   const sorted = useMemo(() => {
     if (!products) return [];
