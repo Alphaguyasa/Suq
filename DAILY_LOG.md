@@ -4,6 +4,50 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-26 — Run 11 (scheduled, second run today)
+
+**Start.** `master` @ `59fa416`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page
+(platform.claude.com). Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+**Supabase check.** This session has no Supabase connector tools at all, so the two migrations are still unapplied
+and unchecked.
+
+**Item 25: screens read stock from the cache → [PR #37](https://github.com/Alphaguyasa/Suq/pull/37), merged.**
+- `cachedOnHandAll()` reads `stock_cache` (one row per product). Sale, products and reports use it instead of
+  `onHandAll()`, which summed every movement on every change.
+- Bug found on the way: pulled movements never refreshed the cache, so on a multi-till shop it had drifted from
+  SUM(qty_delta). Nobody saw it only because nothing read the cache. `applyAppendOnly` now refreshes the touched
+  products in the same transaction. The new tests fail without that change.
+- Dexie v5: no store change; the upgrade rebuilds the cache once from the movements (entries that agree are left
+  untouched, so the existing upgrade test still sees every row unchanged). New test: a stale v1–v4 cache is repaired.
+- `recentProductIds`: one `anyOf` query instead of up to 40.
+- Local: lint ✅ · typecheck ✅ · unit 291 ✅ · build ✅ · e2e 17/17 ✅. CI green on the first try. Squash-merged as `84c8908`.
+
+**Item 26: reports and history read only what they show → [PR #38](https://github.com/Alphaguyasa/Suq/pull/38), merged.**
+- Reports: current and previous period through the `created_at` index; only those sales' lines.
+- History: newest 100 sales extended to whole days (a cut day would show a wrong day total), "show older sales"
+  button (am/en). Search still covers all of history; voided marks come from the `voids_sale_id` index.
+- Local: lint ✅ · typecheck ✅ · unit 294 ✅ · build ✅ · e2e 18/18 ✅ (new `e2e/sales-history.spec.ts`). CI: green (the push-triggered run hung installing Playwright before any test ran; cancelled and re-run once, green).
+
+**Found:** pulled rows probably keep Postgres's `+00:00` timestamp text while local rows use `Z`; all `created_at`
+ranges compare strings. New ROADMAP item 34 (P2 · S).
+
+**Blocked:** release tags (refused as before). Rollback SHAs are in NEEDS_APPROVAL.
+
+### REPORT — 2026-10-26 (run 11)
+| Field | Content |
+|---|---|
+| Done | Item 25: screens read stock from the cache; pulled movements now keep it right — [PR #37](https://github.com/Alphaguyasa/Suq/pull/37). Item 26: reports and sales history read only what they show — [PR #38](https://github.com/Alphaguyasa/Suq/pull/38) |
+| Merged | PR #37: yes (`84c8908`) · PR #38: merged · tags `v2026-10-26-3`/`-4` NOT pushed (refused) |
+| Failed or blocked | Tag pushes; item 12 waits for alpha; item 13 waits for the migrations; migrations still unapplied (no Supabase connector in this session) |
+| Roadmap | 11 open (12, 13, 16, 18, 27–34; 34 new); no replan needed |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Yes/no on camera scanning and on a credit (ዱቤ) ledger; **apply the two migrations**; tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 27 (gross profit at cost-at-sale; needs a new `sale_items` column that production lacks until alpha applies migrations, so pushes must not send it before then — if that can't be done safely, item 28 first), item 28 (test gaps) |
+
+---
+
 ## 2026-10-26 — Run 10 (scheduled)
 
 **Start.** `master` @ `decbfdb`, CI green. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
