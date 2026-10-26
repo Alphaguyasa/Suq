@@ -28,7 +28,7 @@ and unchecked.
 - Reports: current and previous period through the `created_at` index; only those sales' lines.
 - History: newest 100 sales extended to whole days (a cut day would show a wrong day total), "show older sales"
   button (am/en). Search still covers all of history; voided marks come from the `voids_sale_id` index.
-- Local: lint ✅ · typecheck ✅ · unit 294 ✅ · build ✅ · e2e 18/18 ✅ (new `e2e/sales-history.spec.ts`). CI: green (the push-triggered run hung installing Playwright before any test ran; cancelled and re-run once, green).
+- Local: lint ✅ · typecheck ✅ · unit 294 ✅ · build ✅ · e2e 18/18 ✅ (new `e2e/sales-history.spec.ts`). CI: green (the push-triggered run hung installing Playwright before any test ran; cancelled and re-run once, green). Squash-merged as `da6578a`.
 
 **Found:** pulled rows probably keep Postgres's `+00:00` timestamp text while local rows use `Z`; all `created_at`
 ranges compare strings. New ROADMAP item 34 (P2 · S).
@@ -39,7 +39,7 @@ ranges compare strings. New ROADMAP item 34 (P2 · S).
 | Field | Content |
 |---|---|
 | Done | Item 25: screens read stock from the cache; pulled movements now keep it right — [PR #37](https://github.com/Alphaguyasa/Suq/pull/37). Item 26: reports and sales history read only what they show — [PR #38](https://github.com/Alphaguyasa/Suq/pull/38) |
-| Merged | PR #37: yes (`84c8908`) · PR #38: merged · tags `v2026-10-26-3`/`-4` NOT pushed (refused) |
+| Merged | PR #37: yes (`84c8908`) · PR #38: yes (`da6578a`) · tags `v2026-10-26-3`/`-4` NOT pushed (refused) |
 | Failed or blocked | Tag pushes; item 12 waits for alpha; item 13 waits for the migrations; migrations still unapplied (no Supabase connector in this session) |
 | Roadmap | 11 open (12, 13, 16, 18, 27–34; 34 new); no replan needed |
 | Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
