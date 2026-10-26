@@ -4,6 +4,53 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-26 — Run 10 (scheduled)
+
+**Start.** `master` @ `decbfdb`, CI green. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+There is no log entry for 2026-10-25, but that run left draft [PR #33](https://github.com/Alphaguyasa/Suq/pull/33)
+(item 23) open, green and unmerged on its own session branch. It seems to have stopped before merging and logging.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page.
+Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+**Supabase check.** The connector still lists only `not-alone-scripture` and `erko-staging` (INACTIVE), not Suq.
+The two migrations are still unapplied.
+
+**Item 23: 56px touch targets → [PR #34](https://github.com/Alphaguyasa/Suq/pull/34), merged; #33 closed as superseded.**
+- I reviewed #33. The UI change was right, but it had re-quoted the whole existing `e2e/a11y.spec.ts` to double
+  quotes, and the repo uses single quotes with no prettier. This session can only push its own branch, so I carried
+  the commit over, rewrote the spec in house style, and opened #34.
+- Raised to 56px: quick-cash note buttons and "total" (were 34px tall), discount buttons (30px) and input (38px),
+  the cart's remove ×, the sale-complete link, the sort/period/rank chips, the back links, and "voided as".
+- New e2e gate: every visible control on the main screens, at 360px and 1280px, plus no sideways scroll on the phone.
+- Local: lint ✅ · typecheck ✅ · unit 273 ✅ · build ✅ · e2e 16/16 ✅. CI green on the first try. Squash-merged as `89eaf6e`.
+
+**Item 24: reset shows what has not synced → [PR #35](https://github.com/Alphaguyasa/Suq/pull/35), merged.**
+- `unsyncedSummary()` counts the outbox and the sales in it. The danger section reads it live:
+  - outbox not empty: an ochre box says how many records (and sales) exist only here and will be lost for good,
+    with a "download a backup first (JSON)" button right there. It has its own label, so it is never confused
+    with the Backup section's button;
+  - outbox empty: it says everything has reached the server.
+- The backup export is now one `useBackupExport()` hook shared by both places.
+- The download is offered, not forced: the shop-name confirmation is still the gate.
+- Tests: unit (empty, sale + void counted, drained, reset clears every table). e2e: synced → offline sale → warning
+  with counts → the backup holds the sale → reconnect clears the warning → reset still goes to setup.
+- Local: lint ✅ · typecheck ✅ · unit 277 ✅ · build ✅ · e2e 17/17 ✅. CI green on the first try. Squash-merged as `fd3fdbd`.
+
+**Blocked:** release tags (refused as before). Rollback SHAs are in NEEDS_APPROVAL.
+
+### REPORT — 2026-10-26
+| Field | Content |
+|---|---|
+| Done | Item 23: every till control is a 56px touch target — [PR #34](https://github.com/Alphaguyasa/Suq/pull/34) (finishes yesterday's unmerged #33). Item 24: reset shows what has not synced and offers the backup first — [PR #35](https://github.com/Alphaguyasa/Suq/pull/35) |
+| Merged | PR #34: yes (`89eaf6e`) · PR #35: yes (`fd3fdbd`) · tags `v2026-10-26-1`/`-2` NOT pushed (refused) |
+| Failed or blocked | Tag pushes; the 2026-10-25 run stopped before merging #33 (finished today); item 12 still waits for alpha; item 13 waits for the migrations; migrations still unapplied |
+| Roadmap | 13 open (12, 13, 16, 18, 25–33); no replan needed |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Yes/no on camera scanning and on a credit (ዱቤ) ledger; **apply the two migrations** (or reconnect the Supabase connector); tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 25 (sale screen re-reads every stock movement: use `stock_cache`), item 26 (reports/history read whole tables) |
+
+---
+
 ## 2026-10-24 — Run 9 (scheduled)
 
 **Start.** `master` @ `2e90ef3`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.

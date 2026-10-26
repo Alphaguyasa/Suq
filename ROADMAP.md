@@ -13,7 +13,7 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-10-24 that is item 23, then 24.
+"after the pending migrations". As of 2026-10-26 that is item 25, then 26.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
 `docs/RULES.md` says "no camera scanning in v1 and no scanner library", and this item was written by a run, not
@@ -49,14 +49,6 @@ fake Supabase routes working), so those tests prove what they claim.
 ## Replan 2026-10-22 (audit: sync/db/pages, RLS, i18n, perf, tests, features)
 RLS is on for every table, append-only tables allow only SELECT/INSERT, no XSS sinks, and the only writes outside
 `localWrite()` are the sanctioned `lib/sync/apply.ts` and the dev-only demo seed. Items below are ordered by priority.
-
-### 23. [P1 · S] Touch targets under 56px
-Quick-cash buttons in `components/sell/PaymentPanel.tsx` (`px-3 py-2 text-xs`, ~34px) and the back links on
-`/sales/view` and `/products/stock`. Fix: `min-h-touch`; add a size check to the axe e2e.
-
-### 24. [P2 · S] Reset device: show what is not synced yet, offer the backup first
-`lib/db/reset.ts` clears everything; Settings only asks for the shop name. Show the outbox count and, when it is
-above 0, put the (new) backup download right there and say plainly what will be lost.
 
 ### 25. [P2 · M] Sale screen re-reads every stock movement after each write
 `stockRepo.onHandAll()` iterates the whole `stock_movements` table on every change; `stock_cache` is maintained but
@@ -96,6 +88,18 @@ text by design — `lib/db/cashiers.ts` explains why; revisit only together with
 of scope for v1, so this needs alpha's decision (see NEEDS_APPROVAL).
 
 ## Done
+
+- **Reset says what has not synced, offers the backup first (item 24)** — `unsyncedSummary()` reads the outbox; the
+  danger section shows live how many records (and sales) exist only on this device and will be lost, with a
+  "download a backup first" JSON button right there (backup export is one shared hook), or that everything has
+  reached the server. Unit + e2e (synced → offline sale → warning → backup holds the sale → reconnect clears it).
+  [PR #35](https://github.com/Alphaguyasa/Suq/pull/35) · tag `v2026-10-26-2` not pushed (refused) — commit `fd3fdbd`
+
+- **Every till control is a 56px touch target (item 23)** — quick-cash and "total" buttons, discount buttons and
+  input, cart remove ×, sale-complete link, sort/period/rank chips, back links and the "voided as" link raised to
+  56px. `e2e/a11y.spec.ts` measures every visible control on the main screens at 360px and 1280px and checks the
+  phone layout never scrolls sideways. [PR #34](https://github.com/Alphaguyasa/Suq/pull/34) (supersedes #33) ·
+  tag `v2026-10-26-1` not pushed (refused) — commit `89eaf6e`
 
 - **Sign-in and sync errors in the UI language (item 22)** — auth errors classified (supabase-js error codes first,
   message as fallback: wrong credentials / email not confirmed / weak password / already registered / rate limited /
