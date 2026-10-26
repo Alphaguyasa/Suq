@@ -48,6 +48,7 @@ const FROZEN = [
   { version: 2, stores: { shop_settings: 'id' } },
   { version: 3, stores: { cashiers: 'id, name' } },
   { version: 4, stores: { outbox: '++id, table, row_id, created_at, attempts' } },
+  { version: 5, stores: {} },
 ];
 
 const SHOP = 'b7c1d2e3-0000-4000-8000-000000000001';
@@ -322,3 +323,38 @@ describe.each(SCHEMA_VERSIONS.filter((step) => step.version < LATEST).map((step)
     });
   },
 );
+
+describe('the v5 stock cache rebuild', () => {
+  it.each([1, 2, 3, 4])(
+    'repairs a v%i cache that missed pulled movements and drops orphans',
+    async (from) => {
+      const name = `suq-cache-${from}-${counter++}`;
+      const old = openAtVersion(name, from);
+      opened.push(old);
+      await old.open();
+      await old.transaction('rw', ['stock_movements', 'stock_cache'], async () => {
+        await old.table('stock_movements').bulkAdd([
+          ...movements,
+          // Pulled from another till; before v5 the cache never heard of it.
+          { ...movements[1]!, id: 'm-pulled', qty_delta: -5, device_id: 'other-till' },
+          { ...movements[0]!, id: 'm-other', product_id: 'p-soap', qty_delta: 7 },
+        ]);
+        await old.table('stock_cache').bulkAdd([
+          cache, // 22: stale, the pulled sale makes it 17
+          { product_id: 'p-gone', on_hand: 3, computed_at: cache.computed_at },
+        ]);
+      });
+      old.close();
+
+      const current = await upgrade(name);
+
+      const entries = await current.stock_cache.toArray();
+      expect(new Map(entries.map((e) => [e.product_id, e.on_hand]))).toEqual(
+        new Map([
+          ['p-ambo', 17],
+          ['p-soap', 7],
+        ]),
+      );
+    },
+  );
+});

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { applyAppendOnly } from '@/lib/sync/apply';
 import { db } from '../schema';
 import { cartLine, freshDatabase, seedProduct } from '../test-helpers';
 import * as salesRepo from './sales';
@@ -115,5 +116,70 @@ describe('stock_cache', () => {
 
     expect(await stockRepo.cachedOnHand(water.id)).toBe(8);
     expect(await stockRepo.cachedOnHand(soap.id)).toBe(3);
+  });
+});
+
+describe('the stock the screens read', () => {
+  it('matches the movement sum after local sales, voids, restocks and adjustments', async () => {
+    const water = await seedProduct();
+    const soap = await seedProduct({ name: 'Abay Soap', name_am: 'አባይ ሳሙና', barcode: '600111' });
+
+    await stockRepo.openingStock({ productId: water.id, qty: 30 });
+    await stockRepo.openingStock({ productId: soap.id, qty: 5 });
+    const sale = await salesRepo.create([cartLine(water, 4), cartLine(soap, 2)], {
+      method: 'cash',
+    });
+    await salesRepo.voidSale(sale.id, 'mistake');
+    await salesRepo.create([cartLine(water, 1)], { method: 'cash' });
+    await stockRepo.restock({ productId: soap.id, qty: 3 });
+    await stockRepo.adjust({ productId: water.id, countedQty: 27, reason: 'damage' });
+
+    expect(await stockRepo.cachedOnHandAll()).toEqual(await stockRepo.onHandAll());
+    expect((await stockRepo.cachedOnHandAll()).get(water.id)).toBe(27);
+    expect((await stockRepo.cachedOnHandAll()).get(soap.id)).toBe(8);
+  });
+
+  it('includes movements pulled from another till', async () => {
+    const water = await seedProduct();
+    await stockRepo.openingStock({ productId: water.id, qty: 10 });
+
+    const pulled = {
+      shop_id: 'shop-test',
+      product_id: water.id,
+      reason: 'sale',
+      ref_id: null,
+      note: null,
+      created_at: '2026-10-26T08:00:00.000Z',
+      device_id: 'other-till',
+    };
+    await applyAppendOnly('stock_movements', [
+      { ...pulled, id: 'pulled-1', qty_delta: -3 },
+      { ...pulled, id: 'pulled-2', qty_delta: -1 },
+    ]);
+
+    expect((await stockRepo.cachedOnHandAll()).get(water.id)).toBe(6);
+
+    // A repeated pull holds rows we already have; the stock must not move.
+    await applyAppendOnly('stock_movements', [{ ...pulled, id: 'pulled-1', qty_delta: -3 }]);
+    expect((await stockRepo.cachedOnHandAll()).get(water.id)).toBe(6);
+    expect(await stockRepo.cachedOnHandAll()).toEqual(await stockRepo.onHandAll());
+  });
+
+  it('covers a product the till has only ever heard about from a pull', async () => {
+    await applyAppendOnly('stock_movements', [
+      {
+        id: 'pulled-open',
+        shop_id: 'shop-test',
+        product_id: 'p-from-elsewhere',
+        qty_delta: 12,
+        reason: 'opening',
+        ref_id: null,
+        note: null,
+        created_at: '2026-10-26T08:00:00.000Z',
+        device_id: 'other-till',
+      },
+    ]);
+
+    expect((await stockRepo.cachedOnHandAll()).get('p-from-elsewhere')).toBe(12);
   });
 });

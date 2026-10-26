@@ -39,7 +39,7 @@ export default function ReportsPage() {
   const sales = useLiveQuery(() => db.sales.toArray(), []);
   const items = useLiveQuery(() => db.sale_items.toArray(), []);
   const products = useLiveQuery(() => productsRepo.list(), []);
-  const onHand = useLiveQuery(() => stockRepo.onHandAll(), []);
+  const onHand = useLiveQuery(() => stockRepo.cachedOnHandAll(), []);
   const settings = useLiveQuery(() => getSettings(), []);
 
   const period = useMemo(() => periodFor(periodKey), [periodKey]);

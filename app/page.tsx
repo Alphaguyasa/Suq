@@ -29,7 +29,7 @@ export default function SellPage() {
   const [saveError, setSaveError] = useState<WriteFailure>();
 
   const products = useLiveQuery(() => productsRepo.list(), []);
-  const onHand = useLiveQuery(() => stockRepo.onHandAll(), []);
+  const onHand = useLiveQuery(() => stockRepo.cachedOnHandAll(), []);
   const recent = useLiveQuery(() => salesRepo.recentProductIds(), []);
 
   const productsById = useMemo(

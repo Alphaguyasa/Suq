@@ -221,7 +221,6 @@ async function pullForeignVoid(sale: Sale, createdAt: string): Promise<Sale> {
       device_id: 'other-till',
     })),
   );
-  await stockRepo.recomputeCache();
 
   return voidRow;
 }
@@ -324,5 +323,71 @@ describe('sales.list', () => {
     const sale = await salesRepo.create([cartLine(product, 1)], { method: 'cash' });
 
     expect((await salesRepo.getByReceiptNo(sale.receipt_no))?.id).toBe(sale.id);
+  });
+});
+
+describe('recentProductIds', () => {
+  /** A sale from another till at a fixed time, so the order is not left to the clock. */
+  async function pulledSale(at: string, productIds: string[], voids: string | null = null) {
+    const id = newId();
+    await applyAppendOnly('sales', [
+      {
+        id,
+        shop_id: 'shop-test',
+        device_id: 'other-till',
+        receipt_no: `B1-${id.slice(0, 6)}`,
+        subtotal: 100,
+        discount: 0,
+        total: 100,
+        payment_method: 'cash',
+        cashier_name: 'x',
+        voided_by: null,
+        voids_sale_id: voids,
+        cash_received: null,
+        created_at: at,
+        synced_at: null,
+      },
+    ]);
+    await applyAppendOnly(
+      'sale_items',
+      productIds.map((product_id) => ({
+        id: newId(),
+        shop_id: 'shop-test',
+        sale_id: id,
+        product_id,
+        name_snapshot: product_id,
+        unit_price: 100,
+        qty: 1,
+        line_total: 100,
+        created_at: at,
+      })),
+    );
+    return id;
+  }
+
+  it('lists products most recently sold first, each once, skipping void rows', async () => {
+    const old = await pulledSale('2026-10-26T08:00:00.000Z', ['bread', 'milk']);
+    await pulledSale('2026-10-26T09:00:00.000Z', ['soap']);
+    await pulledSale('2026-10-26T10:00:00.000Z', ['milk']);
+    // A void row's lines are the voided sale's products; they were not just sold.
+    await pulledSale('2026-10-26T11:00:00.000Z', ['sugar'], old);
+
+    expect(await salesRepo.recentProductIds()).toEqual(['milk', 'soap', 'bread']);
+  });
+
+  it('stops at the limit', async () => {
+    await pulledSale('2026-10-26T08:00:00.000Z', ['a', 'b']);
+    await pulledSale('2026-10-26T09:00:00.000Z', ['c']);
+
+    const ids = await salesRepo.recentProductIds(2);
+
+    // Lines within one sale come back in id order, which is random.
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).toBe('c');
+    expect(['a', 'b']).toContain(ids[1]);
+  });
+
+  it('is empty before the first sale', async () => {
+    expect(await salesRepo.recentProductIds()).toEqual([]);
   });
 });

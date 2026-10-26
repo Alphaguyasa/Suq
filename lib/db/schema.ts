@@ -262,7 +262,32 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
   // not by reading the whole queue on every write. IndexedDB builds the new
   // index over existing rows during the upgrade; no row changes shape.
   { version: 4, stores: { outbox: '++id, table, row_id, created_at, attempts' } },
+  // v5 changes no store. Until it, movements arriving from another till were
+  // written without refreshing stock_cache, so on a multi-till shop the cache
+  // drifted from SUM(qty_delta). The screens read the cache from v5 on, so it
+  // is rebuilt from the movements once here. Entries that already agree are
+  // left exactly as they were.
+  { version: 5, stores: {}, upgrade: rebuildStockCache },
 ];
+
+async function rebuildStockCache(tx: Transaction): Promise<void> {
+  const totals = new Map<string, number>();
+  await tx.table<StockMovement>('stock_movements').each((movement) => {
+    totals.set(movement.product_id, (totals.get(movement.product_id) ?? 0) + movement.qty_delta);
+  });
+
+  const cache = tx.table<StockCacheEntry, string>('stock_cache');
+  const computed_at = new Date().toISOString();
+
+  for (const entry of await cache.toArray()) {
+    if (!totals.has(entry.product_id)) await cache.delete(entry.product_id);
+  }
+  for (const [product_id, on_hand] of totals) {
+    if ((await cache.get(product_id))?.on_hand !== on_hand) {
+      await cache.put({ product_id, on_hand, computed_at });
+    }
+  }
+}
 
 export const db = new SuqDatabase();
 
