@@ -4,6 +4,53 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-27 — Run 12 (scheduled)
+
+**Start.** `master` @ `e636124`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page
+(platform.claude.com). Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+**Supabase check.** The connector is back in this session but still lists only `not-alone-scripture` and
+`erko-staging` (INACTIVE), not Suq. The two migrations are still unapplied.
+
+**Item choice.** Item 27 needs a `sale_items` column production does not have yet (pushes would fail until alpha
+applies migrations), so it waits. I took item 34 (sync correctness), then item 28's unverified scanner check, which
+turned out to be a real bug.
+
+**Item 34: pulled timestamps in the till's format → [PR #40](https://github.com/Alphaguyasa/Suq/pull/40), merged.**
+- Correction to the roadmap entry: trimmed Postgres text (`…00.1+00:00`) mostly still sorts by time against
+  `…00.100Z`. It does not at an equal instant. So a sale pulled at exactly a period boundary landed in the previous
+  period, and two tills (own rows `Z`, the other till's `+00:00`) ordered a same-millisecond pair differently. With two
+  voids of the same sale, each till would pick the other's void as THE void (breaks item 21's rule).
+- `canonicalIso()` in `lib/db/timestamps.ts`; `apply.ts` rewrites pulled rows; Dexie v6 rewrites rows already pulled
+  (canonical rows untouched; upgrade test v1–v5). The fake server can answer in Postgres text, and the new sync tests
+  fail without the fix.
+- Local: lint ✅ · typecheck ✅ · unit 315 ✅ · build ✅ · e2e 18/18 ✅. CI green on the first try. Squash-merged as `3c4c0e5`.
+
+**Scanner double-add (from item 28) → [PR #41](https://github.com/Alphaguyasa/Suq/pull/41), merged.**
+- A new e2e test typing each code and then Enter, like a USB scanner, got 3 waters + 2 breads for water, bread, water.
+  Enter ran a second barcode lookup while the first was still pending, so **every scan with a scanner set to send
+  Enter charged the item twice.** Fix: Enter waits for the typed lookup and reads the box itself.
+- Local: lint ✅ · typecheck ✅ · unit 315 ✅ · build ✅ · e2e 19/19 ✅ (scanner spec 5/5 repeated). CI green on the first try. Squash-merged as `17042f7`.
+
+**Environment note.** Playwright here wanted `chromium_headless_shell-1248` but the image has 1243; a symlink in
+`/opt/pw-browsers` made the local e2e run (no repo change).
+
+**Blocked:** release tags (refused as before). Rollback SHAs are in NEEDS_APPROVAL.
+
+### REPORT — 2026-10-27 (run 12)
+| Field | Content |
+|---|---|
+| Done | Item 34: pulled timestamps in the till's format — [PR #40](https://github.com/Alphaguyasa/Suq/pull/40). Scanner code + Enter no longer adds the item twice (real overcharge bug found by item 28's check) — [PR #41](https://github.com/Alphaguyasa/Suq/pull/41) |
+| Merged | PR #40: yes (`3c4c0e5`) · PR #41: yes (`17042f7`) · tags `v2026-10-27-1`/`-2` NOT pushed (refused) |
+| Failed or blocked | Tag pushes; item 12/33 wait for alpha; items 13/27 wait for the migrations; Supabase connector still cannot see Suq |
+| Roadmap | 11 open (12, 13, 16, 18, 27–33); no replan needed |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Yes/no on camera scanning and on a credit (ዱቤ) ledger; **apply the two migrations** (or reconnect Supabase to the Suq org); tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 28 (remaining test gaps), item 29 (owner page stops polling when hidden) |
+
+---
+
 ## 2026-10-26 — Run 11 (scheduled, second run today)
 
 **Start.** `master` @ `59fa416`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
