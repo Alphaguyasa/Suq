@@ -49,6 +49,7 @@ const FROZEN = [
   { version: 3, stores: { cashiers: 'id, name' } },
   { version: 4, stores: { outbox: '++id, table, row_id, created_at, attempts' } },
   { version: 5, stores: {} },
+  { version: 6, stores: {} },
 ];
 
 const SHOP = 'b7c1d2e3-0000-4000-8000-000000000001';
@@ -355,6 +356,64 @@ describe('the v5 stock cache rebuild', () => {
           ['p-soap', 7],
         ]),
       );
+    },
+  );
+});
+
+describe('the v6 timestamp rewrite', () => {
+  it.each([1, 2, 3, 4, 5])(
+    'rewrites rows a v%i till pulled in Postgres text, and nothing else',
+    async (from) => {
+      const name = `suq-time-${from}-${counter++}`;
+      const old = openAtVersion(name, from);
+      opened.push(old);
+      await old.open();
+      const pulledSale = {
+        ...sale,
+        id: 's-pulled',
+        receipt_no: 'B1-000007',
+        created_at: '2026-10-01T09:15:00.12+00:00',
+        synced_at: null,
+      };
+      await old.transaction(
+        'rw',
+        ['products', 'sales', 'sale_items', 'stock_movements'],
+        async () => {
+          await old.table('products').bulkAdd([
+            product,
+            { ...product, id: 'p-pulled', barcode: null, updated_at: '2026-09-30T08:00:00+00:00' },
+          ]);
+          await old.table('sales').bulkAdd([sale, pulledSale]);
+          await old.table('sale_items').bulkAdd([
+            { ...item, id: 'i-pulled', sale_id: 's-pulled', created_at: pulledSale.created_at },
+          ]);
+          await old.table('stock_movements').bulkAdd([
+            { ...movements[1]!, id: 'm-pulled', created_at: '2026-10-01T12:15:00.5+03:00' },
+          ]);
+        },
+      );
+      old.close();
+
+      const current = await upgrade(name);
+
+      expect(await current.products.get(product.id), 'canonical rows untouched').toEqual(product);
+      expect(await current.sales.get(sale.id)).toEqual(sale);
+      expect((await current.products.get('p-pulled'))?.updated_at).toBe('2026-09-30T08:00:00.000Z');
+      expect(await current.sales.get('s-pulled')).toEqual({
+        ...pulledSale,
+        created_at: '2026-10-01T09:15:00.120Z',
+      });
+      expect((await current.sale_items.get('i-pulled'))?.created_at).toBe(
+        '2026-10-01T09:15:00.120Z',
+      );
+      expect((await current.stock_movements.get('m-pulled'))?.created_at).toBe(
+        '2026-10-01T09:15:00.500Z',
+      );
+      // The created_at index now orders the pulled sale by its real time.
+      expect((await current.sales.orderBy('created_at').toArray()).map((s) => s.id)).toEqual([
+        sale.id,
+        's-pulled',
+      ]);
     },
   );
 });

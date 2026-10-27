@@ -6,6 +6,7 @@ export * from './settings';
 export * from './cashiers';
 export * from './reset';
 export * from './id';
+export * from './timestamps';
 
 export * as productsRepo from './repositories/products';
 export * as salesRepo from './repositories/sales';

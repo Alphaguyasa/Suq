@@ -7,6 +7,7 @@
  * selling the last unit — only proves anything if something actually stores
  * and merges the rows. Asserting against a mock would prove the mock.
  */
+import { TIMESTAMP_COLUMNS, canonicalIso } from '@/lib/db';
 import type { SyncedTable } from '@/lib/db';
 import { MissingColumnError } from './client';
 import type { SyncClient } from './client';
@@ -35,6 +36,13 @@ export class FakeServer {
    */
   hasReceivedAt = true;
   failUpsertsRemaining = 0;
+
+  /**
+   * Answer selects with timestamps as PostgREST prints timestamptz
+   * (`2026-10-26T08:00:00.12+00:00`: an offset, trailing zeros trimmed)
+   * instead of the `toISOString()` text the rows were stored with.
+   */
+  postgresTimestamps = false;
 
   /** PostgREST's max-rows: a select never returns more, whatever it asks for. */
   maxRows = 1000;
@@ -136,6 +144,8 @@ export class FakeServer {
         // Same semantics as the PostgREST query: strictly after the
         // (watermark, id) key, ordered by it, capped at max-rows.
         const key = (row: Row): [string, string] => [String(row[column]), String(row.id)];
+        // Postgres compares the cursor as a timestamp, whatever its text.
+        const afterValue = String(canonicalIso(after.value));
         const compare = (a: [string, string], b: [string, string]): number =>
           a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0;
 
@@ -143,14 +153,14 @@ export class FakeServer {
           .filter((row) => {
             if (row.shop_id !== shopId) return false;
             const [value, id] = key(row);
-            if (after.id === null) return value > after.value;
-            return compare([value, id], [after.value, after.id]) > 0;
+            if (after.id === null) return value > afterValue;
+            return compare([value, id], [afterValue, after.id]) > 0;
           })
           .sort((a, b) => compare(key(a), key(b)))
           .slice(0, Math.min(limit, this.maxRows));
 
         this.fetchSizes.push(page.length);
-        return page;
+        return this.postgresTimestamps ? page.map((row) => postgresText(table, row)) : page;
       },
 
       serverNow: async () => {
@@ -169,4 +179,21 @@ export class FakeServer {
   private assertReachable(): void {
     if (this.offline) throw new Error('network unreachable');
   }
+}
+
+/** `2026-10-26T08:00:00.120Z` → `2026-10-26T08:00:00.12+00:00`, as Postgres prints it. */
+export function toPostgresTimestamp(iso: string): string {
+  return iso.replace(/\.(\d{3})Z$/, (_match, ms: string) => {
+    const trimmed = ms.replace(/0+$/, '');
+    return `${trimmed ? `.${trimmed}` : ''}+00:00`;
+  });
+}
+
+function postgresText(table: SyncedTable, row: Row): Row {
+  const copy: Row = { ...row };
+  for (const column of [...TIMESTAMP_COLUMNS[table], 'received_at']) {
+    const value = copy[column];
+    if (typeof value === 'string') copy[column] = toPostgresTimestamp(value);
+  }
+  return copy;
 }

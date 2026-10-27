@@ -824,3 +824,121 @@ describe('8. two tills void the same sale while offline', () => {
     expect((await salesRepo.findVoidOf(sale.id))?.id).toBe('void-on-a');
   });
 });
+
+/* ------------------------------------------------------------------ 9 ---- */
+
+describe('9. Postgres timestamp text', () => {
+  /**
+   * PostgREST prints timestamptz as `…08:00:00.1+00:00`, not the till's
+   * `…08:00:00.100Z`. Kept as received, each till would hold its own rows in
+   * one format and the other till's in the other, and sort an equal instant
+   * differently from its neighbour.
+   */
+  it('gives every till the same text, so a same-millisecond pair sorts alike', async () => {
+    const server = new FakeServer();
+    server.postgresTimestamps = true;
+    const client = server.client();
+
+    const product = makeProduct();
+    server.seed('products', [product as unknown as Record<string, unknown>]);
+    const a = await replica('suq-pgtime-a', 'A1');
+    const b = await replica('suq-pgtime-b', 'B1');
+
+    const at = '2026-10-26T08:00:00.100Z';
+    await sellOn(a, { productId: product.id, qty: 1, createdAt: at });
+    await sellOn(b, { productId: product.id, qty: 1, createdAt: at });
+    await drainOutbox(client, a.db);
+    await drainOutbox(client, b.db);
+    await pullOnce(client, a.db);
+    await pullOnce(client, b.db);
+
+    // The (created_at, id) order findVoidOf uses to pick THE void.
+    const order = async (db: typeof a.db) =>
+      (await db.sales.toArray())
+        .sort((x, y) =>
+          x.created_at !== y.created_at
+            ? x.created_at < y.created_at
+              ? -1
+              : 1
+            : x.id < y.id
+              ? -1
+              : 1,
+        )
+        .map((sale) => sale.id);
+
+    expect(await order(a.db)).toEqual(await order(b.db));
+    for (const db of [a.db, b.db]) {
+      expect((await db.sales.toArray()).map((sale) => sale.created_at)).toEqual([at, at]);
+      expect((await db.sale_items.toArray()).map((item) => item.created_at)).toEqual([at, at]);
+      expect((await db.stock_movements.toArray()).map((m) => m.created_at)).toEqual([at, at]);
+      expect((await db.products.get(product.id))?.updated_at).toBe(product.updated_at);
+      expect(await onHandIn(db, product.id)).toBe(-2);
+    }
+  });
+
+  it('puts a sale pulled at exactly a period boundary into the period it starts', async () => {
+    const server = new FakeServer();
+    server.postgresTimestamps = true;
+    const client = server.client();
+
+    const product = makeProduct();
+    server.seed('products', [product as unknown as Record<string, unknown>]);
+    const a = await replica('suq-pgtime-edge-a', 'A1');
+    const b = await replica('suq-pgtime-edge-b', 'B1');
+
+    // Midnight in Addis Ababa, to the millisecond.
+    const midnight = '2026-10-26T21:00:00.000Z';
+    await sellOn(a, { productId: product.id, qty: 1, createdAt: midnight });
+    await drainOutbox(client, a.db);
+    await pullOnce(client, b.db);
+
+    const nextDay = await b.db.sales
+      .where('created_at')
+      .between(midnight, '2026-10-27T21:00:00.000Z', true, false)
+      .count();
+    expect(nextDay).toBe(1);
+  });
+
+  it.each([true, false])(
+    'pages through a long history with Postgres-formatted cursors (received_at: %s)',
+    { timeout: 30_000 },
+    async (hasReceivedAt) => {
+      const server = new FakeServer();
+      server.postgresTimestamps = true;
+      server.hasReceivedAt = hasReceivedAt;
+      const client = server.client();
+
+      // More than two pages, each row stamped a few ms apart so the cursors
+      // carry trimmed fractions (`.07+00:00`, `.1+00:00`, `+00:00`).
+      const total = PULL_PAGE_SIZE * 2 + 37;
+      const start = Date.parse('2026-10-26T08:00:00.000Z');
+      for (let i = 0; i < total; i += 1) {
+        server.tick(7);
+        server.seed('sales', [
+          {
+            id: `pg-sale-${String(i).padStart(5, '0')}`,
+            shop_id: SHOP,
+            device_id: 'other-till',
+            receipt_no: `B1-${String(i).padStart(6, '0')}`,
+            subtotal: 3500,
+            discount: 0,
+            total: 3500,
+            payment_method: 'cash',
+            cashier_name: 'x',
+            voided_by: null,
+            voids_sale_id: null,
+            cash_received: null,
+            created_at: new Date(start + i * 10).toISOString(),
+          },
+        ]);
+      }
+
+      const a = await replica(`suq-pgtime-page-${hasReceivedAt}`, 'A1');
+      const result = await pullOnce(client, a.db);
+
+      expect(result.inserted).toBe(total);
+      expect(await a.db.sales.count()).toBe(total);
+      expect((await a.db.sales.toArray()).every((sale) => sale.created_at.endsWith('Z'))).toBe(true);
+    },
+  );
+});
