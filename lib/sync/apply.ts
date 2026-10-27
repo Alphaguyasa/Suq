@@ -1,6 +1,6 @@
 import type { EntityTable } from 'dexie';
 import type { Product, SuqDatabase, SyncedTable } from '@/lib/db';
-import { db as defaultDb, stockRepo } from '@/lib/db';
+import { db as defaultDb, stockRepo, withCanonicalTimestamps } from '@/lib/db';
 
 /**
  * ============================================================================
@@ -34,6 +34,11 @@ export async function applyAppendOnly(
   if (rows.length === 0) return { inserted: 0, updated: 0, skipped: 0 };
 
   const result: ApplyResult = { inserted: 0, updated: 0, skipped: 0 };
+
+  // Postgres's timestamp text, rewritten to the till's own format so every
+  // created_at range and sort compares like with like, and every till holds
+  // the same text for the same row (lib/db/timestamps.ts).
+  rows = rows.map((row) => withCanonicalTimestamps(table, row));
 
   // db[table] is a union of three EntityTable types; TypeScript cannot pick an
   // overload from the generic alone. Safe because all three are keyed by id.
@@ -81,6 +86,9 @@ export async function applyProducts(
   if (rows.length === 0) return { inserted: 0, updated: 0, skipped: 0 };
 
   const result: ApplyResult = { inserted: 0, updated: 0, skipped: 0 };
+
+  // Same reason as above, and before the updated_at comparison below.
+  rows = rows.map((row) => withCanonicalTimestamps('products', row));
 
   await db.transaction('rw', db.products, async () => {
     const ids = rows.map((row) => row.id as string);

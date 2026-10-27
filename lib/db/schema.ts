@@ -1,5 +1,7 @@
 import Dexie from 'dexie';
 import type { EntityTable, Transaction } from 'dexie';
+import { TIMESTAMP_COLUMNS, hasCanonicalTimestamps, withCanonicalTimestamps } from './timestamps';
+import type { TimestampedTable } from './timestamps';
 
 /**
  * IndexedDB is the source of truth. Supabase is a replica.
@@ -268,7 +270,25 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
   // is rebuilt from the movements once here. Entries that already agree are
   // left exactly as they were.
   { version: 5, stores: {}, upgrade: rebuildStockCache },
+  // v6 changes no store. Rows pulled before it kept Postgres's timestamp text
+  // (`…08:00:00.1+00:00`), which sorts wrongly against the till's own
+  // `toISOString()` rows at equal instants (lib/db/timestamps.ts). Pulls write the canonical form from v6 on; this
+  // rewrites the rows already pulled. Same instant, same row otherwise; rows
+  // already in canonical form are not touched.
+  { version: 6, stores: {}, upgrade: canonicaliseTimestamps },
 ];
+
+async function canonicaliseTimestamps(tx: Transaction): Promise<void> {
+  for (const table of Object.keys(TIMESTAMP_COLUMNS) as TimestampedTable[]) {
+    await tx
+      .table<Record<string, unknown>>(table)
+      .toCollection()
+      .modify((row) => {
+        if (hasCanonicalTimestamps(table, row)) return;
+        Object.assign(row, withCanonicalTimestamps(table, row));
+      });
+  }
+}
 
 async function rebuildStockCache(tx: Transaction): Promise<void> {
   const totals = new Map<string, number>();
