@@ -80,28 +80,52 @@ export default function SellPage() {
     );
   }, [products, term, recent]);
 
+  /**
+   * The barcode lookup the latest keystroke started. A USB scanner types the
+   * whole code in a few milliseconds and then presses Enter, usually before
+   * IndexedDB has answered: Enter must wait for this lookup, not start a second
+   * one, or the item lands in the cart twice.
+   */
+  const typedLookup = useRef<{ code: string; result: Promise<Product | undefined> } | null>(null);
+
   /** Exact barcode match adds straight to the cart. No confirmation step. */
   async function handleTermChange(value: string) {
     setTerm(value);
 
     const trimmed = value.trim();
-    if (trimmed.length < MIN_BARCODE_LENGTH) return;
+    if (trimmed.length < MIN_BARCODE_LENGTH) {
+      typedLookup.current = null;
+      return;
+    }
 
-    const scanned = await productsRepo.getByBarcode(trimmed);
-    if (scanned) addProduct(scanned);
+    const lookup = { code: trimmed, result: productsRepo.getByBarcode(trimmed) };
+    typedLookup.current = lookup;
+
+    const scanned = await lookup.result;
+    // Typed on since: a shorter code that happens to be another product's
+    // barcode is not what was scanned.
+    if (scanned && typedLookup.current === lookup) addProduct(scanned);
   }
 
   async function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key !== 'Enter') return;
     event.preventDefault();
 
-    const trimmed = term.trim();
+    // The box itself, not `term`: this handler can run before React has
+    // re-rendered with the last keystroke or with the cleared box.
+    const trimmed = event.currentTarget.value.trim();
     if (!trimmed) return;
 
-    const scanned = await productsRepo.getByBarcode(trimmed);
-    if (scanned) {
-      addProduct(scanned);
-      return;
+    const typed = typedLookup.current;
+    if (typed && typed.code === trimmed) {
+      // That lookup adds the product itself when it matches.
+      if (await typed.result) return;
+    } else {
+      const scanned = await productsRepo.getByBarcode(trimmed);
+      if (scanned) {
+        addProduct(scanned);
+        return;
+      }
     }
 
     // One obvious match is not a decision worth making twice.
