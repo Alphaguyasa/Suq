@@ -13,7 +13,9 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-10-26 (run 11) that is item 27, then 28.
+"after the pending migrations". As of 2026-10-27 (run 12) that is item 28, then 29. Item 27 needs a new
+`sale_items` column that production lacks until alpha applies the migrations, so it waits unless the push can
+leave the column out safely.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
 `docs/RULES.md` says "no camera scanning in v1 and no scanner library", and this item was written by a run, not
@@ -51,14 +53,14 @@ RLS is on for every table, append-only tables allow only SELECT/INSERT, no XSS s
 `localWrite()` are the sanctioned `lib/sync/apply.ts` and the dev-only demo seed. Items below are ordered by priority.
 
 ### 27. [P2 · S] Gross profit uses today's cost, not the cost at the time of sale
-`lib/reports/compute.ts` says so in a comment. Fix: `cost_snapshot` on `sale_items` (Dexie v6 — v5 is taken by item 25's cache rebuild — + upgrade test,
+`lib/reports/compute.ts` says so in a comment. Fix: `cost_snapshot` on `sale_items` (Dexie v7 — v5/v6 are taken by items 25 and 34 — + upgrade test,
 additive nullable column migration); old lines fall back to current cost.
 
 ### 28. [P2 · M] Test gaps
 No tests for `adoptShopFromMembership`, `lib/reports/period.ts`, the `MissingColumnError`
-legacy pull fallback, and the adjust/setup/settings UI error paths (`importProducts`, void and restock are covered
-since PRs #27/#28). Also check (unverified) that a
-scanner typing a code + Enter cannot add the item twice (`handleTermChange` and `handleSearchKeyDown` both look up).
+mapping of PostgREST error 42703 in `lib/sync/client.ts` (the pull fallback itself is covered by sync test 7), and
+the adjust/setup/settings UI error paths (`importProducts`, void and restock are covered since PRs #27/#28).
+(The scanner double-add check from this item found a real bug, fixed in PR #41.)
 
 ### 29. [P2 · S] Owner page polls Supabase every 15s even when hidden
 `app/owner/page.tsx`. Pause on `visibilitychange`; saves battery and the free-tier quota.
@@ -78,14 +80,20 @@ text by design — `lib/db/cashiers.ts` explains why; revisit only together with
 `credit` is already a payment method but records no customer. `docs/RULES.md` lists customer credit accounts as out
 of scope for v1, so this needs alpha's decision (see NEEDS_APPROVAL).
 
-### 34. [P2 · S] Pulled timestamps are not in the till's ISO format (found 2026-10-26, run 11)
-Local rows carry `toISOString()` (`…T08:00:00.123Z`); rows pulled from PostgREST probably carry Postgres's
-`timestamptz` text (`…T08:00:00.123+00:00`, trailing zeros trimmed). Unverified against the live project. Every
-`created_at` range and sort (reports periods, history paging, `findVoidOf`, recents) compares strings, so a pulled
-sale can sort a millisecond out of place or land in the wrong period right at a boundary. Fix: normalise
-`created_at`/`updated_at` to `new Date(x).toISOString()` in `lib/sync/apply.ts`; a test with a `+00:00` row.
-
 ## Done
+
+- **A scanned code + Enter adds the item once (from item 28)** — the check item 28 asked for found a real bug: a USB
+  scanner types the code and presses Enter before IndexedDB answers, so Enter ran a second lookup and every scan put
+  two in the cart. Enter now waits for the typed lookup and reads the box itself; a lookup for a code typed past no
+  longer adds a prefix product. New `e2e/scanner.spec.ts`. [PR #41](https://github.com/Alphaguyasa/Suq/pull/41) ·
+  tag `v2026-10-27-2` not pushed (refused) — commit `17042f7`
+
+- **Pulled timestamps in the till's format (item 34)** — `canonicalIso()` rewrites pulled timestamp columns from
+  Postgres text (`…00.1+00:00`) to `toISOString()`; Dexie v6 rewrites rows already pulled. Narrower than first
+  written: trimmed Postgres text mostly still sorts by time, but not at an equal instant, so a sale pulled at exactly
+  a period boundary went into the previous period and two tills could each pick the other's void as THE void. The
+  fake server can now answer in Postgres text. [PR #40](https://github.com/Alphaguyasa/Suq/pull/40) · tag
+  `v2026-10-27-1` not pushed (refused) — commit `3c4c0e5`
 
 - **Reports and sales history read only what they show (item 26)** — reports read the current and previous period
   through the `created_at` index plus only those sales' lines (one `anyOf`); history shows the newest 100 sales
