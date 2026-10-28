@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Field, TextInput } from '@/components/ui/Field';
@@ -51,6 +51,11 @@ export default function SetupPage() {
   const [importUnreadable, setImportUnreadable] = useState(false);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  /* The double-tap guard. `busy` drives the disabled button, but a state value
+     is only fresh after a re-render, so two taps delivered in the same task
+     (a cheap phone catching up on queued input) both read busy === false and
+     both added the first cashier. A ref is set before the first await. */
+  const inFlight = useRef(false);
   const [saveError, setSaveError] = useState<WriteFailure>();
 
   // Random, so it can't match the server-rendered HTML: filled in after mount.
@@ -59,10 +64,10 @@ export default function SetupPage() {
   }, []);
 
   /* Each step writes to IndexedDB. A failed write keeps the owner on the same
-     step with what they typed, and says why; busy also stops a double tap
-     from adding the first cashier twice. */
+     step with what they typed, and says why. */
   async function next() {
-    if (busy) return;
+    if (inFlight.current) return;
+    inFlight.current = true;
     setError(undefined);
     setSaveError(undefined);
     setBusy(true);
@@ -76,12 +81,12 @@ export default function SetupPage() {
         setSaveError(classifyWriteError(cause));
       }
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }
 
   async function advance() {
-
     if (step === 1) {
       if (!shopNameAm.trim() && !shopName.trim()) return setError(t.common.required);
 
