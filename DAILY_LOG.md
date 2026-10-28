@@ -26,7 +26,7 @@ The two migrations are still unapplied.
 - **Real bug found:** the retry, two taps in the same task, added the first cashier **twice**. The `busy` state is stale
   until React re-renders. A ref now guards `next()`. A real `dblclick` did not trigger it, but taps a slow phone delivers
   back to back would.
-- Local: lint ✅ · typecheck ✅ · unit 356 ✅ · build ✅ · e2e 23/23 ✅. CI green on the first try. Squash-merged as `SHA47`.
+- Local: lint ✅ · typecheck ✅ · unit 356 ✅ · build ✅ · e2e 23/23 ✅. CI green on the first try. Squash-merged as `6aec552`.
 
 **Environment note.** Same Playwright mismatch as runs 12–13; the same symlinks in `/opt/pw-browsers` fixed it locally.
 
@@ -39,7 +39,7 @@ worked. No replan was required (≥ 5 open). The next run should replan if the w
 | Field | Content |
 |---|---|
 | Done | Item 18: offline e2e tests also refuse the app origin — [PR #46](https://github.com/Alphaguyasa/Suq/pull/46). Item 28: setup save-failure test + fix for the first cashier being added twice on a double tap — [PR #47](https://github.com/Alphaguyasa/Suq/pull/47) |
-| Merged | PR #46: yes (`a2e3757`) · PR #47: yes (`SHA47`) · tags `v2026-10-28-3`/`-4` NOT pushed (refused) |
+| Merged | PR #46: yes (`a2e3757`) · PR #47: yes (`6aec552`) · tags `v2026-10-28-3`/`-4` NOT pushed (refused) |
 | Failed or blocked | Tag pushes; items 12/33 wait for alpha; items 13/27 wait for the migrations |
 | Roadmap | 8 open (12, 13, 16, 27, 30–33), 4 of them blocked; no replan yet |
 | Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |

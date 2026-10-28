@@ -69,7 +69,7 @@ of scope for v1, so this needs alpha's decision (see NEEDS_APPROVAL).
 - **Setup save failure + double-tap guard (rest of item 28)** — e2e: a refused shop name and a refused first cashier
   keep the wizard on the step with what was typed and say why. The retry found a real bug: two taps in the same task
   added the first cashier twice (stale `busy` state); a ref now guards `next()`.
-  [PR #47](https://github.com/Alphaguyasa/Suq/pull/47) · tag `v2026-10-28-4` not pushed (refused) — commit `SHA47`
+  [PR #47](https://github.com/Alphaguyasa/Suq/pull/47) · tag `v2026-10-28-4` not pushed (refused) — commit `6aec552`
 
 - **Offline e2e tests refuse the app origin (item 18)** — `goOffline()`/`goOnline()` in `e2e/helpers.ts`; the cold
   launch and offline-sync tests use them. [PR #46](https://github.com/Alphaguyasa/Suq/pull/46) · tag `v2026-10-28-3`
