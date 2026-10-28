@@ -4,6 +4,50 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-28 — Run 14 (scheduled)
+
+**Start.** `master` @ `ac1f6cc`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page
+(platform.claude.com). Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+**Supabase check.** The connector still lists only `not-alone-scripture` and `erko-staging` (INACTIVE), not Suq.
+The two migrations are still unapplied.
+
+**Item 18: offline e2e tests refuse the app origin → [PR #46](https://github.com/Alphaguyasa/Suq/pull/46), merged.**
+- `goOffline()` (setOffline + abort every request to `localhost:<port>`) and a new `goOnline()` live in `e2e/helpers.ts`.
+  The cold-launch and offline-sync tests use them. The fake Supabase (127.0.0.1) keeps its own offline switch.
+- Honest note: a negative control (page fetch and navigation to un-precached URLs with only `setOffline`) was refused
+  too in today's build. So no live leak was found; this only makes the tests stricter.
+- Local: lint ✅ · typecheck ✅ · unit 356 ✅ · build ✅ · e2e 22/22 ✅. CI green on the first try. Squash-merged as `a2e3757`.
+
+**Item 28 (setup save failure) → [PR #47](https://github.com/Alphaguyasa/Suq/pull/47), merged.**
+- New e2e test: refused shop settings (step 1) and a refused first cashier (step 3) keep the wizard on the step, keep
+  what was typed, and say why.
+- **Real bug found:** the retry, two taps in the same task, added the first cashier **twice**. The `busy` state is stale
+  until React re-renders. A ref now guards `next()`. A real `dblclick` did not trigger it, but taps a slow phone delivers
+  back to back would.
+- Local: lint ✅ · typecheck ✅ · unit 356 ✅ · build ✅ · e2e 23/23 ✅. CI green on the first try. Squash-merged as `SHA47`.
+
+**Environment note.** Same Playwright mismatch as runs 12–13; the same symlinks in `/opt/pw-browsers` fixed it locally.
+
+**Roadmap.** 8 open, but 4 of them wait for alpha or the migrations (12, 13, 27, 33). Only 16, 30, 31 and 32 can be
+worked. No replan was required (≥ 5 open). The next run should replan if the waiting items are still blocked.
+
+**Blocked:** release tags (refused as before). Rollback SHAs are in NEEDS_APPROVAL.
+
+### REPORT — 2026-10-28 (run 14)
+| Field | Content |
+|---|---|
+| Done | Item 18: offline e2e tests also refuse the app origin — [PR #46](https://github.com/Alphaguyasa/Suq/pull/46). Item 28: setup save-failure test + fix for the first cashier being added twice on a double tap — [PR #47](https://github.com/Alphaguyasa/Suq/pull/47) |
+| Merged | PR #46: yes (`a2e3757`) · PR #47: yes (`SHA47`) · tags `v2026-10-28-3`/`-4` NOT pushed (refused) |
+| Failed or blocked | Tag pushes; items 12/33 wait for alpha; items 13/27 wait for the migrations |
+| Roadmap | 8 open (12, 13, 16, 27, 30–33), 4 of them blocked; no replan yet |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Yes/no on camera scanning and on a credit (ዱቤ) ledger; **apply the two migrations** (or reconnect Supabase to the Suq org); tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 16 (retry dev-tooling bumps), item 31 (share a receipt as text); replan if the blocked items are still blocked |
+
+---
+
 ## 2026-10-28 — Run 13 (scheduled)
 
 **Start.** `master` @ `807b8a7`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
