@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { Sale } from '@/lib/db';
 import { formatDateTime, formatETB } from '@/lib/format';
+import { useVisiblePolling } from '@/lib/hooks/useVisiblePolling';
 import { useT } from '@/lib/i18n';
 import { currentUser } from '@/lib/supabase/auth';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
@@ -49,12 +50,9 @@ export default function OwnerPage() {
     setSales((data ?? []) as Sale[]);
   }, []);
 
-  useEffect(() => {
-    void load();
-    // The owner leaves this open on a phone; refresh without a reload.
-    const timer = setInterval(() => void load(), 15_000);
-    return () => clearInterval(timer);
-  }, [load]);
+  // The owner leaves this open on a phone; refresh without a reload, but not
+  // while the phone is locked or the tab is in the background.
+  useVisiblePolling(() => void load(), 15_000);
 
   if (!isSupabaseConfigured()) {
     return <p className="ethiopic text-sm text-muted">{t.syncSheet.notConfigured}</p>;
