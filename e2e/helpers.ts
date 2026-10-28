@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
 import { am } from '../lib/i18n/am';
 
 /**
@@ -138,4 +138,25 @@ export async function readLocal<T = Record<string, unknown>>(page: Page, table: 
       }),
     table,
   );
+}
+
+/** Every request to the app's own origin (the fake Supabase lives on 127.0.0.1, so it is not caught). */
+const APP_ORIGIN = /^http:\/\/localhost:\d+\//;
+
+/**
+ * context.setOffline() does not reliably cover requests the service worker
+ * makes itself: in Chromium they can still reach the server, so a page or
+ * chunk that is not precached loads anyway and an "offline" test passes for
+ * the wrong reason. Refuse every request to the app's own origin as well, so
+ * only what the worker holds can be served.
+ */
+export async function goOffline(context: BrowserContext): Promise<void> {
+  await context.setOffline(true);
+  await context.route(APP_ORIGIN, (route) => route.abort('internetdisconnected'));
+}
+
+/** Undo goOffline(): the network and the app's origin come back together. */
+export async function goOnline(context: BrowserContext): Promise<void> {
+  await context.unroute(APP_ORIGIN);
+  await context.setOffline(false);
 }

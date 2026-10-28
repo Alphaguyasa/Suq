@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { E2E_SUPABASE_URL } from '../playwright.config';
 import { E2E_SHOP_ID, FakeSupabase, SYNCED_TABLES } from './fake-supabase';
-import { PRODUCTS, pay, readLocal, scan, setupShop, syncPill } from './helpers';
+import { PRODUCTS, goOffline, goOnline, pay, readLocal, scan, setupShop, syncPill } from './helpers';
 
 /**
  * PROJECT RULE (CLAUDE.md §5): keep a Playwright test that goes offline
@@ -31,8 +31,10 @@ test('sales made offline sync on reconnect with nothing lost and nothing duplica
 
   // Mid-sale: one item in the cart, then the network goes away.
   await scan(page, [PRODUCTS[1].barcode]);
+  // goOffline also refuses the app's own origin, so any chunk the rest of the
+  // sale needs must already be held by the service worker.
   server.offline = true;
-  await context.setOffline(true);
+  await goOffline(context);
   await expect(syncPill(page)).toHaveAttribute('data-state', 'offline');
 
   await scan(page, [PRODUCTS[2].barcode]);
@@ -50,7 +52,7 @@ test('sales made offline sync on reconnect with nothing lost and nothing duplica
 
   // Reconnect.
   server.offline = false;
-  await context.setOffline(false);
+  await goOnline(context);
 
   await expect(syncPill(page)).toHaveAttribute('data-state', 'synced', { timeout: 30_000 });
   await expect.poll(() => server.rows('sales').length).toBe(4);

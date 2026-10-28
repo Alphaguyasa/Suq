@@ -1,17 +1,6 @@
 import { expect, test } from '@playwright/test';
-import type { BrowserContext, Page } from '@playwright/test';
-import { CASHIER, PRODUCTS, pay, readLocal, scan, setupShop, t, waitForServiceWorker } from './helpers';
-
-/**
- * context.setOffline() does not reliably cover requests the service worker
- * makes itself: in Chromium they can still reach the server, so a page that
- * is not precached passes anyway. Refuse every request to the app's own
- * origin as well, so only what the worker holds can be served.
- */
-async function goOffline(context: BrowserContext): Promise<void> {
-  await context.setOffline(true);
-  await context.route(/^http:\/\/localhost:\d+\//, (route) => route.abort('internetdisconnected'));
-}
+import type { Page } from '@playwright/test';
+import { CASHIER, PRODUCTS, goOffline, pay, readLocal, scan, setupShop, t, waitForServiceWorker } from './helpers';
 
 /** A full load shows the PIN lock on whatever page it lands on, not just the sale screen. */
 async function unlockHere(page: Page): Promise<void> {
