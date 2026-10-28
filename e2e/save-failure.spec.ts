@@ -79,3 +79,74 @@ test('a restock that cannot be saved says so and keeps the quantity', async ({ p
   const movements = await readLocal<{ qty_delta: number; reason: string }>(page, 'stock_movements');
   expect(movements.filter((m) => m.reason === 'purchase').map((m) => m.qty_delta)).toEqual([6]);
 });
+
+test('a stock count that cannot be saved says so and keeps the count', async ({ page }) => {
+  await setupShop(page);
+  await page.getByRole('link', { name: t.nav.products }).first().click();
+  await page.getByRole('link', { name: new RegExp(PRODUCTS[1].name_am) }).click();
+  await page.getByRole('link', { name: new RegExp(t.stock.title) }).click();
+  await expect(page.getByRole('heading', { name: t.stock.title, exact: true })).toBeVisible();
+  const before = await readLocal(page, 'stock_movements');
+
+  await page.locator('#a-counted').fill('3');
+  await refuseWritesTo(page, 'stock_movements');
+  await page.getByRole('button', { name: t.stock.adjust }).click();
+
+  await expect(page.getByTestId('adjust-error')).toContainText(t.common.saveFailedQuota);
+  await expect(page.locator('#a-counted')).toHaveValue('3');
+  expect(await readLocal(page, 'stock_movements')).toHaveLength(before.length);
+
+  await restoreWrites(page);
+  await page.getByRole('button', { name: t.stock.adjust }).click();
+  await expect(page.locator('#a-counted')).toHaveValue('');
+  await expect(page.getByTestId('adjust-error')).toBeEmpty();
+  expect(await readLocal(page, 'stock_movements')).toHaveLength(before.length + 1);
+});
+
+test('shop details that cannot be saved say so and keep what was typed', async ({ page }) => {
+  await setupShop(page);
+  await page.locator('a[href="/settings"]').first().click();
+  await page.waitForURL('**/settings');
+
+  await page.locator('#phone').fill('0911223344');
+  await refuseWritesTo(page, 'shop_settings');
+  await page.getByRole('button', { name: t.common.save }).click();
+
+  await expect(page.getByTestId('settings-save-error')).toContainText(t.common.saveFailedQuota);
+  await expect(page.getByText(t.settings.saved)).toHaveCount(0);
+  await expect(page.locator('#phone')).toHaveValue('0911223344');
+  const [refused] = await readLocal<{ phone: string }>(page, 'shop_settings');
+  expect(refused.phone).not.toBe('0911223344');
+
+  await restoreWrites(page);
+  await page.getByRole('button', { name: t.common.save }).click();
+  await expect(page.getByText(t.settings.saved)).toBeVisible();
+  await expect(page.getByTestId('settings-save-error')).toBeEmpty();
+  const [saved] = await readLocal<{ phone: string }>(page, 'shop_settings');
+  expect(saved.phone).toBe('0911223344');
+});
+
+test('a cashier that cannot be added says so and keeps the name and PIN', async ({ page }) => {
+  await setupShop(page);
+  await page.locator('a[href="/settings"]').first().click();
+  await page.waitForURL('**/settings');
+  const before = await readLocal(page, 'cashiers');
+
+  await page.locator('#cashier-name').fill('ሰላም');
+  await page.locator('#cashier-pin').fill('4321');
+  await refuseWritesTo(page, 'cashiers');
+  await page.getByRole('button', { name: t.settings.addCashier }).click();
+
+  const alert = page.getByTestId('cashier-error');
+  await expect(alert).toContainText(t.common.saveFailedQuota);
+  await expect(alert).not.toContainText('quota has been exceeded');
+  await expect(page.locator('#cashier-name')).toHaveValue('ሰላም');
+  await expect(page.locator('#cashier-pin')).toHaveValue('4321');
+  expect(await readLocal(page, 'cashiers')).toHaveLength(before.length);
+
+  await restoreWrites(page);
+  await page.getByRole('button', { name: t.settings.addCashier }).click();
+  await expect(page.locator('#cashier-name')).toHaveValue('');
+  await expect(alert).toBeEmpty();
+  expect(await readLocal(page, 'cashiers')).toHaveLength(before.length + 1);
+});
