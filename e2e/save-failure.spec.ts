@@ -150,3 +150,55 @@ test('a cashier that cannot be added says so and keeps the name and PIN', async 
   await expect(alert).toBeEmpty();
   expect(await readLocal(page, 'cashiers')).toHaveLength(before.length + 1);
 });
+
+test('setup that cannot be saved stays on the step, keeps what was typed, and adds the cashier once', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.waitForURL('**/setup');
+  const next = page.getByRole('button', { name: t.setup.next });
+
+  // Step 1: the shop's name is refused, so the wizard must not move on.
+  await page.locator('#s-name-am').fill('የሙከራ ሱቅ');
+  await page.locator('#s-name').fill('Test Shop');
+  await refuseWritesTo(page, 'shop_settings');
+  await next.click();
+
+  await expect(page.getByTestId('save-error')).toContainText(t.common.saveFailedQuota);
+  await expect(page.locator('#s-name-am')).toHaveValue('የሙከራ ሱቅ');
+  await expect(page.locator('#s-name')).toHaveValue('Test Shop');
+  await expect(next).toBeEnabled();
+
+  await restoreWrites(page);
+  await next.click();
+  await expect(page.locator('#s-prefix')).toBeVisible();
+  await expect(page.getByTestId('save-error')).toBeEmpty();
+  const [settings] = await readLocal<{ shop_name: string }>(page, 'shop_settings');
+  expect(settings?.shop_name).toBe('Test Shop');
+
+  await page.locator('#s-prefix').fill('A1');
+  await next.click();
+
+  // Step 3: the first cashier is refused.
+  await page.locator('#s-cashier').fill('አበበ');
+  await page.locator('#s-pin').fill('1234');
+  await refuseWritesTo(page, 'cashiers');
+  await next.click();
+
+  await expect(page.getByTestId('save-error')).toContainText(t.common.saveFailedQuota);
+  await expect(page.locator('#s-cashier')).toHaveValue('አበበ');
+  await expect(page.locator('#s-pin')).toHaveValue('1234');
+  expect(await readLocal(page, 'cashiers')).toHaveLength(0);
+
+  // The retry is a nervous double tap, both in the same tick: one cashier, no
+  // "already exists" error, and the wizard lands on the import step.
+  await restoreWrites(page);
+  await next.evaluate((button: HTMLButtonElement) => {
+    button.click();
+    button.click();
+  });
+  await expect(page.locator('input[type=file]')).toBeVisible();
+  await expect(page.getByText(t.settings.duplicateCashier)).toHaveCount(0);
+  await expect(page.getByTestId('save-error')).toBeEmpty();
+  expect(await readLocal(page, 'cashiers')).toHaveLength(1);
+});
