@@ -4,6 +4,45 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-28 — Run 13 (scheduled)
+
+**Start.** `master` @ `807b8a7`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page
+(platform.claude.com). Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+**Supabase check.** The connector still lists only `not-alone-scripture` and `erko-staging` (INACTIVE), not Suq.
+The two migrations are still unapplied.
+
+**Item 29: owner page stops polling when hidden → [PR #43](https://github.com/Alphaguyasa/Suq/pull/43), merged.**
+- `lib/hooks/useVisiblePolling.ts`: no timer while `document.visibilityState` is `hidden`, an immediate refresh on
+  return, the latest task via a ref. `/owner` uses it instead of a bare 15s `setInterval`.
+- Local: lint ✅ · typecheck ✅ · unit 321 ✅ · build ✅ · e2e 19/19 ✅. CI green on the first try. Squash-merged as `b919b5d`.
+
+**Item 28: test gaps → [PR #44](https://github.com/Alphaguyasa/Suq/pull/44), merged.**
+- Unit tests: `adoptShopFromMembership` (7), `lib/reports/period.ts` (18; also run under TZ Addis Ababa, New York,
+  Auckland, UTC), `supabaseSyncClient` (10, incl. 42703 → `MissingColumnError`).
+- E2e: a refused stock count, shop details and new cashier each say why, keep what was typed and save on retry.
+- No bugs found this time. Setup's save-failure path stays open as a narrowed item 28.
+- Local: lint ✅ · typecheck ✅ · unit 356 ✅ · build ✅ · e2e 22/22 ✅. CI green on the first try. Squash-merged as `f8fcd73`.
+
+**Environment note.** Same Playwright mismatch as run 12 (`chromium_headless_shell-1248` wanted, 1243 installed);
+the same symlink fixed it locally.
+
+**Blocked:** release tags (refused as before). Rollback SHAs are in NEEDS_APPROVAL.
+
+### REPORT — 2026-10-28 (run 13)
+| Field | Content |
+|---|---|
+| Done | Item 29: owner page stops polling Supabase while hidden — [PR #43](https://github.com/Alphaguyasa/Suq/pull/43). Item 28: tests for shop adoption, report periods, PostgREST error mapping, and settings/adjust/cashier save failures — [PR #44](https://github.com/Alphaguyasa/Suq/pull/44) |
+| Merged | PR #43: yes (`b919b5d`) · PR #44: yes (`f8fcd73`) · tags `v2026-10-28-1`/`-2` NOT pushed (refused) |
+| Failed or blocked | Tag pushes; items 12/33 wait for alpha; items 13/27 wait for the migrations |
+| Roadmap | 10 open (12, 13, 16, 18, 27, 28-setup, 30–33); no replan needed |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Yes/no on camera scanning and on a credit (ዱቤ) ledger; **apply the two migrations** (or reconnect Supabase to the Suq org); tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 18 (offline e2e hardening), then the setup save-failure test (item 28) |
+
+---
+
 ## 2026-10-27 — Run 12 (scheduled)
 
 **Start.** `master` @ `e636124`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.

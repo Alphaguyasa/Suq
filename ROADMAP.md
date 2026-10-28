@@ -13,9 +13,9 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-10-27 (run 12) that is item 28, then 29. Item 27 needs a new
-`sale_items` column that production lacks until alpha applies the migrations, so it waits unless the push can
-leave the column out safely.
+"after the pending migrations". As of 2026-10-28 (run 13) that is item 18, then what is left of item 28 (setup screen).
+Item 27 needs a new `sale_items` column that production lacks until alpha applies the migrations, so it waits unless
+the push can leave the column out safely.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
 `docs/RULES.md` says "no camera scanning in v1 and no scanner library", and this item was written by a run, not
@@ -56,14 +56,8 @@ RLS is on for every table, append-only tables allow only SELECT/INSERT, no XSS s
 `lib/reports/compute.ts` says so in a comment. Fix: `cost_snapshot` on `sale_items` (Dexie v7 — v5/v6 are taken by items 25 and 34 — + upgrade test,
 additive nullable column migration); old lines fall back to current cost.
 
-### 28. [P2 · M] Test gaps
-No tests for `adoptShopFromMembership`, `lib/reports/period.ts`, the `MissingColumnError`
-mapping of PostgREST error 42703 in `lib/sync/client.ts` (the pull fallback itself is covered by sync test 7), and
-the adjust/setup/settings UI error paths (`importProducts`, void and restock are covered since PRs #27/#28).
-(The scanner double-add check from this item found a real bug, fixed in PR #41.)
-
-### 29. [P2 · S] Owner page polls Supabase every 15s even when hidden
-`app/owner/page.tsx`. Pause on `visibilitychange`; saves battery and the free-tier quota.
+### 28. [P2 · S] Test gap: setup screen save failure
+Rest of item 28 shipped in PR #44. Still untested: a setup that IndexedDB refuses (and its double-tap guard).
 
 ### 30. [P3 · M] Saved end-of-day close
 The cash-up sheet exists but float and counted cash live only in React state; nothing is recorded, so past
@@ -81,6 +75,17 @@ text by design — `lib/db/cashiers.ts` explains why; revisit only together with
 of scope for v1, so this needs alpha's decision (see NEEDS_APPROVAL).
 
 ## Done
+
+- **Test gaps (item 28, most of it)** — `adoptShopFromMembership` (error, no membership, cold start registers the
+  device first, re-stamps placeholder rows, unchanged, refused after a pull), `lib/reports/period.ts` (Monday weeks,
+  month/year rollover, the 31st, half-open bounds, leap February; passes in four time zones), `supabaseSyncClient`
+  (42703 → `MissingColumnError`, other errors, keyset filters, upsert, serverNow), and e2e for a refused stock count,
+  shop details and new cashier. Setup screen left as item 28. [PR #44](https://github.com/Alphaguyasa/Suq/pull/44) ·
+  tag `v2026-10-28-2` not pushed (refused) — commit `f8fcd73`
+
+- **Owner page stops polling when hidden (item 29)** — `useVisiblePolling()` stops the 15s Supabase query while the
+  page is hidden and refreshes at once on return. Unit tests. [PR #43](https://github.com/Alphaguyasa/Suq/pull/43) ·
+  tag `v2026-10-28-1` not pushed (refused) — commit `b919b5d`
 
 - **A scanned code + Enter adds the item once (from item 28)** — the check item 28 asked for found a real bug: a USB
   scanner types the code and presses Enter before IndexedDB answers, so Enter ran a second lookup and every scan put
