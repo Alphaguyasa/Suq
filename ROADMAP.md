@@ -13,9 +13,9 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-10-28 (run 13) that is item 18, then what is left of item 28 (setup screen).
-Item 27 needs a new `sale_items` column that production lacks until alpha applies the migrations, so it waits unless
-the push can leave the column out safely.
+"after the pending migrations". As of 2026-10-28 (run 14) that is item 16 (retry the dev-tooling bumps), then item 31
+(share a receipt as text). Item 27 needs a new `sale_items` column that production lacks until alpha applies the
+migrations, so it waits unless the push can leave the column out safely.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
 `docs/RULES.md` says "no camera scanning in v1 and no scanner library", and this item was written by a run, not
@@ -41,13 +41,6 @@ ships to a till. `npm install` currently crashes in npm 10's arborist (`Cannot r
 or overriding undici ≥ 8.10.2. Retry with a newer npm or by regenerating the lockfile; `braces` has no fixed
 release yet (every version affected) — wait for upstream.
 
-### 18. [P2 · S] Harden the older offline e2e tests against service-worker network leaks
-Found while doing item 5: in Chromium, `context.setOffline(true)` does not stop requests the service
-worker makes itself, so a page missing from the precache can still load "offline" in a test.
-`e2e/offline-detail-pages.spec.ts` also blocks the app origin with `context.route` (`goOffline()`); move that
-helper into `e2e/helpers.ts` and use it in `offline-launch.spec.ts` and `offline-sync.spec.ts` (keep the
-fake Supabase routes working), so those tests prove what they claim.
-
 ## Replan 2026-10-22 (audit: sync/db/pages, RLS, i18n, perf, tests, features)
 RLS is on for every table, append-only tables allow only SELECT/INSERT, no XSS sinks, and the only writes outside
 `localWrite()` are the sanctioned `lib/sync/apply.ts` and the dev-only demo seed. Items below are ordered by priority.
@@ -55,9 +48,6 @@ RLS is on for every table, append-only tables allow only SELECT/INSERT, no XSS s
 ### 27. [P2 · S] Gross profit uses today's cost, not the cost at the time of sale
 `lib/reports/compute.ts` says so in a comment. Fix: `cost_snapshot` on `sale_items` (Dexie v7 — v5/v6 are taken by items 25 and 34 — + upgrade test,
 additive nullable column migration); old lines fall back to current cost.
-
-### 28. [P2 · S] Test gap: setup screen save failure
-Rest of item 28 shipped in PR #44. Still untested: a setup that IndexedDB refuses (and its double-tap guard).
 
 ### 30. [P3 · M] Saved end-of-day close
 The cash-up sheet exists but float and counted cash live only in React state; nothing is recorded, so past
@@ -75,6 +65,15 @@ text by design — `lib/db/cashiers.ts` explains why; revisit only together with
 of scope for v1, so this needs alpha's decision (see NEEDS_APPROVAL).
 
 ## Done
+
+- **Setup save failure + double-tap guard (rest of item 28)** — e2e: a refused shop name and a refused first cashier
+  keep the wizard on the step with what was typed and say why. The retry found a real bug: two taps in the same task
+  added the first cashier twice (stale `busy` state); a ref now guards `next()`.
+  [PR #47](https://github.com/Alphaguyasa/Suq/pull/47) · tag `v2026-10-28-4` not pushed (refused) — commit `6aec552`
+
+- **Offline e2e tests refuse the app origin (item 18)** — `goOffline()`/`goOnline()` in `e2e/helpers.ts`; the cold
+  launch and offline-sync tests use them. [PR #46](https://github.com/Alphaguyasa/Suq/pull/46) · tag `v2026-10-28-3`
+  not pushed (refused) — commit `a2e3757`
 
 - **Test gaps (item 28, most of it)** — `adoptShopFromMembership` (error, no membership, cold start registers the
   device first, re-stamps placeholder rows, unchanged, refused after a pull), `lib/reports/period.ts` (Monday weeks,
