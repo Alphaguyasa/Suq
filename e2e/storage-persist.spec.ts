@@ -17,7 +17,7 @@ test('first run requests persistent storage and Settings shows the result', asyn
     })
     .toMatch(/^(granted|denied|unsupported)$/);
 
-  // Client-side navigation: a reload would bring back the PIN lock.
+  // Client-side navigation, the way a cashier gets there.
   await page.locator('a[href="/settings"]').first().click();
   await page.waitForURL('**/settings');
   const status = page.getByTestId('storage-persist');

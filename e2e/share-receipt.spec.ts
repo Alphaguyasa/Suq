@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { CASHIER, PRODUCTS, goOffline, pay, scan, setupShop, t, unlock, waitForServiceWorker } from './helpers';
+import { CASHIER, PRODUCTS, coldLaunch, goOffline, pay, scan, setupShop, t, unlock, waitForServiceWorker } from './helpers';
 
 /**
  * For a shop with no thermal printer: the receipt goes to the customer's
@@ -22,7 +22,7 @@ test('offline, a receipt is shared as text', async ({ context, page }) => {
   await waitForServiceWorker(page);
   // Launched in airplane mode, as in the demo; the cashier unlocks once.
   await goOffline(context);
-  await page.reload();
+  await coldLaunch(page);
   await unlock(page);
 
   await scan(page, [PRODUCTS[0].barcode, PRODUCTS[2].barcode]);

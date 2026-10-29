@@ -20,6 +20,7 @@ import {
 import type { WriteFailure } from '@/lib/db';
 import { useBilingual } from '@/lib/i18n';
 import type { Dict } from '@/lib/i18n';
+import { unlockAs } from '@/lib/lock/lock';
 import { parseProductCsv } from '@/lib/seed/csv';
 import type { CsvError } from '@/lib/seed/csv';
 import { importProducts } from '@/lib/seed/import';
@@ -113,7 +114,12 @@ export default function SetupPage() {
       if (!cashierName.trim()) return setError(t.common.required);
       if (!isValidPin(pin)) return setError(t.settings.pinHint);
 
-      await addCashier(cashierName, pin);
+      /* The owner has just typed this PIN, so they are unlocked as this cashier.
+         Without it the tab had nobody unlocked and no remembered session: the
+         first full page load (an offline tap on "Sale complete" in the demo)
+         asked for the PIN at once, and the sales rung up before any unlock
+         recorded no cashier at all. */
+      await unlockAs(await addCashier(cashierName, pin));
       return setStep(4);
     }
 

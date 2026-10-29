@@ -1,6 +1,18 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { CASHIER, PRODUCTS, goOffline, pay, readLocal, scan, setupShop, t, waitForServiceWorker } from './helpers';
+import {
+  CASHIER,
+  PRODUCTS,
+  coldLaunch,
+  forgetUnlock,
+  goOffline,
+  pay,
+  readLocal,
+  scan,
+  setupShop,
+  t,
+  waitForServiceWorker,
+} from './helpers';
 
 /** A full load shows the PIN lock on whatever page it lands on, not just the sale screen. */
 async function unlockHere(page: Page): Promise<void> {
@@ -24,7 +36,7 @@ test('offline, a fresh sale opens its receipt and can be voided', async ({ conte
 
   // The demo: the app is launched in airplane mode and the cashier unlocks once.
   await goOffline(context);
-  await page.reload();
+  await coldLaunch(page);
   await unlockHere(page);
 
   await scan(page, [PRODUCTS[0].barcode]);
@@ -66,6 +78,7 @@ test('offline, a product opens for editing and its stock page takes a restock', 
   await waitForServiceWorker(page);
 
   await goOffline(context);
+  await forgetUnlock(page);
   await page.goto('/products');
   await unlockHere(page);
 
@@ -101,4 +114,36 @@ test('old /sales/<id> and /products/<id> links still land on the right page', as
 
   await page.goto('/sales/00000000-0000-4000-8000-000000000000');
   await expect(page).toHaveURL('/sales/view?id=00000000-0000-4000-8000-000000000000');
+});
+
+/**
+ * The demo straight after setup: the owner who just chose the PIN goes
+ * offline, sells, and taps "Sale complete". Offline that tap can be a full
+ * page load, and it used to land on the PIN lock because setup never
+ * unlocked anyone. The sale must also record who rang it up.
+ */
+test('right after setup, offline, a sale opens its receipt without asking for the PIN', async ({
+  context,
+  page,
+}) => {
+  await setupShop(page);
+  await waitForServiceWorker(page);
+  await goOffline(context);
+
+  await scan(page, [PRODUCTS[1].barcode]);
+  const receiptNo = await pay(page);
+  await page.getByRole('link', { name: new RegExp(t.sell.completed) }).click();
+  await page.waitForURL('**/sales/view?id=*');
+  await expect(page.getByRole('button', { name: t.sales.print })).toBeVisible();
+  await expect(page.getByRole('button', { name: CASHIER.name })).toHaveCount(0);
+
+  // Then the full page load a weak connection can turn any tap into.
+  await page.reload();
+  await expect(page.getByRole('button', { name: CASHIER.name })).toHaveCount(0);
+  await expect(page.getByText(t.offline.body)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: t.sales.print })).toBeVisible();
+  await expect(page.getByText(receiptNo).first()).toBeVisible();
+
+  const [sale] = await readLocal<{ cashier_name: string }>(page, 'sales');
+  expect(sale?.cashier_name).toBe(CASHIER.name);
 });
