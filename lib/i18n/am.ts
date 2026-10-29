@@ -119,6 +119,8 @@ export const am = {
     discount: 'ቅናሽ',
     total: 'ጠቅላላ',
     remove: 'አስወግድ',
+    oneLess: 'አንድ ቀንስ',
+    oneMore: 'አንድ ጨምር',
     clear: 'ጋሪውን አጽዳ',
     pay: 'ክፈል',
     received: 'የተቀበሉት',
@@ -249,6 +251,8 @@ export const am = {
     title: 'ሻጭ ይምረጡ',
     pin: 'የይለፍ ቁጥር',
     wrongPin: 'የተሳሳተ ቁጥር — እንደገና ይሞክሩ',
+    clearPin: 'ሁሉንም አጥፋ',
+    deleteDigit: 'የመጨረሻውን ቁጥር አጥፋ',
     lockNow: 'ቆልፍ',
   },
   settings: {

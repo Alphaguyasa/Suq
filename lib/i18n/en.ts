@@ -114,6 +114,8 @@ export const en: Dict = {
     discount: 'Discount',
     total: 'Total',
     remove: 'Remove',
+    oneLess: 'One less',
+    oneMore: 'One more',
     clear: 'Clear cart',
     pay: 'Pay',
     received: 'Received',
@@ -244,6 +246,8 @@ export const en: Dict = {
     title: 'Who is at the till?',
     pin: 'PIN',
     wrongPin: 'Wrong PIN — try again',
+    clearPin: 'Clear PIN',
+    deleteDigit: 'Delete last digit',
     lockNow: 'Lock',
   },
   settings: {

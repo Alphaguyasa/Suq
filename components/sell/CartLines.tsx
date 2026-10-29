@@ -54,7 +54,7 @@ export function CartLines({
                   type="button"
                   className={STEP}
                   onClick={() => onSetQty(item.product_id, item.qty - 1)}
-                  aria-label="−"
+                  aria-label={`${t.sell.oneLess} ${item.name}`}
                 >
                   −
                 </button>
@@ -65,7 +65,7 @@ export function CartLines({
                   type="button"
                   className={STEP}
                   onClick={() => onSetQty(item.product_id, item.qty + 1)}
-                  aria-label="+"
+                  aria-label={`${t.sell.oneMore} ${item.name}`}
                 >
                   +
                 </button>
