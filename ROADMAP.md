@@ -13,8 +13,8 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-10-29 (run 15) that is item 35 (setup leaves the first cashier unlocked), then item
-36 (keyboard focus order). Item 27 needs a new `sale_items` column that production lacks until alpha applies the
+"after the pending migrations". As of 2026-10-29 (run 16) that is item 37 (share the cash-up as text), then item
+38 (patch/minor dependency bumps). Item 27 needs a new `sale_items` column that production lacks until alpha applies the
 migrations, so it waits unless the push can leave the column out safely.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
@@ -58,16 +58,6 @@ Short audit: `npm audit` (dev included) is clean after PR #49, there are no TODO
 shows patch/minor updates within the current majors. The lock state and the remaining gaps logged by earlier items
 were read again.
 
-### 35. [P2 · S] Setup leaves the first cashier unlocked for the tab
-Found while writing the share e2e test. After setup the lock state is "nobody unlocked, not locked", and no
-`suq.unlocked` session is written. So the first full page load, such as an offline tap on "Sale complete" in the demo,
-shows the PIN lock right after setup. Fix: when setup finishes, unlock as the cashier it just created (`unlockAs`).
-That person has just typed the PIN. Unit test + e2e (setup → offline → sale → receipt, no PIN).
-
-### 36. [P2 · S] Keyboard focus order on the till (left over from item 10)
-axe does not check tab order. Add an e2e test that tabs through the sale screen (search → tiles → cart → pay) and the
-PIN lock. Fix any trap or skipped control it finds.
-
 ### 37. [P3 · S] Share the end-of-day cash-up as text
 Reuse `ShareReceiptButton` on the reports cash-up sheet (today it can only be printed), so the owner gets the day's
 takings on Telegram. A pure text builder next to `receiptText()`, plus a unit test.
@@ -84,6 +74,19 @@ data, and item 24 now warns about that. Write a test for each to measure the gap
 a fix.
 
 ## Done
+
+- **The PIN lock works from a keyboard, Tab order tested (item 36)** — a Tab walk found the sale screen's order already
+  right (search → tiles → cart → payment → pay → nav). The PIN lock was not: picking a cashier dropped focus to
+  `<body>`, a keyboard could not type the PIN, and ✕/← and the cart's −/+ had no usable names. Focus now goes to the
+  PIN display, and digits/Backspace/Escape work (kept in a ref, so fast typing drops no digit). The first name has
+  focus on a cold launch. New `e2e/keyboard.spec.ts` + LockScreen unit tests.
+  [PR #53](https://github.com/Alphaguyasa/Suq/pull/53) · tag `v2026-10-29-4` not pushed (refused) — commit `fa520e5`
+
+- **Setup unlocks the first cashier (item 35)** — setup now calls `unlockAs()` with the cashier it creates. The first
+  full page load after setup (the offline "Sale complete" tap in the demo) no longer asks for the PIN, and those sales
+  now record the cashier (they recorded none before). e2e `coldLaunch()` clears the tab's session for tests that
+  mean a cold launch. [PR #52](https://github.com/Alphaguyasa/Suq/pull/52) · tag `v2026-10-29-3` not pushed
+  (refused) — commit `189bd77`
 
 - **Share a receipt as text (item 31)** — a Share button on the receipt page opens the phone's share sheet (Telegram,
   SMS) with the receipt as plain text in the UI language (`lib/sales/receipt-text.ts`, same content as the printout).

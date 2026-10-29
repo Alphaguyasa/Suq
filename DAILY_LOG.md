@@ -4,6 +4,58 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-29 — Run 16 (scheduled)
+
+**Start.** `master` @ `347d5c8`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page
+(platform.claude.com). Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+**Supabase check.** The connector still lists only `not-alone-scripture` (ACTIVE) and `erko-staging` (INACTIVE), not Suq.
+The two migrations are still unapplied.
+
+**Item 35: setup unlocks the first cashier → [PR #52](https://github.com/Alphaguyasa/Suq/pull/52), merged.**
+- Setup step 3 now calls `unlockAs()` with the cashier it creates. The first full page load after setup no longer shows
+  the PIN lock.
+- **Second bug fixed by the same change:** sales rung up between setup and the first unlock recorded an empty
+  `cashier_name`, so the receipt had no cashier line.
+- Five e2e tests used a plain `reload()` to mean "cold launch". They now use a new `coldLaunch()` that clears the tab's
+  session first. The new unit test fails without the fix.
+- New e2e test: setup → offline → sale → receipt → reload, with no PIN and the cashier recorded.
+- Local: lint ✅ · typecheck ✅ · unit 368 ✅ · build ✅ · e2e 25/25 ✅. CI green on the first try. Squash-merged as `189bd77`.
+
+**Item 36: keyboard focus order → [PR #53](https://github.com/Alphaguyasa/Suq/pull/53), merged.**
+- The sale screen's Tab order was already right: search → tiles → cart → payment → pay → nav, and focus wraps around.
+- The PIN lock had four problems, all fixed:
+  - Picking a cashier dropped focus to `<body>`. Focus now goes to the PIN display.
+  - A keyboard could not type the PIN. Digits, Backspace and Escape now work, and digits are kept in a ref so fast
+    typing drops none.
+  - Nothing had focus on a cold launch. The first name now does.
+  - ✕/← and the cart's −/+ had no usable names. They are now named in both languages.
+- New tests: `e2e/keyboard.spec.ts` (3 tests) and `components/LockScreen.test.tsx` (4 tests).
+- Local: lint ✅ · typecheck ✅ · unit 372 ✅ · build ✅ · e2e 28/28 ✅. CI green on the first try. Squash-merged as `fa520e5`.
+
+**Testing note.** My first LockScreen unit test hung vitest. Calling `renderHook` inside `waitFor` never saw the unlock, and
+the failing `waitFor` then stalled the run. The test now reads one hook result and compares booleans, not DOM nodes.
+
+**Environment note.** Same Playwright mismatch as runs 12–15; the same symlink in `/opt/pw-browsers` fixed it locally.
+
+**Roadmap.** 9 open (12, 13, 27, 30, 32, 33, 37, 38, 39), 4 of them blocked. No replan was needed (≥ 5 open).
+
+**Blocked:** release tags (refused as before). Rollback SHAs are in NEEDS_APPROVAL.
+
+### REPORT — 2026-10-29 (run 16)
+| Field | Content |
+|---|---|
+| Done | Item 35: setup unlocks the first cashier, so there is no PIN prompt right after setup and those sales record the cashier — [PR #52](https://github.com/Alphaguyasa/Suq/pull/52). Item 36: the PIN lock works from a keyboard, controls are named, Tab order is tested — [PR #53](https://github.com/Alphaguyasa/Suq/pull/53) |
+| Merged | PR #52: yes (`189bd77`) · PR #53: yes (`fa520e5`) · tags `v2026-10-29-3`/`-4` NOT pushed (refused) |
+| Failed or blocked | Tag pushes; items 12/33 wait for alpha; items 13/27 wait for the migrations |
+| Roadmap | 9 open (12, 13, 27, 30, 32, 33, 37, 38, 39), 4 of them blocked; no replan needed |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Yes/no on camera scanning and on a credit (ዱቤ) ledger; **apply the two migrations** (or reconnect Supabase to the Suq org); tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 37 (share the cash-up as text), item 38 (patch/minor dependency bumps) |
+
+---
+
 ## 2026-10-29 — Run 15 (scheduled)
 
 **Start.** `master` @ `dcfc232`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
