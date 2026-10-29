@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { Receipt } from '@/components/Receipt';
+import { ShareReceiptButton } from '@/components/ShareReceiptButton';
 import { Button } from '@/components/ui/Button';
 import { Field, TextInput } from '@/components/ui/Field';
 import { SaveError } from '@/components/ui/SaveError';
@@ -12,6 +13,7 @@ import { classifyWriteError, getSettings, salesRepo } from '@/lib/db';
 import type { WriteFailure } from '@/lib/db';
 import { useBilingual, useT } from '@/lib/i18n';
 import { saleHref } from '@/lib/routes';
+import { receiptText } from '@/lib/sales/receipt-text';
 
 /**
  * A static shell: the id comes from the query string so the service worker can
@@ -89,6 +91,11 @@ function SaleDetail({ id }: { id: string }) {
         <Button type="button" variant="primary" onClick={() => window.print()}>
           <span className="ethiopic">{t.sales.print}</span>
         </Button>
+
+        <ShareReceiptButton
+          title={sale.receipt_no}
+          text={receiptText({ sale, items, settings, t, voidedBy, original })}
+        />
 
         {canVoid ? <VoidControl saleId={sale.id} /> : null}
       </div>
