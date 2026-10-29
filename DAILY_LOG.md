@@ -4,6 +4,56 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-29 — Run 15 (scheduled)
+
+**Start.** `master` @ `dcfc232`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`). It is still the newest Opus on the models page
+(platform.claude.com), and Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+**Supabase check.** The connector still lists only `not-alone-scripture` (ACTIVE) and `erko-staging` (INACTIVE), not Suq.
+The two migrations are still unapplied.
+
+**Item 16: dev-tooling advisories → [PR #49](https://github.com/Alphaguyasa/Suq/pull/49), merged.**
+- `npm audit` (dev included) went from 4 advisories (undici high, vite high, vitest/@vitest/mocker moderate) to 0.
+  vitest 4.1.12, vite 8.3.5, undici 8.12.3. `braces` is no longer flagged.
+- npm 10 (`npm audit fix`) still crashes with `edgesOut`. `npx npm@11 audit fix` worked. npm 10's `npm ci` installs the
+  new lockfile unchanged, which I checked from an empty `node_modules`.
+- Local: lint ✅ · typecheck ✅ · unit 356 ✅ · build ✅. CI green on the first try. Squash-merged as `a23fb33`.
+
+**Item 31: share a receipt as text → [PR #50](https://github.com/Alphaguyasa/Suq/pull/50), merged.**
+- `receiptText()` builds the receipt as plain text in the UI language, with the same content as the printout.
+  `ShareReceiptButton` on the receipt page works like this:
+  - It opens the Web Share sheet (Telegram, SMS). Closing the sheet shows nothing.
+  - If sharing fails or the browser has no share sheet, the text is copied to the clipboard.
+  - If the browser can neither share nor copy, the button is hidden.
+- Tests: 11 unit tests and a new offline e2e test (`e2e/share-receipt.spec.ts`) that stubs `navigator.share`.
+- Local: lint ✅ · typecheck ✅ · unit 367 ✅ · build ✅ · e2e 24/24 ✅. CI green on the first try. Squash-merged as `e931bbe`.
+
+**Found along the way (new item 35).** After setup no unlocked session is written. So the first full page load, such as
+an offline tap on "Sale complete" right after setup, asks for the PIN. The demo walks straight into it.
+
+**Replan.** 6 items were open and only 30 and 32 could be worked. I did a short audit (audit clean, no TODOs, `npm outdated`,
+lock state, gaps left by earlier items) and added items 35–39. 11 items are now open.
+
+**Process note.** The session branch still held the squash-merged commit of #49. I merged it into the next branch instead
+of force-pushing (CLAUDE.md forbids force-pushes), and the squash merge drops it. Same Playwright mismatch as runs
+12–14; the same symlinks in `/opt/pw-browsers` fixed it locally.
+
+**Blocked:** release tags (refused as before). Rollback SHAs are in NEEDS_APPROVAL.
+
+### REPORT — 2026-10-29 (run 15)
+| Field | Content |
+|---|---|
+| Done | Item 16: dev-tooling advisories at 0 — [PR #49](https://github.com/Alphaguyasa/Suq/pull/49). Item 31: share a receipt as text (Telegram/SMS, works offline) — [PR #50](https://github.com/Alphaguyasa/Suq/pull/50) |
+| Merged | PR #49: yes (`a23fb33`) · PR #50: yes (`e931bbe`) · tags `v2026-10-29-1`/`-2` NOT pushed (refused) |
+| Failed or blocked | Tag pushes; items 12/33 wait for alpha; items 13/27 wait for the migrations |
+| Roadmap | 11 open (12, 13, 27, 30, 32, 33, 35–39), 4 of them blocked; replan done |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Yes/no on camera scanning and on a credit (ዱቤ) ledger; **apply the two migrations** (or reconnect Supabase to the Suq org); tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 35 (setup unlocks the first cashier), item 36 (keyboard focus order) |
+
+---
+
 ## 2026-10-28 — Run 14 (scheduled)
 
 **Start.** `master` @ `ac1f6cc`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.

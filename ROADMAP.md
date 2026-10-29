@@ -13,8 +13,8 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-10-28 (run 14) that is item 16 (retry the dev-tooling bumps), then item 31
-(share a receipt as text). Item 27 needs a new `sale_items` column that production lacks until alpha applies the
+"after the pending migrations". As of 2026-10-29 (run 15) that is item 35 (setup leaves the first cashier unlocked), then item
+36 (keyboard focus order). Item 27 needs a new `sale_items` column that production lacks until alpha applies the
 migrations, so it waits unless the push can leave the column out safely.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
@@ -33,14 +33,6 @@ exist in production yet, every push of it would fail and the sync pill would go 
 `shop_settings` is local-only; the owner view on a second device cannot show which shop it is looking at.
 Additive migration (new table, RLS like the others) + LWW sync like `products`. Migration file + test.
 
-### 16. [P2 · S] Dev-tooling advisories (vitest, undici via jsdom, braces via eslint-config-next, vite)
-2026-10-22: `npm audit` also lists vite 8.2.0–8.2.2 (high, dev only). Production: 0 advisories.
-`npm audit` (dev included) still reports high/moderate advisories in test/lint tooling only — nothing that
-ships to a till. `npm install` currently crashes in npm 10's arborist (`Cannot read properties of null
-(reading 'edgesOut')`, peer-set resolution of vitest's optional `jsdom` peer) when bumping vitest to 4.1.11
-or overriding undici ≥ 8.10.2. Retry with a newer npm or by regenerating the lockfile; `braces` has no fixed
-release yet (every version affected) — wait for upstream.
-
 ## Replan 2026-10-22 (audit: sync/db/pages, RLS, i18n, perf, tests, features)
 RLS is on for every table, append-only tables allow only SELECT/INSERT, no XSS sinks, and the only writes outside
 `localWrite()` are the sanctioned `lib/sync/apply.ts` and the dev-only demo seed. Items below are ordered by priority.
@@ -53,9 +45,6 @@ additive nullable column migration); old lines fall back to current cost.
 The cash-up sheet exists but float and counted cash live only in React state; nothing is recorded, so past
 shortfalls are invisible. Append-only `cash_closes` record (local first; sync after the migrations are applied).
 
-### 31. [P3 · S] Share a receipt as text (Web Share / Telegram)
-For shops without a thermal printer; today only `window.print()`. Bilingual, offline-capable via `navigator.share`.
-
 ### 32. [P3 · M] Owner PIN for voids, price edits and reset
 Any cashier PIN can void, change prices or reset the device. Add an owner role for those actions. (PINs are plain
 text by design — `lib/db/cashiers.ts` explains why; revisit only together with this item.)
@@ -64,7 +53,46 @@ text by design — `lib/db/cashiers.ts` explains why; revisit only together with
 `credit` is already a payment method but records no customer. `docs/RULES.md` lists customer credit accounts as out
 of scope for v1, so this needs alpha's decision (see NEEDS_APPROVAL).
 
+## Replan 2026-10-29 (6 open, 4 of them waiting on alpha or the migrations)
+Short audit: `npm audit` (dev included) is clean after PR #49, there are no TODO/FIXME markers, and `npm outdated`
+shows patch/minor updates within the current majors. The lock state and the remaining gaps logged by earlier items
+were read again.
+
+### 35. [P2 · S] Setup leaves the first cashier unlocked for the tab
+Found while writing the share e2e test. After setup the lock state is "nobody unlocked, not locked", and no
+`suq.unlocked` session is written. So the first full page load, such as an offline tap on "Sale complete" in the demo,
+shows the PIN lock right after setup. Fix: when setup finishes, unlock as the cashier it just created (`unlockAs`).
+That person has just typed the PIN. Unit test + e2e (setup → offline → sale → receipt, no PIN).
+
+### 36. [P2 · S] Keyboard focus order on the till (left over from item 10)
+axe does not check tab order. Add an e2e test that tabs through the sale screen (search → tiles → cart → pay) and the
+PIN lock. Fix any trap or skipped control it finds.
+
+### 37. [P3 · S] Share the end-of-day cash-up as text
+Reuse `ShareReceiptButton` on the reports cash-up sheet (today it can only be printed), so the owner gets the day's
+takings on Telegram. A pure text builder next to `receiptText()`, plus a unit test.
+
+### 38. [P3 · S] Patch/minor dependency bumps within the current majors
+supabase-js 2.118, dexie 4.4.7, react/react-dom 19.3.1, jsdom 30.1.3, @vitejs/plugin-react 6.1.2, types. One PR with
+the full e2e run. Regenerate the lockfile with `npx npm@11` (npm 10's arborist still crashes on this tree) and note
+that in CLAUDE.md §3. Majors (Next 16, ESLint 10, TypeScript 7, Vitest 5) are not part of this item; each would be its own item.
+
+### 39. [P3 · S] Reset-gap follow-ups (from items 7 and 21)
+Two known gaps: a reset till that sells before its first pull can reuse receipt numbers, and a duplicate void
+written by a device that is reset before its next pull is never reversed. Both need a till reset with unsynced
+data, and item 24 now warns about that. Write a test for each to measure the gap, then decide whether either is worth
+a fix.
+
 ## Done
+
+- **Share a receipt as text (item 31)** — a Share button on the receipt page opens the phone's share sheet (Telegram,
+  SMS) with the receipt as plain text in the UI language (`lib/sales/receipt-text.ts`, same content as the printout).
+  Where Web Share is missing the text is copied; where neither exists the button is hidden. Works offline. Unit +
+  offline e2e. [PR #50](https://github.com/Alphaguyasa/Suq/pull/50) · tag `v2026-10-29-2` not pushed (refused) — commit `e931bbe`
+
+- **Dev-tooling advisories (item 16)** — vitest 4.1.12, vite 8.3.5, undici 8.12.3. `npm audit` (dev included) is at
+  0. The lockfile was regenerated with npm 11 because npm 10's arborist still crashes. `braces` is no longer flagged.
+  [PR #49](https://github.com/Alphaguyasa/Suq/pull/49) · tag `v2026-10-29-1` not pushed (refused) — commit `a23fb33`
 
 - **Setup save failure + double-tap guard (rest of item 28)** — e2e: a refused shop name and a refused first cashier
   keep the wizard on the step with what was typed and say why. The retry found a real bug: two taps in the same task
