@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { CASHIER, PRODUCTS, pay, scan, setupShop, syncPill, t } from './helpers';
+import { CASHIER, PRODUCTS, coldLaunch, pay, scan, setupShop, syncPill, t } from './helpers';
 
 /**
  * WCAG 2.1 A/AA, as axe can check it, on every screen a cashier touches.
@@ -92,8 +92,8 @@ test('the till passes axe (WCAG 2.1 AA) on every main screen', async ({ context,
     await expectNoViolations(page, href);
   }
 
-  // A reload is a cold launch: the PIN lock.
-  await page.reload();
+  // A cold launch: the PIN lock.
+  await coldLaunch(page);
   await expect(page.getByRole('button', { name: CASHIER.name })).toBeVisible();
   await expectNoViolations(page, 'PIN lock');
 });
@@ -147,7 +147,7 @@ for (const [device, viewport] of [
     await expect(page.getByRole('heading', { name: t.stock.title, exact: true })).toBeVisible();
     await expectTouchTargets(page, 'stock');
 
-    await page.reload();
+    await coldLaunch(page);
     await expect(page.getByRole('button', { name: CASHIER.name })).toBeVisible();
     await expectTouchTargets(page, 'PIN lock');
   });

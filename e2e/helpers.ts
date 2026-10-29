@@ -53,6 +53,21 @@ export async function setupShop(page: Page, prefix = 'A1'): Promise<void> {
   await expect(searchBox(page)).toBeVisible();
 }
 
+/**
+ * Setup unlocks the tab as the cashier it creates, and an unlocked tab stays
+ * unlocked across reloads (sessionStorage). Closing the app and opening it
+ * again starts a new session; this forgets the unlock the same way.
+ */
+export async function forgetUnlock(page: Page): Promise<void> {
+  await page.evaluate(() => sessionStorage.clear());
+}
+
+/** A cold launch: a new session on the same device, so the PIN lock shows. */
+export async function coldLaunch(page: Page): Promise<void> {
+  await forgetUnlock(page);
+  await page.reload();
+}
+
 /** The PIN lock appears on every cold launch once a cashier exists. */
 export async function unlock(page: Page): Promise<void> {
   await page.getByRole('button', { name: CASHIER.name }).click();

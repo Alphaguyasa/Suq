@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { CASHIER, setupShop } from './helpers';
+import { CASHIER, coldLaunch, setupShop } from './helpers';
 import { en } from '../lib/i18n/en';
 
-/** Setup never unlocks, so the first reload shows the PIN lock (on /settings, not the till). */
+/** A cold launch shows the PIN lock on whatever page it lands on (here /settings, not the till). */
 async function unlockOnSettings(page: Page): Promise<void> {
   await page.getByRole('button', { name: CASHIER.name }).click();
   for (const digit of CASHIER.pin) {
@@ -25,8 +25,8 @@ test('the language choice survives a reload', async ({ page }) => {
   await page.locator('#lang').selectOption('en');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 
-  await page.reload();
-  // The very first screen after the reload, the PIN lock, is already in English.
+  await coldLaunch(page);
+  // The very first screen of a cold launch, the PIN lock, is already in English.
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(en.lock.title);
   await unlockOnSettings(page);
   await expect(page.locator('#lang')).toHaveValue('en');

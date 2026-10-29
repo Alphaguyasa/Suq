@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { PRODUCTS, goOffline, pay, readLocal, scan, searchBox, setupShop, syncPill, unlock, waitForServiceWorker } from './helpers';
+import { PRODUCTS, coldLaunch, goOffline, pay, readLocal, scan, searchBox, setupShop, syncPill, unlock, waitForServiceWorker } from './helpers';
 
 /**
  * The PWA promise: once the app has loaded, a cold launch in airplane mode
@@ -15,7 +15,7 @@ test('a cold launch with no network reaches the sale screen and completes a sale
 
   // goOffline, not just setOffline: the reload must come from the precache.
   await goOffline(context);
-  await page.reload();
+  await coldLaunch(page);
 
   await unlock(page);
   await expect(searchBox(page)).toBeVisible();
