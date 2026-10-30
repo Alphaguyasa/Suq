@@ -56,12 +56,13 @@ export function SyncPill({ state, pending = 0, onClick }: SyncPillProps) {
   const styles = STATE_STYLES[state];
   const showPending = pending > 0 && state !== 'synced';
 
-  const accessibleLabel = showPending
-    ? `${t.sync.label}: ${label[state]}, ${t.sync.pending(pending)}`
-    : `${t.sync.label}: ${label[state]}`;
+  /* The button is named by its own text plus an sr-only "Sync status:" in
+     front, not by an aria-label. A speech-input user says the words they see,
+     so the name must contain the visible text (WCAG 2.5.3); built from the
+     content, it always does, in both languages.
 
-  /* aria-live on the button itself is unreliable: screen readers rarely
-     announce a changed aria-label. A separate, always-mounted status region
+     aria-live on the button itself is unreliable: screen readers rarely
+     announce a changed name. A separate, always-mounted status region
      announces the state only — not the count, which ticks on every sale. */
   return (
     <>
@@ -71,7 +72,6 @@ export function SyncPill({ state, pending = 0, onClick }: SyncPillProps) {
       <button
         type="button"
         onClick={onClick}
-        aria-label={accessibleLabel}
         // Stable hooks for the e2e suite; the visible text is bilingual and changes.
         data-testid="sync-pill"
         data-state={state}
@@ -79,6 +79,7 @@ export function SyncPill({ state, pending = 0, onClick }: SyncPillProps) {
         /* 56px tap target per BUILD_GUIDE 5.3; the visible pill sits inside it. */
         className="inline-flex min-h-touch items-center rounded-full px-1"
       >
+        <span className="sr-only">{`${t.sync.label}:`}</span>{' '}
         <span
           className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 transition-colors ${styles.pill}`}
         >
@@ -86,12 +87,18 @@ export function SyncPill({ state, pending = 0, onClick }: SyncPillProps) {
           <span className="ethiopic text-sm leading-none font-medium whitespace-nowrap">
             {label[state]}
           </span>
+          {/* Spaces between the words for the accessible name; a flex
+              container does not render whitespace-only text, so the pill
+              looks the same. */}
           {showPending ? (
             <>
+              {' '}
               <span aria-hidden="true" className="text-current opacity-40">
                 ·
               </span>
+              {' '}
               <span className="num text-sm leading-none font-semibold">{pending}</span>
+              {' '}
               <span className="ethiopic text-sm leading-none whitespace-nowrap">
                 {t.sync.pendingSuffix}
               </span>
