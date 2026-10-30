@@ -13,8 +13,8 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-10-29 (run 16) that is item 37 (share the cash-up as text), then item
-38 (patch/minor dependency bumps). Item 27 needs a new `sale_items` column that production lacks until alpha applies the
+"after the pending migrations". As of 2026-10-30 (run 17) that is item 39 (reset-gap tests), then item 30 (saved
+end-of-day close, local only). Item 27 needs a new `sale_items` column that production lacks until alpha applies the
 migrations, so it waits unless the push can leave the column out safely.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
@@ -58,15 +58,6 @@ Short audit: `npm audit` (dev included) is clean after PR #49, there are no TODO
 shows patch/minor updates within the current majors. The lock state and the remaining gaps logged by earlier items
 were read again.
 
-### 37. [P3 · S] Share the end-of-day cash-up as text
-Reuse `ShareReceiptButton` on the reports cash-up sheet (today it can only be printed), so the owner gets the day's
-takings on Telegram. A pure text builder next to `receiptText()`, plus a unit test.
-
-### 38. [P3 · S] Patch/minor dependency bumps within the current majors
-supabase-js 2.118, dexie 4.4.7, react/react-dom 19.3.1, jsdom 30.1.3, @vitejs/plugin-react 6.1.2, types. One PR with
-the full e2e run. Regenerate the lockfile with `npx npm@11` (npm 10's arborist still crashes on this tree) and note
-that in CLAUDE.md §3. Majors (Next 16, ESLint 10, TypeScript 7, Vitest 5) are not part of this item; each would be its own item.
-
 ### 39. [P3 · S] Reset-gap follow-ups (from items 7 and 21)
 Two known gaps: a reset till that sells before its first pull can reuse receipt numbers, and a duplicate void
 written by a device that is reset before its next pull is never reversed. Both need a till reset with unsynced
@@ -74,6 +65,18 @@ data, and item 24 now warns about that. Write a test for each to measure the gap
 a fix.
 
 ## Done
+
+- **Patch/minor dependency bumps (item 38)** — supabase-js 2.118, dexie 4.4.7, react/react-dom 19.3.1, jsdom 30.1.3,
+  @vitejs/plugin-react 6.1.2, testing-library, types, @axe-core/playwright 4.14.0, pglite 0.5.13. Lockfile from npm 11
+  (CLAUDE.md §3 says why). The newer axe found a real WCAG 2.5.3 gap: the sync pill's aria-label did not contain its
+  visible text, so it is now named by its own text with an sr-only "Sync status:" prefix. New `SyncPill.test.tsx`.
+  [PR #56](https://github.com/Alphaguyasa/Suq/pull/56) · tag `v2026-10-30-2` not pushed (refused) — commit `0d222b4`
+
+- **Share the cash-up as text (item 37)** — a Share button next to Print on Reports sends the cash-up as plain text in
+  the UI language (`lib/reports/cashup-text.ts`): net sales, transactions, takings per payment method, float, cash
+  sales, expected, counted and short/over/balanced. `ShareReceiptButton` takes its own label and copied message.
+  Unit + offline e2e. [PR #55](https://github.com/Alphaguyasa/Suq/pull/55) · tag `v2026-10-30-1` not pushed (refused) —
+  commit `db7846b`
 
 - **The PIN lock works from a keyboard, Tab order tested (item 36)** — a Tab walk found the sale screen's order already
   right (search → tiles → cart → payment → pay → nav). The PIN lock was not: picking a cashier dropped focus to
