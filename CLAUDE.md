@@ -65,6 +65,8 @@ npm run test           # vitest unit/integration tests (jsdom + fake-indexeddb)
 npm run build          # next build (also compiles the service worker)
 npm run test:e2e       # Playwright, Chromium; builds+starts the app itself (see playwright.config.ts)
 npx playwright install --with-deps chromium   # first time only
+npx npm@11 update      # regenerate the lockfile: npm 10's arborist crashes (edgesOut) on this tree;
+                       # npm 10's `npm ci` still installs the result fine
 ```
 
 The app runs with no Supabase env at all (it just doesn't sync). CI uses dummy values:
