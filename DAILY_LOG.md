@@ -4,6 +4,58 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-30 — Run 17 (scheduled)
+
+**Start.** `master` @ `00a6c38`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page
+(platform.claude.com). Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+**Supabase check.** The connector still lists only `not-alone-scripture` (ACTIVE) and `erko-staging` (INACTIVE), not Suq.
+The two migrations are still unapplied.
+
+**Item 37: share the cash-up as text → [PR #55](https://github.com/Alphaguyasa/Suq/pull/55), merged.**
+- Reports → cash-up has a Share button next to Print. The text, in the UI language, carries the shop name, period, date,
+  net sales, transactions, takings per payment method, float, cash sales, expected, counted and short/over/balanced.
+  Counted and variance are left out until the drawer is counted.
+- `ShareReceiptButton` takes an optional label and copied message. The receipt wording stays the default.
+- Tests: `lib/reports/cashup-text.test.ts` (4), one more ShareReceiptButton test, and a new offline e2e (sale → reports
+  → float and count → share → checks the text).
+- Local: lint ✅ · typecheck ✅ · unit 377 ✅ · build ✅ · e2e 29/29 ✅. CI green on the first try. Squash-merged as `db7846b`.
+
+**Item 38: patch/minor dependency bumps → [PR #56](https://github.com/Alphaguyasa/Suq/pull/56), merged.**
+- supabase-js 2.118, dexie 4.4.7, react/react-dom 19.3.1, jsdom 30.1.3, @vitejs/plugin-react 6.1.2, testing-library,
+  types, @axe-core/playwright 4.14.0, pglite 0.5.13. `npm audit`: 0.
+- I regenerated the lockfile with `npx npm@11 update`. npm 10's `npm ci` installs it from an empty `node_modules`.
+  CLAUDE.md §3 now says to use npm 11 for lockfile changes.
+- **The new axe-core found a real accessibility gap (WCAG 2.5.3, label in name).** The sync pill showed
+  "Syncing · 1 saved", but its aria-label read "Sync status: Syncing, 1 saved". A speech-input user saying what they see
+  might not hit it. My first fix (matching the aria-label text) still failed axe. The pill is now named by its own
+  content with an sr-only "Sync status:" in front, so the name always contains the visible text. New
+  `components/SyncPill.test.tsx` fails on the old code.
+- Local: lint ✅ · typecheck ✅ · unit 377 ✅ · build ✅ · e2e 28/28 ✅ (before the rebase onto #55). One of the two CI
+  runs failed in `next build`: the Google Fonts fetch in `next/font` returned something it could not parse. The other run
+  on the same commit built and passed 29/29 e2e. I re-ran the failed job and it passed. Squash-merged as `0d222b4`.
+
+**Environment note.** Same Playwright mismatch as runs 12–16; the same symlink in `/opt/pw-browsers` fixed it locally.
+
+**Roadmap.** 7 open (12, 13, 27, 30, 32, 33, 39), 4 of them blocked. No replan was needed (≥ 5 open). Only three
+items (39, 30, 32) can be worked on without alpha, so the next run will probably replan after taking two.
+
+**Blocked:** release tags (refused as before). Rollback SHAs are in NEEDS_APPROVAL.
+
+### REPORT — 2026-10-30 (run 17)
+| Field | Content |
+|---|---|
+| Done | Item 37: share the cash-up as text (owner gets the day's takings on Telegram, offline too) — [PR #55](https://github.com/Alphaguyasa/Suq/pull/55). Item 38: patch/minor dependency bumps plus a sync-pill accessibility fix the newer axe found — [PR #56](https://github.com/Alphaguyasa/Suq/pull/56) |
+| Merged | PR #55: yes (`db7846b`) · PR #56: yes (`0d222b4`) · tags `v2026-10-30-1`/`-2` NOT pushed (refused) |
+| Failed or blocked | Tag pushes; items 12/33 wait for alpha; items 13/27 wait for the migrations |
+| Roadmap | 7 open (12, 13, 27, 30, 32, 33, 39), 4 of them blocked; no replan needed |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Yes/no on camera scanning and on a credit (ዱቤ) ledger; **apply the two migrations** (or reconnect Supabase to the Suq org); tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 39 (reset-gap tests), item 30 (saved end-of-day close), then a replan |
+
+---
+
 ## 2026-10-29 — Run 16 (scheduled)
 
 **Start.** `master` @ `347d5c8`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
