@@ -15,8 +15,21 @@ type Outcome = 'copied' | 'failed';
  * the clipboard instead. Where neither exists the button is not shown at all.
  * Support is detected after mount: the page is a prerendered shell, and
  * reading navigator during render would not match the server HTML.
+ *
+ * The cash-up sheet reuses it with its own label and copied message; the
+ * receipt wording is the default.
  */
-export function ShareReceiptButton({ title, text }: { title: string; text: string }) {
+export function ShareReceiptButton({
+  title,
+  text,
+  label,
+  copiedMessage,
+}: {
+  title: string;
+  text: string;
+  label?: string;
+  copiedMessage?: string;
+}) {
   const t = useT();
   const [mode, setMode] = useState<'share' | 'copy' | null>(null);
   const [outcome, setOutcome] = useState<Outcome>();
@@ -59,11 +72,15 @@ export function ShareReceiptButton({ title, text }: { title: string; text: strin
   return (
     <>
       <Button type="button" variant="quiet" onClick={() => void handleShare()}>
-        <span className="ethiopic">{t.sales.share}</span>
+        <span className="ethiopic">{label ?? t.sales.share}</span>
       </Button>
       {/* Always mounted so screen readers hear the result when it appears. */}
       <p role="status" className="ethiopic w-full text-sm text-muted">
-        {outcome === 'copied' ? t.sales.copied : outcome === 'failed' ? t.sales.shareFailed : ''}
+        {outcome === 'copied'
+          ? (copiedMessage ?? t.sales.copied)
+          : outcome === 'failed'
+            ? t.sales.shareFailed
+            : ''}
       </p>
     </>
   );

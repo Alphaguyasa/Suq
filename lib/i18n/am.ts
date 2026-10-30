@@ -246,6 +246,8 @@ export const am = {
     noData: 'መረጃ የለም',
     nothingLow: 'ሁሉም ክምችት በቂ ነው',
     printCashUp: 'የቀን መዝጊያ አትም',
+    shareCashUp: 'የቀን መዝጊያ አጋራ',
+    cashUpCopied: 'የቀን መዝጊያው ተቀድቷል። ወደ ቴሌግራም ወይም መልእክት ይለጥፉት።',
   },
   lock: {
     title: 'ሻጭ ይምረጡ',

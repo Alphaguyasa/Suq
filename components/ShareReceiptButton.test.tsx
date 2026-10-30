@@ -95,4 +95,26 @@ describe('ShareReceiptButton', () => {
 
     expect(screen.queryByRole('button', { name: t.sales.share })).not.toBeInTheDocument();
   });
+
+  it('uses the label and copied message it is given', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stubNavigator({ clipboard: { writeText } });
+    render(
+      <I18nProvider>
+        <ShareReceiptButton
+          title="cash-up"
+          text="cash-up body"
+          label={t.reports.shareCashUp}
+          copiedMessage={t.reports.cashUpCopied}
+        />
+      </I18nProvider>,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: t.reports.shareCashUp }));
+    });
+
+    expect(writeText).toHaveBeenCalledWith('cash-up body');
+    expect(screen.getByRole('status')).toHaveTextContent(t.reports.cashUpCopied);
+  });
 });
