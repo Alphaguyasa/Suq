@@ -241,6 +241,8 @@ export const en: Dict = {
     noData: 'No data',
     nothingLow: 'Everything is above its reorder level',
     printCashUp: 'Print cash-up',
+    shareCashUp: 'Share cash-up',
+    cashUpCopied: 'Cash-up copied. Paste it into Telegram or a message.',
   },
   lock: {
     title: 'Who is at the till?',

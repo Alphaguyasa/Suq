@@ -6,12 +6,14 @@ import { useMemo, useState } from 'react';
 import { BarChart } from '@/components/reports/BarChart';
 import { CashUpSheet } from '@/components/reports/CashUpSheet';
 import { LineChart } from '@/components/reports/LineChart';
+import { ShareReceiptButton } from '@/components/ShareReceiptButton';
 import { Button } from '@/components/ui/Button';
 import { NumberInput } from '@/components/ui/Field';
 import { getSettings, productsRepo, salesRepo, stockRepo } from '@/lib/db';
 import type { PaymentMethod, Sale, SaleItem } from '@/lib/db';
 import { formatETB, formatQty, parseETBOrZero } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import { cashUpText } from '@/lib/reports/cashup-text';
 import { productStockHref } from '@/lib/routes';
 import {
   cashUp,
@@ -276,10 +278,23 @@ export default function ReportsPage() {
 
         <CashUpSheet cashUp={drawer} settings={settings} date={period.from} />
 
-        <div data-print-hide="">
+        <div data-print-hide="" className="flex flex-wrap items-center gap-3">
           <Button type="button" variant="primary" onClick={() => window.print()}>
             <span className="ethiopic">{t.reports.printCashUp}</span>
           </Button>
+          <ShareReceiptButton
+            title={`${t.reports.cashUp} · ${t.reports[periodKey]}`}
+            text={cashUpText({
+              cashUp: drawer,
+              summary,
+              settings,
+              t,
+              periodLabel: t.reports[periodKey],
+              date: period.from,
+            })}
+            label={t.reports.shareCashUp}
+            copiedMessage={t.reports.cashUpCopied}
+          />
         </div>
       </section>
     </div>
