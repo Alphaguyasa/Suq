@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as salesRepo from './repositories/sales';
+import { DEVICE_META_ID } from './device';
+import { readPreviousTill } from './previous-till';
 import { resetDevice, unsyncedSummary } from './reset';
 import { db } from './schema';
 import { cartLine, freshDatabase, seedProduct } from './test-helpers';
@@ -45,5 +47,24 @@ describe('resetDevice', () => {
 
     for (const table of db.tables) expect(await table.count(), table.name).toBe(0);
     expect(await unsyncedSummary()).toEqual({ total: 0, sales: 0 });
+  });
+
+  it('remembers which till this was, past the highest receipt it knows of', async () => {
+    const meta = await db.device_meta.get(DEVICE_META_ID);
+    await db.device_meta.update(DEVICE_META_ID, { receipt_counter: 3 });
+    // A receipt with this code pulled from the server, ahead of the counter.
+    const product = await seedProduct();
+    const sale = await salesRepo.create([cartLine(product, 1)], { method: 'cash' });
+    await db.sales.update(sale.id, { receipt_no: 'A1-000017' });
+
+    await resetDevice();
+
+    expect(readPreviousTill()).toEqual({ device_id: meta?.device_id, device_prefix: 'A1', receipt_counter: 17 });
+  });
+
+  it('remembers nothing when there was no till to reset', async () => {
+    await db.device_meta.clear();
+    await resetDevice();
+    expect(readPreviousTill()).toBeNull();
   });
 });

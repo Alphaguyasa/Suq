@@ -1,3 +1,5 @@
+import { DEVICE_META_ID, highestReceiptCounter } from './device';
+import { rememberPreviousTill } from './previous-till';
 import { db } from './schema';
 
 /**
@@ -8,12 +10,22 @@ import { db } from './schema';
  * makes you type the shop name first, and says so plainly.
  *
  * device_meta goes too, so the next launch runs first-run setup again and the
- * local receipt counter restarts. Receipt numbers do not repeat, though: if
- * the till is set up again with a prefix the shop already used, nextReceiptNo()
- * continues past the highest such receipt once the first pull brings them back.
+ * local receipt counter restarts. Receipt numbers do not repeat, though: the
+ * till's id and counter are kept outside IndexedDB first (previous-till.ts),
+ * and if the till is set up again with a prefix another till used,
+ * nextReceiptNo() continues past those receipts once the first pull brings
+ * them back.
  */
 export async function resetDevice(): Promise<void> {
   await db.transaction('rw', db.tables, async () => {
+    const meta = await db.device_meta.get(DEVICE_META_ID);
+    if (meta) {
+      rememberPreviousTill({
+        device_id: meta.device_id,
+        device_prefix: meta.device_prefix,
+        receipt_counter: Math.max(meta.receipt_counter, await highestReceiptCounter(meta.device_prefix)),
+      });
+    }
     await Promise.all(db.tables.map((table) => table.clear()));
   });
 }

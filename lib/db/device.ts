@@ -1,5 +1,6 @@
 import type { EntityTable } from 'dexie';
 import { newId } from './id';
+import { previousCounterFor, readPreviousTill } from './previous-till';
 import { db } from './schema';
 import type { DeviceMeta } from './schema';
 
@@ -16,6 +17,9 @@ export interface RegisterDeviceInput {
 /**
  * Idempotent. Returns the existing device row if one is already registered,
  * so a re-run of first-run setup can never reset the receipt counter.
+ *
+ * A till that was reset gets its old device_id back (see previous-till.ts),
+ * so it still owns the duplicate voids it wrote before the reset.
  */
 export async function registerDevice(input: RegisterDeviceInput): Promise<DeviceMeta> {
   return db.transaction('rw', db.device_meta, async () => {
@@ -24,7 +28,7 @@ export async function registerDevice(input: RegisterDeviceInput): Promise<Device
 
     const meta: DeviceMeta = {
       id: DEVICE_META_ID,
-      device_id: newId(),
+      device_id: readPreviousTill()?.device_id ?? newId(),
       device_prefix: input.device_prefix,
       shop_id: input.shop_id,
       receipt_counter: 0,
@@ -57,12 +61,18 @@ export async function getDevice(): Promise<DeviceMeta> {
  * the prefix change to one an earlier till already printed. Re-running setup
  * with the same prefix would then hand out A1-000001 a second time. So the
  * next number is also kept above every receipt with this prefix the device
- * knows about — its own and any pulled from the server — and the gap closes
- * on the first pull after a reset.
+ * knows about — its own and any pulled from the server — and above the
+ * counter this till had reached before a reset, so it does not wait for the
+ * first pull to stop repeating its own numbers.
  */
 export async function nextReceiptNo(): Promise<string> {
   const meta = await getDevice();
-  const next = Math.max(meta.receipt_counter, await highestReceiptCounter(meta.device_prefix)) + 1;
+  const next =
+    Math.max(
+      meta.receipt_counter,
+      await highestReceiptCounter(meta.device_prefix),
+      previousCounterFor(meta.device_prefix),
+    ) + 1;
 
   await db.device_meta.update(DEVICE_META_ID, { receipt_counter: next });
 
@@ -101,8 +111,9 @@ export async function highestReceiptCounter(prefix: string): Promise<number> {
  *
  * That is either another till in the shop using the same code (receipts will
  * interleave, and two offline sales can get the same number), or this till
- * before a reset (harmless now that numbering continues past them). Settings
- * and setup cannot tell those apart, so they warn and let the owner decide.
+ * before a reset whose site storage was cleared too (a plain reset keeps the
+ * device_id). Settings and setup cannot tell those apart, so they warn and
+ * let the owner decide.
  */
 export async function isPrefixUsedByAnotherDevice(prefix: string, deviceId: string): Promise<boolean> {
   if (!prefix) return false;
