@@ -290,6 +290,8 @@ export const am = {
     resetMismatch: 'ስሙ አይመሳሰልም',
     resetUnsynced: (total: number, sales: number) =>
       `${total} መዝገቦች${sales > 0 ? ` (${sales} ሽያጮችን ጨምሮ)` : ''} ገና ወደ ሰርቨሩ አልደረሱም። ያሉት በዚህ መሣሪያ ላይ ብቻ ነው፤ ካጸዱ ለዘለቄታው ይጠፋሉ።`,
+    resetCashCloses: (count: number) =>
+      `${count} የተቀመጡ የካዝና ቆጠራዎች ያሉት በዚህ መሣሪያ ላይ ብቻ ነው (ገና አይመሳሰሉም)፤ ካጸዱ ለዘለቄታው ይጠፋሉ።`,
     resetBackupFirst: 'መጀመሪያ ምትኬ አውርድ (JSON)',
     resetAllSynced: 'በዚህ መሣሪያ ያለው መረጃ ሁሉ ወደ ሰርቨሩ ደርሷል። ከጸዳ በኋላ ገብተው ሲያመሳስሉ ይመለሳል።',
     backupSection: 'ምትኬ',

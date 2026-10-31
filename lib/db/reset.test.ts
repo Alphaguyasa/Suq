@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { saveCashClose } from './cash-closes';
 import * as salesRepo from './repositories/sales';
 import { DEVICE_META_ID } from './device';
 import { readPreviousTill } from './previous-till';
@@ -12,7 +13,7 @@ beforeEach(async () => {
 
 describe('unsyncedSummary', () => {
   it('is zero on a till with nothing queued', async () => {
-    expect(await unsyncedSummary()).toEqual({ total: 0, sales: 0 });
+    expect(await unsyncedSummary()).toEqual({ total: 0, sales: 0, cashCloses: 0 });
   });
 
   it('counts every queued row, and the sales among them', async () => {
@@ -34,7 +35,22 @@ describe('unsyncedSummary', () => {
 
     // What a successful push does: the server has the rows, the queue empties.
     await db.outbox.clear();
-    expect(await unsyncedSummary()).toEqual({ total: 0, sales: 0 });
+    expect(await unsyncedSummary()).toEqual({ total: 0, sales: 0, cashCloses: 0 });
+  });
+
+  it('counts saved drawer counts even when the outbox is empty', async () => {
+    // cash_closes never reach the outbox (local only until ROADMAP item 13),
+    // so a fully synced till still loses them on a reset.
+    const day = { periodFrom: '2026-10-31T00:00:00.000Z', periodTo: '2026-11-01T00:00:00.000Z' };
+    const figures = { openingFloat: 50000, cashSales: 14500, expected: 64500, counted: 64000, variance: -500 };
+    await saveCashClose({ ...day, cashUp: figures });
+    await saveCashClose({ ...day, cashUp: { ...figures, counted: 64500, variance: 0 } });
+
+    expect(await db.outbox.count()).toBe(0);
+    expect(await unsyncedSummary()).toEqual({ total: 0, sales: 0, cashCloses: 2 });
+
+    await resetDevice();
+    expect(await unsyncedSummary()).toEqual({ total: 0, sales: 0, cashCloses: 0 });
   });
 });
 
@@ -46,7 +62,7 @@ describe('resetDevice', () => {
     await resetDevice();
 
     for (const table of db.tables) expect(await table.count(), table.name).toBe(0);
-    expect(await unsyncedSummary()).toEqual({ total: 0, sales: 0 });
+    expect(await unsyncedSummary()).toEqual({ total: 0, sales: 0, cashCloses: 0 });
   });
 
   it('remembers which till this was, past the highest receipt it knows of', async () => {

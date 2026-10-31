@@ -507,14 +507,21 @@ function DangerSection({ shopName, onReset }: { shopName: string; onReset: () =>
       <h2 className="ethiopic text-lg font-semibold text-alarm">{t.settings.dangerSection}</h2>
       <p className="ethiopic max-w-prose text-sm text-muted">{t.settings.resetWarning}</p>
 
-      {unsynced === undefined ? null : unsynced.total > 0 ? (
+      {unsynced === undefined ? null : unsynced.total > 0 || unsynced.cashCloses > 0 ? (
         <div
           data-testid="reset-unsynced"
           className="flex flex-col gap-3 rounded-lg border border-ochre/40 bg-ochre/10 p-3"
         >
-          <p className="ethiopic max-w-prose text-sm font-medium text-ochre-ink">
-            {t.settings.resetUnsynced(unsynced.total, unsynced.sales)}
-          </p>
+          {unsynced.total > 0 ? (
+            <p className="ethiopic max-w-prose text-sm font-medium text-ochre-ink">
+              {t.settings.resetUnsynced(unsynced.total, unsynced.sales)}
+            </p>
+          ) : null}
+          {unsynced.cashCloses > 0 ? (
+            <p data-testid="reset-cash-closes" className="ethiopic max-w-prose text-sm font-medium text-ochre-ink">
+              {t.settings.resetCashCloses(unsynced.cashCloses)}
+            </p>
+          ) : null}
           <Button
             type="button"
             variant="quiet"

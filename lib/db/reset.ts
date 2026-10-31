@@ -35,19 +35,27 @@ export interface UnsyncedSummary {
   total: number;
   /** Of those, sale rows (voids included), the ones an owner counts. */
   sales: number;
+  /**
+   * Saved drawer counts. Not in the outbox: cash_closes is local only until
+   * ROADMAP item 13 replicates it, so every one of them is lost on a reset
+   * however well the till has synced. Drop this once they sync.
+   */
+  cashCloses: number;
 }
 
 /**
  * What a reset would destroy for good: the outbox is the only record of
- * changes the server has never seen. Everything else on the device comes
- * back with the first pull after signing in again.
+ * changes the server has never seen, and saved drawer counts never leave the
+ * device at all yet. Everything else comes back with the first pull after
+ * signing in again.
  */
 export async function unsyncedSummary(): Promise<UnsyncedSummary> {
-  return db.transaction('r', db.outbox, async () => {
-    const [total, sales] = await Promise.all([
+  return db.transaction('r', db.outbox, db.cash_closes, async () => {
+    const [total, sales, cashCloses] = await Promise.all([
       db.outbox.count(),
       db.outbox.where('table').equals('sales').count(),
+      db.cash_closes.count(),
     ]);
-    return { total, sales };
+    return { total, sales, cashCloses };
   });
 }

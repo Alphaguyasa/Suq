@@ -50,6 +50,17 @@ test('reset says what has not synced and offers the backup first', async ({ cont
   await expect(page.getByTestId('reset-all-synced')).toBeVisible({ timeout: 30_000 });
   expect(server.rows('sales').map((sale) => sale.receipt_no)).toContain(receiptNo);
 
+  // A saved drawer count never syncs yet (ROADMAP item 13), so a fully
+  // synced till must still warn that the reset destroys it.
+  await page.goto('/reports');
+  await page.getByLabel(t.reports.countedDrawer, { exact: true }).fill('100');
+  await page.getByRole('button', { name: t.reports.saveClose }).click();
+  await expect(page.getByText(t.reports.closeSaved)).toBeVisible();
+  await page.goto('/settings');
+  await expect(page.getByTestId('reset-cash-closes')).toHaveText(t.settings.resetCashCloses(1));
+  await expect(page.getByTestId('reset-unsynced')).not.toContainText(t.settings.resetUnsynced(3, 1));
+  await expect(page.getByTestId('reset-all-synced')).toHaveCount(0);
+
   // The reset itself still works the same way.
   await page.locator('#reset-confirm').fill('የሙከራ ሱቅ');
   await page.getByRole('button', { name: t.settings.resetDevice }).click();

@@ -287,6 +287,8 @@ export const en: Dict = {
     resetMismatch: 'That does not match',
     resetUnsynced: (total: number, sales: number) =>
       `${total} records${sales > 0 ? ` (${sales} of them sales)` : ''} have not reached the server yet. They exist only on this device and will be lost for good.`,
+    resetCashCloses: (count: number) =>
+      `${count} saved drawer ${count === 1 ? 'count is' : 'counts are'} kept only on this device (they do not sync yet) and will be lost for good.`,
     resetBackupFirst: 'Download a backup first (JSON)',
     resetAllSynced: 'Everything on this device has reached the server. After a reset, sign in and sync to get it back.',
     backupSection: 'Backup',
