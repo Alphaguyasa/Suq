@@ -13,9 +13,9 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-10-30 (run 17) that is item 39 (reset-gap tests), then item 30 (saved
-end-of-day close, local only). Item 27 needs a new `sale_items` column that production lacks until alpha applies the
-migrations, so it waits unless the push can leave the column out safely.
+"after the pending migrations". As of 2026-10-31 (run 18) that is item 40 (reset warning counts saved drawer counts),
+then item 41 (moderate tooling advisories), then item 32 (owner PIN). Item 27 needs a new `sale_items` column that
+production lacks until alpha applies the migrations, so it waits unless the push can leave the column out safely.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
 `docs/RULES.md` says "no camera scanning in v1 and no scanner library", and this item was written by a run, not
@@ -29,7 +29,8 @@ optional. MIT-licensed, Apache-2.0 for zxing core.)
 
 ### 13. [P3 · M] Replicate shop settings so the owner dashboard shows the shop name — after the pending migrations are applied
 Do not ship before the Supabase migrations in NEEDS_APPROVAL are applied: tills would push to a table that does not
-exist in production yet, every push of it would fail and the sync pill would go to "blocked".
+exist in production yet, every push of it would fail and the sync pill would go to "blocked". Replicate `cash_closes`
+(item 30, local only today) in the same step: append-only table, RLS like `sales`.
 `shop_settings` is local-only; the owner view on a second device cannot show which shop it is looking at.
 Additive migration (new table, RLS like the others) + LWW sync like `products`. Migration file + test.
 
@@ -38,12 +39,8 @@ RLS is on for every table, append-only tables allow only SELECT/INSERT, no XSS s
 `localWrite()` are the sanctioned `lib/sync/apply.ts` and the dev-only demo seed. Items below are ordered by priority.
 
 ### 27. [P2 · S] Gross profit uses today's cost, not the cost at the time of sale
-`lib/reports/compute.ts` says so in a comment. Fix: `cost_snapshot` on `sale_items` (Dexie v7 — v5/v6 are taken by items 25 and 34 — + upgrade test,
+`lib/reports/compute.ts` says so in a comment. Fix: `cost_snapshot` on `sale_items` (Dexie v8 — v5/v6/v7 are taken by items 25, 34 and 30 — + upgrade test,
 additive nullable column migration); old lines fall back to current cost.
-
-### 30. [P3 · M] Saved end-of-day close
-The cash-up sheet exists but float and counted cash live only in React state; nothing is recorded, so past
-shortfalls are invisible. Append-only `cash_closes` record (local first; sync after the migrations are applied).
 
 ### 32. [P3 · M] Owner PIN for voids, price edits and reset
 Any cashier PIN can void, change prices or reset the device. Add an owner role for those actions. (PINs are plain
@@ -58,13 +55,37 @@ Short audit: `npm audit` (dev included) is clean after PR #49, there are no TODO
 shows patch/minor updates within the current majors. The lock state and the remaining gaps logged by earlier items
 were read again.
 
-### 39. [P3 · S] Reset-gap follow-ups (from items 7 and 21)
-Two known gaps: a reset till that sells before its first pull can reuse receipt numbers, and a duplicate void
-written by a device that is reset before its next pull is never reversed. Both need a till reset with unsynced
-data, and item 24 now warns about that. Write a test for each to measure the gap, then decide whether either is worth
-a fix.
+## Replan 2026-10-31 (5 open, 4 of them blocked; short audit)
+`npm audit` (dev included) now shows moderate advisories in build/lint tooling only; `npm audit --omit=dev` gate is
+clean. `npm outdated` shows only majors: next 16, eslint 10, typescript 7, vitest 5, eslint-config-next 16.
+
+### 40. [P2 · S] Reset warning counts saved drawer counts
+`cash_closes` (item 30) is local only, so a reset destroys every saved count, but the danger section counts only the
+outbox and may say "everything has reached the server". Count the closes in `unsyncedSummary()` (until item 13
+replicates them) and say so; the backup button already includes them. Unit + e2e.
+
+### 41. [P2 · S] Moderate advisories in build tooling (glob, minimatch)
+GHSA-3g3m-2fjr-6pw4 (glob, via @serwist/build) and GHSA-g3hv-75wg-m249 (minimatch, via eslint). Build/lint time only,
+never shipped to the till. Try `overrides` to patched versions within each dependent's range; `npm audit fix --force`
+would downgrade @serwist/next and eslint, so not that. Lockfile with npm 11.
+
+### 42. [P3 · L] Major upgrades, one PR each: vitest 5, typescript 7, eslint 10 (+ eslint-config-next), Next 16
+Read each changelog first; Next 16 is last and largest (Serwist compatibility, App Router changes). Stop and log if
+any needs code changes beyond an S.
 
 ## Done
+
+- **Saved end-of-day close (item 30)** — Reports → cash-up "Save count" records float, cash sales, expected, counted and
+  variance (cents) with the cashier and period in a new append-only, local-only `cash_closes` table (Dexie v7 +
+  upgrade fixture). Saved counts are listed below, short in ochre; a recount is a second record; the same figures
+  cannot be saved twice. Included in the JSON backup. Unit + offline e2e (survives a cold launch). Syncing waits for
+  item 13. [PR #59](https://github.com/Alphaguyasa/Suq/pull/59) · tag `v2026-10-31-2` not pushed (refused) — commit `807465c`
+
+- **Reset gaps closed (item 39)** — tests measured both gaps, and both were real. A reset now keeps the till's
+  `device_id`, code and receipt counter in localStorage (`lib/db/previous-till.ts`), so a till set up again keeps
+  numbering past its old receipts before any pull, and still reverses a duplicate void it wrote before the reset. A
+  two-till test shows the gap with the identity forgotten (net short one sale, goods back twice).
+  [PR #58](https://github.com/Alphaguyasa/Suq/pull/58) · tag `v2026-10-31-1` not pushed (refused) — commit `2616400`
 
 - **Patch/minor dependency bumps (item 38)** — supabase-js 2.118, dexie 4.4.7, react/react-dom 19.3.1, jsdom 30.1.3,
   @vitejs/plugin-react 6.1.2, testing-library, types, @axe-core/playwright 4.14.0, pglite 0.5.13. Lockfile from npm 11
