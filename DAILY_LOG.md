@@ -36,7 +36,7 @@ The two migrations are still unapplied.
   the till until item 13 replicates them.
 - My first e2e draft cleared the tab session while `/` was still loading and failed once in the full run. It now waits
   for the sale screen first. It then passed 5/5 repeats and the full suite 30/30.
-- Local: lint ✅ · typecheck ✅ · unit 410 ✅ · build ✅ · e2e 30/30 ✅.
+- Local: lint ✅ · typecheck ✅ · unit 410 ✅ · build ✅ · e2e 30/30 ✅. CI green on the first try. Squash-merged as `807465c`.
 
 **Replan (short).** Item 30 introduced a new gap: a reset wipes saved counts, but the reset warning counts only the
 outbox (new item 40). `npm audit` (dev included) shows new moderate advisories in build/lint tooling only: glob via
@@ -51,7 +51,7 @@ Item 27 moves to Dexie v8.
 | Field | Content |
 |---|---|
 | Done | Item 39: a reset till keeps its id and receipt counter, closing both reset gaps (no repeated receipt numbers; a double void is still corrected) — [PR #58](https://github.com/Alphaguyasa/Suq/pull/58). Item 30: the end-of-day drawer count is saved and listed, offline — [PR #59](https://github.com/Alphaguyasa/Suq/pull/59) |
-| Merged | PR #58: yes (`2616400`) · PR #59: MERGE_STATUS · tags `v2026-10-31-1`/`-2` NOT pushed (refused) |
+| Merged | PR #58: yes (`2616400`) · PR #59: yes (`807465c`) · tags `v2026-10-31-1`/`-2` NOT pushed (refused) |
 | Failed or blocked | Tag pushes; items 12/33 wait for alpha; items 13/27 wait for the migrations |
 | Roadmap | 8 open (12, 13, 27, 32, 33, 40, 41, 42), 4 blocked; short replan added 40–42 |
 | Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |

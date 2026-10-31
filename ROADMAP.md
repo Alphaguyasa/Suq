@@ -79,7 +79,7 @@ any needs code changes beyond an S.
   variance (cents) with the cashier and period in a new append-only, local-only `cash_closes` table (Dexie v7 +
   upgrade fixture). Saved counts are listed below, short in ochre; a recount is a second record; the same figures
   cannot be saved twice. Included in the JSON backup. Unit + offline e2e (survives a cold launch). Syncing waits for
-  item 13. [PR #59](https://github.com/Alphaguyasa/Suq/pull/59) · tag `v2026-10-31-2` not pushed (refused) — commit `SHA59`
+  item 13. [PR #59](https://github.com/Alphaguyasa/Suq/pull/59) · tag `v2026-10-31-2` not pushed (refused) — commit `807465c`
 
 - **Reset gaps closed (item 39)** — tests measured both gaps, and both were real. A reset now keeps the till's
   `device_id`, code and receipt counter in localStorage (`lib/db/previous-till.ts`), so a till set up again keeps
