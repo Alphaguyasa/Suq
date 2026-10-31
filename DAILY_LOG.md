@@ -4,6 +4,62 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-31 — Run 18 (scheduled)
+
+**Start.** `master` @ `4eb4122`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page
+(platform.claude.com). Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+**Supabase check.** The connector still lists only `not-alone-scripture` (ACTIVE) and `erko-staging` (INACTIVE), not Suq.
+The two migrations are still unapplied.
+
+**Item 39: reset gaps → [PR #58](https://github.com/Alphaguyasa/Suq/pull/58), merged.**
+- The item asked me to measure both gaps with tests first. Both were real:
+  1. A till set up again with its old code that sold before its first pull printed `A1-000001` a second time.
+  2. B voids a sale after A did, syncs before A pushes, and is then reset. B came back with a new `device_id`, so
+     nobody owned its duplicate void. The sale stayed voided twice: takings short by one sale for good, and the goods
+     counted back twice. This needs no lost data, because B had pushed everything before the reset.
+- Fix: before the wipe, `resetDevice()` saves the till's `device_id`, code and highest receipt counter in localStorage
+  (`lib/db/previous-till.ts`). `registerDevice()` reuses the id, and `nextReceiptNo()` continues past the saved counter
+  under the same code. Neither is shop data, so "wipe this shop" still holds. If storage is blocked or cleared, the till
+  starts as a new one, as before.
+- Tests: two-till sync section 8b (fixed vs. forgotten identity), 5 device tests, previous-till parsing/blocked storage,
+  and 2 reset tests. 4 of the new tests fail on the old `device.ts`.
+- Local: lint ✅ · typecheck ✅ · unit 400 ✅ · build ✅ · e2e 29/29 ✅. CI green on the first try. Squash-merged as `2616400`.
+
+**Item 30: saved end-of-day close → [PR #59](https://github.com/Alphaguyasa/Suq/pull/59), MERGE_STATUS.**
+- Reports → cash-up now has a "Save count" button. Each save writes a record to a new append-only, local-only
+  `cash_closes` table (Dexie v7, with an upgrade fixture). A record holds float, cash sales, expected, counted,
+  variance, the cashier and the period. The button stays disabled until cash is counted, and again until the figures
+  change, so repeated taps don't save the same count twice. A recount is a new record.
+- A "Saved counts" list sits underneath (short shown in ochre). The closes go into the JSON backup, their only copy off
+  the till until item 13 replicates them.
+- My first e2e draft cleared the tab session while `/` was still loading and failed once in the full run. It now waits
+  for the sale screen first. It then passed 5/5 repeats and the full suite 30/30.
+- Local: lint ✅ · typecheck ✅ · unit 410 ✅ · build ✅ · e2e 30/30 ✅.
+
+**Replan (short).** Item 30 introduced a new gap: a reset wipes saved counts, but the reset warning counts only the
+outbox (new item 40). `npm audit` (dev included) shows new moderate advisories in build/lint tooling only: glob via
+@serwist/build, minimatch via eslint (item 41). The CI production gate is clean. The pending majors are now item 42.
+Item 27 moves to Dexie v8.
+
+**Environment note.** Same Playwright mismatch as runs 12–17; the same symlink in `/opt/pw-browsers` fixed it locally.
+
+**Blocked:** release tags (refused as before). Rollback SHAs are in NEEDS_APPROVAL.
+
+### REPORT — 2026-10-31 (run 18)
+| Field | Content |
+|---|---|
+| Done | Item 39: a reset till keeps its id and receipt counter, closing both reset gaps (no repeated receipt numbers; a double void is still corrected) — [PR #58](https://github.com/Alphaguyasa/Suq/pull/58). Item 30: the end-of-day drawer count is saved and listed, offline — [PR #59](https://github.com/Alphaguyasa/Suq/pull/59) |
+| Merged | PR #58: yes (`2616400`) · PR #59: MERGE_STATUS · tags `v2026-10-31-1`/`-2` NOT pushed (refused) |
+| Failed or blocked | Tag pushes; items 12/33 wait for alpha; items 13/27 wait for the migrations |
+| Roadmap | 8 open (12, 13, 27, 32, 33, 40, 41, 42), 4 blocked; short replan added 40–42 |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Yes/no on camera scanning and on a credit (ዱቤ) ledger; **apply the two migrations** (or reconnect Supabase to the Suq org); tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 40 (reset warning counts saved drawer counts), item 41 (tooling advisories), then item 32 (owner PIN) |
+
+---
+
 ## 2026-10-30 — Run 17 (scheduled)
 
 **Start.** `master` @ `00a6c38`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
