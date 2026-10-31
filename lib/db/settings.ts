@@ -32,8 +32,20 @@ export async function ensureSettings(): Promise<ShopSettings> {
   });
 }
 
+/**
+ * Read-only on purpose: pages call this inside useLiveQuery, and Dexie throws
+ * ReadOnlyError on a readwrite transaction there. A missing row (fresh install,
+ * or just after a reset wiped the table under an open Settings page) reads as
+ * the defaults; nothing is saved until updateSettings() runs.
+ */
 export async function getSettings(): Promise<ShopSettings> {
-  return (await db.shop_settings.get(SHOP_SETTINGS_ID)) ?? ensureSettings();
+  return (
+    (await db.shop_settings.get(SHOP_SETTINGS_ID)) ?? {
+      id: SHOP_SETTINGS_ID,
+      ...DEFAULTS,
+      updated_at: '',
+    }
+  );
 }
 
 export async function updateSettings(
