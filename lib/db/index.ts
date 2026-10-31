@@ -5,6 +5,7 @@ export * from './bootstrap';
 export * from './settings';
 export * from './cashiers';
 export * from './reset';
+export * from './cash-closes';
 export * from './id';
 export * from './timestamps';
 

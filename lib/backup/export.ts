@@ -1,13 +1,23 @@
 import { db } from '@/lib/db/schema';
-import type { Product, Sale, SaleItem, ShopSettings, StockMovement, SuqDatabase } from '@/lib/db/schema';
+import type {
+  CashClose,
+  Product,
+  Sale,
+  SaleItem,
+  ShopSettings,
+  StockMovement,
+  SuqDatabase,
+} from '@/lib/db/schema';
 
 /**
  * A backup a shop can keep without ever signing in to sync.
  *
  * Two files, for two readers:
  * - JSON: everything that defines the shop's history (products, sales, sale
- *   lines, stock movements, shop details), exactly as stored, so a future
- *   import can restore it. Money stays integer cents.
+ *   lines, stock movements, shop details, saved drawer counts), exactly as
+ *   stored, so a future import can restore it. Money stays integer cents.
+ *   cash_closes was added after v1 shipped; it is additive, so the version
+ *   stays 1 and an older file simply has no counts.
  * - CSV: one row per sale line, for an owner or accountant opening it in a
  *   spreadsheet. Money is written in birr ("25.00"), formatted from integer
  *   cents without touching a float.
@@ -30,6 +40,8 @@ export interface Backup {
   sales: Sale[];
   sale_items: SaleItem[];
   stock_movements: StockMovement[];
+  /** Local-only until it replicates, so this file is its only copy off the till. */
+  cash_closes: CashClose[];
 }
 
 /** One read transaction, so the files are a consistent snapshot even mid-sale. */
@@ -43,6 +55,7 @@ export async function buildBackup(database: SuqDatabase = db, now = new Date()):
       database.sales,
       database.sale_items,
       database.stock_movements,
+      database.cash_closes,
     ],
     async () => {
       const [meta] = await database.device_meta.toArray();
@@ -60,6 +73,7 @@ export async function buildBackup(database: SuqDatabase = db, now = new Date()):
         sales: await database.sales.orderBy('created_at').toArray(),
         sale_items: await database.sale_items.toArray(),
         stock_movements: await database.stock_movements.orderBy('created_at').toArray(),
+        cash_closes: await database.cash_closes.orderBy('created_at').toArray(),
       };
     },
   );

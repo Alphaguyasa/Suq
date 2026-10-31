@@ -248,6 +248,11 @@ export const am = {
     printCashUp: 'የቀን መዝጊያ አትም',
     shareCashUp: 'የቀን መዝጊያ አጋራ',
     cashUpCopied: 'የቀን መዝጊያው ተቀድቷል። ወደ ቴሌግራም ወይም መልእክት ይለጥፉት።',
+    saveClose: 'ቆጠራውን አስቀምጥ',
+    closeSaved: 'ቆጠራው ተቀምጧል',
+    countFirst: 'ለማስቀመጥ የተቆጠረውን ገንዘብ ያስገቡ',
+    pastCloses: 'የተቀመጡ ቆጠራዎች',
+    noCloses: 'እስካሁን የተቀመጠ ቆጠራ የለም',
   },
   lock: {
     title: 'ሻጭ ይምረጡ',
