@@ -51,8 +51,9 @@ export default function SettingsPage() {
   const [saveError, setSaveError] = useState<WriteFailure>();
 
   /*
-   * Warn, don't block: after a reset this till's own old receipts carry a
-   * different device_id, and numbering already continues past them.
+   * Warn, don't block: if site storage was cleared along with a reset, this
+   * till's own old receipts carry a different device_id, and numbering
+   * already continues past them.
    */
   const cleanedPrefix = prefix.trim().toUpperCase();
   const prefixInUse = useLiveQuery(

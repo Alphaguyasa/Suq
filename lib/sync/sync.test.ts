@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DEVICE_META_ID, clearAllTables, db, localWrite, registerDevice, salesRepo } from '@/lib/db';
+import { DEVICE_META_ID, clearAllTables, db, localWrite, registerDevice, resetDevice, salesRepo } from '@/lib/db';
+import { PREVIOUS_TILL_KEY } from '@/lib/db/previous-till';
 import { resetEngineState, setAuthed, syncNow } from './engine';
 import { FakeServer } from './fake-server';
 import { PUSH_BATCH_SIZE, drainOutbox, pushOnce } from './push';
@@ -822,6 +823,116 @@ describe('8. two tills void the same sale while offline', () => {
     expect(reversal, 'B reversed its own duplicate').toMatchObject({ device_id: voidOnB.device_id });
     expect(serverSales.filter((row) => row.voids_sale_id === 'void-on-a'), 'A\'s void stands').toHaveLength(0);
     expect((await salesRepo.findVoidOf(sale.id))?.id).toBe('void-on-a');
+  });
+});
+
+/* ----------------------------------------------------------------- 8b ---- */
+
+describe('8b. the till that wrote the duplicate void is reset before it sees the clash', () => {
+  afterEach(() => resetEngineState());
+
+  /**
+   * ROADMAP item 39, gap 2. B voids later than A (so B's is the duplicate),
+   * syncs before A has pushed, and is then reset and set up again. When A's
+   * earlier void finally arrives, only B may reverse its duplicate — and B
+   * now comes back under a fresh device_id unless the reset kept the old one.
+   */
+  async function duplicateVoidAcrossAReset({ forgetTill }: { forgetTill: boolean }) {
+    const server = new FakeServer();
+    const client = server.client();
+
+    const a = await replica('suq-reset-void-a', 'A1');
+    await clearAllTables();
+    await registerDevice({ shop_id: SHOP, device_prefix: 'B1', cashier_name: 'ሰላም' });
+    setAuthed(true);
+
+    const product = makeProduct();
+    await localWrite('products', product, a.db);
+    await localWrite(
+      'stock_movements',
+      {
+        id: 'opening-reset-void',
+        shop_id: SHOP,
+        product_id: product.id,
+        qty_delta: 40,
+        reason: 'opening',
+        ref_id: null,
+        note: null,
+        created_at: '2026-07-31T08:00:00.000Z',
+        device_id: a.deviceId,
+      },
+      a.db,
+    );
+    const { sale, item } = await sellOn(a, { productId: product.id, qty: 6 });
+    await drainOutbox(client, a.db);
+    server.tick();
+    await syncNow(client);
+
+    // Both offline; A voids first by the clock, B a minute later.
+    const voidedAt = new Date(Date.now() - 60_000).toISOString();
+    await localWrite(
+      'sales',
+      { ...sale, id: 'void-on-a', receipt_no: 'A1-000002', subtotal: -sale.subtotal, total: -sale.total, voids_sale_id: sale.id, created_at: voidedAt },
+      a.db,
+    );
+    await localWrite(
+      'sale_items',
+      { ...item, id: 'void-item-on-a', sale_id: 'void-on-a', qty: -6, line_total: -item.line_total, created_at: voidedAt },
+      a.db,
+    );
+    await localWrite(
+      'stock_movements',
+      { id: 'void-movement-on-a', shop_id: SHOP, product_id: product.id, qty_delta: 6, reason: 'return', ref_id: 'void-on-a', note: null, created_at: voidedAt, device_id: a.deviceId },
+      a.db,
+    );
+    const voidOnB = await salesRepo.voidSale(sale.id, 'wrong item');
+
+    // B reconnects first: pushes its void, pulls, sees no clash yet.
+    server.tick();
+    await syncNow(client);
+    expect(await db.outbox.count(), 'B had pushed everything before the reset').toBe(0);
+
+    // B is reset and set up again; nothing of B's was lost.
+    await resetDevice();
+    if (forgetTill) localStorage.removeItem(PREVIOUS_TILL_KEY);
+    await registerDevice({ shop_id: SHOP, device_prefix: 'B1', cashier_name: 'ሰላም' });
+
+    // Now A's earlier void reaches the server, and both tills sync.
+    await drainOutbox(client, a.db);
+    server.tick();
+    await syncNow(client); // B pulls both voids and reconciles
+    server.tick();
+    await syncNow(client); // B pushes what it wrote
+    server.tick();
+    await pullOnce(client, a.db);
+
+    const serverSales = server.rows('sales');
+    return {
+      server,
+      productId: product.id,
+      saleTotal: sale.total,
+      voidOnB,
+      net: serverSales.reduce((sum, row) => sum + Number(row.total), 0),
+      reversal: serverSales.find((row) => row.voids_sale_id === voidOnB.id),
+    };
+  }
+
+  it('reverses the duplicate once the reset till pulls, because it kept its device_id', async () => {
+    const { server, productId, net, reversal, voidOnB } = await duplicateVoidAcrossAReset({ forgetTill: false });
+
+    expect(net, 'the sale is voided once').toBe(0);
+    expect(server.onHand(productId), 'goods came back once').toBe(40);
+    expect(await onHandIn(db, productId)).toBe(40);
+    expect(reversal, 'the reset till reversed its own duplicate').toMatchObject({ device_id: voidOnB.device_id });
+    expect(server.rows('sales'), 'sale, two voids, one reversal').toHaveLength(4);
+  });
+
+  it('measures the gap: with the till forgotten nobody reverses it', async () => {
+    const { server, productId, net, reversal, saleTotal } = await duplicateVoidAcrossAReset({ forgetTill: true });
+
+    expect(reversal).toBeUndefined();
+    expect(net, 'voided twice: takings short by one sale').toBe(-saleTotal);
+    expect(server.onHand(productId), 'goods came back twice').toBe(46);
   });
 });
 

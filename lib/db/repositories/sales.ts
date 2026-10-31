@@ -416,7 +416,9 @@ class AlreadyReconciled extends Error {}
  * which is when the sync engine calls this. Reports need no special case:
  * once the reversal exists, plain sums are right again.
  *
- * Known gap: if that device is reset before it pulls, nobody corrects it.
+ * A device that is reset before it pulls keeps its device_id (see
+ * previous-till.ts), so it still corrects its duplicate after signing in
+ * again. Only if site storage is wiped too does nobody correct it.
  *
  * Returns the reversal rows written.
  */

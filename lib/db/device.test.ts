@@ -116,6 +116,62 @@ describe('reset device, set up again with the same prefix', () => {
   });
 });
 
+describe('a till that is reset and set up again', () => {
+  // ROADMAP item 39, gap 1: before a reset kept the counter, a till set up
+  // again with its old code and selling before its first pull printed
+  // A1-000001 a second time.
+  it('does not repeat its own receipt numbers before the first pull', async () => {
+    const product = await seedProduct();
+    await salesRepo.create([cartLine(product, 1)], { method: 'cash' });
+    await salesRepo.create([cartLine(product, 1)], { method: 'cash' });
+
+    await resetDevice();
+    await registerDevice({ shop_id: TEST_SHOP, device_prefix: 'A1' });
+
+    expect(await nextReceiptNo()).toBe('A1-000003');
+  });
+
+  it('keeps its device_id, so it still owns what it wrote before', async () => {
+    const before = await getDevice();
+
+    await resetDevice();
+    const after = await registerDevice({ shop_id: TEST_SHOP, device_prefix: 'C3' });
+
+    expect(after.device_id).toBe(before.device_id);
+  });
+
+  it('starts at 1 under a code the previous till never used', async () => {
+    await db.device_meta.update(DEVICE_META_ID, { receipt_counter: 40 });
+
+    await resetDevice();
+    await registerDevice({ shop_id: TEST_SHOP, device_prefix: 'B7' });
+
+    expect(await nextReceiptNo()).toBe('B7-000001');
+  });
+
+  it('applies the floor when setup changes the code back to the old one', async () => {
+    // ensureDevice() registers with a default code; setup then sets the real one.
+    await db.device_meta.update(DEVICE_META_ID, { receipt_counter: 12 });
+    await resetDevice();
+    await registerDevice({ shop_id: TEST_SHOP, device_prefix: 'Z9' });
+    await db.device_meta.update(DEVICE_META_ID, { device_prefix: 'A1' });
+
+    expect(await nextReceiptNo()).toBe('A1-000013');
+  });
+
+  it('starts as a new till when storage was cleared along with the data', async () => {
+    const before = await getDevice();
+    await db.device_meta.update(DEVICE_META_ID, { receipt_counter: 5 });
+
+    await resetDevice();
+    localStorage.clear();
+    const after = await registerDevice({ shop_id: TEST_SHOP, device_prefix: 'A1' });
+
+    expect(after.device_id).not.toBe(before.device_id);
+    expect(await nextReceiptNo()).toBe('A1-000001');
+  });
+});
+
 describe('isPrefixUsedByAnotherDevice', () => {
   it('is false for receipts this device printed itself', async () => {
     const device = await getDevice();
