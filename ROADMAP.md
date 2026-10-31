@@ -13,8 +13,8 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-10-31 (run 18) that is item 40 (reset warning counts saved drawer counts),
-then item 41 (moderate tooling advisories), then item 32 (owner PIN). Item 27 needs a new `sale_items` column that
+"after the pending migrations". As of 2026-10-31 (run 19) that is item 32 (owner PIN, split into small PRs), then
+item 42 (major upgrades, vitest 5 first). Item 27 needs a new `sale_items` column that
 production lacks until alpha applies the migrations, so it waits unless the push can leave the column out safely.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
@@ -59,21 +59,26 @@ were read again.
 `npm audit` (dev included) now shows moderate advisories in build/lint tooling only; `npm audit --omit=dev` gate is
 clean. `npm outdated` shows only majors: next 16, eslint 10, typescript 7, vitest 5, eslint-config-next 16.
 
-### 40. [P2 · S] Reset warning counts saved drawer counts
-`cash_closes` (item 30) is local only, so a reset destroys every saved count, but the danger section counts only the
-outbox and may say "everything has reached the server". Count the closes in `unsyncedSummary()` (until item 13
-replicates them) and say so; the backup button already includes them. Unit + e2e.
-
-### 41. [P2 · S] Moderate advisories in build tooling (glob, minimatch)
-GHSA-3g3m-2fjr-6pw4 (glob, via @serwist/build) and GHSA-g3hv-75wg-m249 (minimatch, via eslint). Build/lint time only,
-never shipped to the till. Try `overrides` to patched versions within each dependent's range; `npm audit fix --force`
-would downgrade @serwist/next and eslint, so not that. Lockfile with npm 11.
-
 ### 42. [P3 · L] Major upgrades, one PR each: vitest 5, typescript 7, eslint 10 (+ eslint-config-next), Next 16
 Read each changelog first; Next 16 is last and largest (Serwist compatibility, App Router changes). Stop and log if
 any needs code changes beyond an S.
 
 ## Done
+
+- **Reset warning counts saved drawer counts (item 40)** — `unsyncedSummary()` counts the local-only `cash_closes`,
+  and the reset warning says they will be lost even on a fully synced till. The "all synced" line is shown only when
+  nothing would be lost. The new e2e step exposed a real crash: `getSettings()` wrote default settings inside
+  `useLiveQuery` (Settings, Reports, receipt view), so once a reset wiped the row, Dexie threw `ReadOnlyError` and
+  Settings went to the error screen instead of `/setup`. `getSettings()` is now read-only. New `settings.test.ts`
+  (2 of 3 fail on the old code). [PR #61](https://github.com/Alphaguyasa/Suq/pull/61) · tag `v2026-10-31-3` not
+  pushed (refused) — commit `3cd1ded`
+
+- **Moderate build-tooling advisories (item 41), accepted, no change** — no patched version exists within any
+  dependent's range. @serwist/build and @serwist/next pin `glob` to exactly 13.0.6 (the fix is 14.0.2), and every
+  `minimatch` user asks for ^3 or ^10 (the fix is ≥11.0.1, which changed the export API; even eslint 10 still uses ^10).
+  Forcing majors under the service-worker build would add risk for an advisory that cannot reach the till: build/lint
+  time only, inputs are our own globs. The CI gate `npm audit --omit=dev` stays clean. Revisit when Serwist or eslint
+  move (check during item 42).
 
 - **Saved end-of-day close (item 30)** — Reports → cash-up "Save count" records float, cash sales, expected, counted and
   variance (cents) with the cashier and period in a new append-only, local-only `cash_closes` table (Dexie v7 +

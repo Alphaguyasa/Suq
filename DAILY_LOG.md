@@ -4,6 +4,54 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-10-31 — Run 19 (scheduled)
+
+**Start.** `master` @ `56ee9f5`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page
+(platform.claude.com). Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+
+**Branch note.** This session was only allowed to push to its assigned branch, `alpha/gifted-brown-bxfb1b`, not
+`claude/<slug>`. I used it for both PRs. Before the docs PR I merged the old branch head in with `-s ours`; that
+commit changes no content, it avoids a force-push, and the squash merge drops it.
+
+**Item 40: reset warning counts saved drawer counts → [PR #61](https://github.com/Alphaguyasa/Suq/pull/61), merged.**
+- `unsyncedSummary()` now returns `cashCloses`. Settings → Reset shows the ochre warning, with a new am/en line and the
+  backup button, whenever saved counts exist, even with an empty outbox.
+- **Real bug found by the new e2e step:** after the reset the page crashed with `ReadOnlyError: Readwrite transaction
+  in liveQuery context`. `getSettings()` wrote a default row when none existed, and three pages call it inside
+  `useLiveQuery`. A reset wipes the row under the open Settings page, and the live query then crashed the page before
+  `router.push('/setup')`. The old e2e only passed because navigation won the race. `getSettings()` is now
+  read-only (defaults are returned, not saved). `updateSettings()` still creates the row.
+- Tests: new `lib/db/settings.test.ts` (2 of 3 fail on the old code, including a liveQuery-after-reset case), a reset
+  test for the closes, and an e2e step (save a count once synced → warning, no "all synced", reset reaches `/setup`).
+- Local: lint ✅ · typecheck ✅ · unit 414 ✅ · build ✅ · e2e 30/30 ✅. CI green on the first try. Squash-merged as `3cd1ded`.
+
+**Item 41: moderate tooling advisories → closed as accepted risk, no code change.**
+The item asked for `overrides` within each dependent's range. There are none: Serwist pins `glob@13.0.6` exactly (fixed
+in 14.0.2), and `minimatch` is wanted at ^3 (eslint, eslintrc, plugins) and ^10 (typescript-estree). It is fixed only in
+≥11.0.1, which changed its export shape, and even the latest eslint 10 still uses ^10. Forcing majors under the
+service-worker build is a real risk, while the advisories (a DoS from crafted patterns, and an AbortSignal bypass)
+need attacker-controlled glob input at build time. The production gate stays clean. I will recheck during item 42.
+
+**Environment note.** Same Playwright mismatch as runs 12–18 (browsers.json wants chromium-1248, 1243 installed).
+The same symlinks in `/opt/pw-browsers` fixed it locally.
+
+**Blocked:** release tag `v2026-10-31-3` (refused as before; SHA in NEEDS_APPROVAL).
+
+### REPORT — 2026-10-31 (run 19)
+| Field | Content |
+|---|---|
+| Done | Item 40: the reset warning now covers saved drawer counts, and a crash where Settings hit an error screen right after a reset is fixed — [PR #61](https://github.com/Alphaguyasa/Suq/pull/61). Item 41: tooling advisories reviewed, no safe patch exists, accepted (build-time only) |
+| Merged | PR #61: yes (`3cd1ded`) · tag `v2026-10-31-3` NOT pushed (refused) |
+| Failed or blocked | Tag pushes; items 12/33 wait for alpha; items 13/27 wait for the migrations |
+| Roadmap | 6 open (12, 13, 27, 32, 33, 42), 4 blocked; no replan needed |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Yes/no on camera scanning and on a credit (ዱቤ) ledger; **apply the two migrations** (or reconnect Supabase to the Suq org); tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 32 (owner PIN for voids, price edits and reset), then item 42 (vitest 5 first) |
+
+---
+
 ## 2026-10-31 — Run 18 (scheduled)
 
 **Start.** `master` @ `4eb4122`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
