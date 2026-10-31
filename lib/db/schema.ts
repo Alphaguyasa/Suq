@@ -12,6 +12,7 @@ import type { TimestampedTable } from './timestamps';
  *   append-only   sales, sale_items, stock_movements  — immutable, no conflict rule needed
  *   last-write-wins  products                          — higher updated_at wins
  *   local only    outbox, device_meta, stock_cache     — machinery, never syncs
+ *   local for now shop_settings, cashiers, cash_closes
  */
 
 export type Unit = 'pcs' | 'kg' | 'l' | 'pack';
@@ -196,6 +197,32 @@ export interface Cashier {
   created_at: string;
 }
 
+/**
+ * Local only for now: one end-of-day drawer count, as saved from Reports.
+ *
+ * Append-only like sales: a recount is a new close, never an edit, so a
+ * shortfall that was recorded stays recorded. It replicates once the pending
+ * Supabase migrations are applied (ROADMAP item 30 / 13); until then it lives
+ * on this till, and in the JSON backup. Money in integer cents.
+ */
+export interface CashClose {
+  id: string;
+  shop_id: string;
+  device_id: string;
+  /** The reports period that was counted, half-open [from, to). */
+  period_from: string;
+  period_to: string;
+  opening_float: number;
+  cash_sales: number;
+  expected: number;
+  counted: number;
+  /** counted − expected: negative means the drawer was short. */
+  variance: number;
+  /** Who was unlocked when the count was saved; '' if nobody. */
+  cashier_name: string;
+  created_at: string;
+}
+
 export class SuqDatabase extends Dexie {
   products!: EntityTable<Product, 'id'>;
   sales!: EntityTable<Sale, 'id'>;
@@ -206,6 +233,7 @@ export class SuqDatabase extends Dexie {
   stock_cache!: EntityTable<StockCacheEntry, 'product_id'>;
   shop_settings!: EntityTable<ShopSettings, 'id'>;
   cashiers!: EntityTable<Cashier, 'id'>;
+  cash_closes!: EntityTable<CashClose, 'id'>;
 
   constructor(name = 'suq') {
     super(name);
@@ -276,6 +304,8 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
   // rewrites the rows already pulled. Same instant, same row otherwise; rows
   // already in canonical form are not touched.
   { version: 6, stores: {}, upgrade: canonicaliseTimestamps },
+  // v7 adds saved end-of-day drawer counts, newest first by created_at.
+  { version: 7, stores: { cash_closes: 'id, created_at' } },
 ];
 
 async function canonicaliseTimestamps(tx: Transaction): Promise<void> {

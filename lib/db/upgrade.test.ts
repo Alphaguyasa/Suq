@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { DEVICE_META_ID } from './device';
 import { SCHEMA_VERSIONS, SuqDatabase } from './schema';
 import type {
+  CashClose,
   Cashier,
   DeviceMeta,
   OutboxEntry,
@@ -50,6 +51,7 @@ const FROZEN = [
   { version: 4, stores: { outbox: '++id, table, row_id, created_at, attempts' } },
   { version: 5, stores: {} },
   { version: 6, stores: {} },
+  { version: 7, stores: { cash_closes: 'id, created_at' } },
 ];
 
 const SHOP = 'b7c1d2e3-0000-4000-8000-000000000001';
@@ -184,6 +186,21 @@ const cashier: Cashier = {
   created_at: '2026-10-01T07:00:00.000Z',
 };
 
+const cashClose: CashClose = {
+  id: 'close-1',
+  shop_id: SHOP,
+  device_id: DEVICE,
+  period_from: '2026-10-01T00:00:00.000Z',
+  period_to: '2026-10-02T00:00:00.000Z',
+  opening_float: 50000,
+  cash_sales: 12000,
+  expected: 62000,
+  counted: 61500,
+  variance: -500,
+  cashier_name: 'መሠረት',
+  created_at: '2026-10-01T18:00:00.000Z',
+};
+
 /** Rows for every table that has ever existed. A new table needs an entry. */
 const ROWS: Record<string, unknown[]> = {
   products: [product],
@@ -195,6 +212,7 @@ const ROWS: Record<string, unknown[]> = {
   stock_cache: [cache],
   shop_settings: [settings],
   cashiers: [cashier],
+  cash_closes: [cashClose],
 };
 
 const LATEST = SCHEMA_VERSIONS[SCHEMA_VERSIONS.length - 1]!.version;
