@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { addCashier, ensureDevice } from '@/lib/db';
+import { addCashier, ensureDevice, saveCashClose } from '@/lib/db';
 import { db } from '@/lib/db/schema';
 import { cartLine, freshDatabase, seedProduct } from '@/lib/db/test-helpers';
 import * as salesRepo from '@/lib/db/repositories/sales';
@@ -59,6 +59,11 @@ describe('buildBackup', () => {
     await addCashier('መሠረት', '4321');
     const product = await seedProduct();
     const sale = await salesRepo.create([cartLine(product, 2)], { method: 'cash' });
+    const close = await saveCashClose({
+      periodFrom: '2026-10-22T00:00:00.000Z',
+      periodTo: '2026-10-23T00:00:00.000Z',
+      cashUp: { openingFloat: 10000, cashSales: 5000, expected: 15000, counted: 14500, variance: -500 },
+    });
 
     const backup = await buildBackup(db, new Date('2026-10-22T08:00:00Z'));
 
@@ -71,6 +76,8 @@ describe('buildBackup', () => {
     expect(backup.stock_movements.some((m) => m.ref_id === sale.id)).toBe(true);
     // Money stays integer cents in the JSON.
     expect(backup.sales[0]?.total).toBe(product.sell_price * 2);
+    // Saved drawer counts are local only, so the backup is their one copy.
+    expect(backup.cash_closes).toEqual([close]);
 
     const json = JSON.stringify(backup);
     expect(json).not.toContain('4321');

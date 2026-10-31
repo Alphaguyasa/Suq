@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { BarChart } from '@/components/reports/BarChart';
+import { PastCashCloses, SaveCashClose } from '@/components/reports/CashCloses';
 import { CashUpSheet } from '@/components/reports/CashUpSheet';
 import { LineChart } from '@/components/reports/LineChart';
 import { ShareReceiptButton } from '@/components/ShareReceiptButton';
@@ -296,6 +297,16 @@ export default function ReportsPage() {
             copiedMessage={t.reports.cashUpCopied}
           />
         </div>
+
+        <div data-print-hide="">
+          <SaveCashClose
+            cashUp={drawer}
+            periodFrom={period.from}
+            periodTo={period.to}
+          />
+        </div>
+
+        <PastCashCloses />
       </section>
     </div>
   );

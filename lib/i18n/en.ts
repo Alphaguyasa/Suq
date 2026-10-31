@@ -243,6 +243,11 @@ export const en: Dict = {
     printCashUp: 'Print cash-up',
     shareCashUp: 'Share cash-up',
     cashUpCopied: 'Cash-up copied. Paste it into Telegram or a message.',
+    saveClose: 'Save count',
+    closeSaved: 'Count saved',
+    countFirst: 'Enter the counted cash to save it',
+    pastCloses: 'Saved counts',
+    noCloses: 'No counts saved yet',
   },
   lock: {
     title: 'Who is at the till?',
