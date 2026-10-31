@@ -27,7 +27,7 @@ The two migrations are still unapplied.
   and 2 reset tests. 4 of the new tests fail on the old `device.ts`.
 - Local: lint ✅ · typecheck ✅ · unit 400 ✅ · build ✅ · e2e 29/29 ✅. CI green on the first try. Squash-merged as `2616400`.
 
-**Item 30: saved end-of-day close → [PR #59](https://github.com/Alphaguyasa/Suq/pull/59), MERGE_STATUS.**
+**Item 30: saved end-of-day close → [PR #59](https://github.com/Alphaguyasa/Suq/pull/59), merged.**
 - Reports → cash-up now has a "Save count" button. Each save writes a record to a new append-only, local-only
   `cash_closes` table (Dexie v7, with an upgrade fixture). A record holds float, cash sales, expected, counted,
   variance, the cashier and the period. The button stays disabled until cash is counted, and again until the figures
