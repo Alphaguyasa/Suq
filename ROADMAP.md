@@ -13,9 +13,9 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-10-31 (run 19) that is item 32 (owner PIN, split into small PRs), then
-item 42 (major upgrades, vitest 5 first). Item 27 needs a new `sale_items` column that
-production lacks until alpha applies the migrations, so it waits unless the push can leave the column out safely.
+"after the pending migrations". As of 2026-11-01 (run 20) that is item 43 (forgotten owner PIN), then item 42 (major
+upgrades, vitest 5 first). Item 27 needs a new `sale_items` column that production lacks until alpha applies the
+migrations, so it waits unless the push can leave the column out safely.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
 `docs/RULES.md` says "no camera scanning in v1 and no scanner library", and this item was written by a run, not
@@ -42,10 +42,6 @@ RLS is on for every table, append-only tables allow only SELECT/INSERT, no XSS s
 `lib/reports/compute.ts` says so in a comment. Fix: `cost_snapshot` on `sale_items` (Dexie v8 — v5/v6/v7 are taken by items 25, 34 and 30 — + upgrade test,
 additive nullable column migration); old lines fall back to current cost.
 
-### 32. [P3 · M] Owner PIN for voids, price edits and reset
-Any cashier PIN can void, change prices or reset the device. Add an owner role for those actions. (PINs are plain
-text by design — `lib/db/cashiers.ts` explains why; revisit only together with this item.)
-
 ### 33. [P3 · L] Credit (ዱቤ) customer ledger — WAITING FOR ALPHA
 `credit` is already a payment method but records no customer. `docs/RULES.md` lists customer credit accounts as out
 of scope for v1, so this needs alpha's decision (see NEEDS_APPROVAL).
@@ -63,7 +59,23 @@ clean. `npm outdated` shows only majors: next 16, eslint 10, typescript 7, vites
 Read each changelog first; Next 16 is last and largest (Serwist compatibility, App Router changes). Stop and log if
 any needs code changes beyond an S.
 
+## Replan 2026-11-01 (from item 32)
+
+### 43. [P2 · S] A forgotten owner PIN must not lock the shop out of reset and price changes
+Since item 32, voids, price edits, reset and cashier changes need an owner PIN. If the only owner forgets it, nothing
+on the till can approve them (PINs are local and never synced). Safe recovery: let a signed-in Supabase account (the
+shop owner's email login, already on Settings) approve as the owner, or show the owner's PIN to a signed-in owner.
+No new table. Unit + e2e.
+
 ## Done
+
+- **Owner PIN for voids, price edits, reset and cashier management (item 32)** — setup's first cashier is the owner
+  (`role: 'owner'`); tills set up earlier read their oldest cashier as the owner, so no Dexie upgrade rewrites rows.
+  The last owner cannot be removed. When someone other than the owner is unlocked, the owner types their PIN inline in
+  the action's own form (no modal); a wrong PIN writes nothing. Settings shows an Owner badge and can add another owner.
+  Unit + `e2e/owner-approval.spec.ts`. [PR #63](https://github.com/Alphaguyasa/Suq/pull/63) (void) · tag
+  `v2026-11-01-1` not pushed (refused) — commit `0ff6376`; [PR #64](https://github.com/Alphaguyasa/Suq/pull/64)
+  (price, reset, cashiers) · tag `v2026-11-01-2` not pushed (refused) — commit `1e0a182`
 
 - **Reset warning counts saved drawer counts (item 40)** — `unsyncedSummary()` counts the local-only `cash_closes`,
   and the reset warning says they will be lost even on a fully synced till. The "all synced" line is shown only when
