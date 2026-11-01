@@ -47,8 +47,9 @@ describe('lock', () => {
   });
 
   it('locks again if the remembered cashier was removed', async () => {
+    // Almaz is the owner; the last owner cannot be removed (ROADMAP item 32).
+    await addCashier('Almaz', '5678', { owner: true });
     const abebe = await addCashier('Abebe', '1234');
-    await addCashier('Almaz', '5678');
     await unlockAs(abebe);
     await removeCashier(abebe.id);
 

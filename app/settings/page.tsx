@@ -9,6 +9,7 @@ import { Field, Select, TextInput } from '@/components/ui/Field';
 import { SaveError } from '@/components/ui/SaveError';
 import {
   DuplicateCashierError,
+  LastOwnerError,
   addCashier,
   classifyWriteError,
   getDevice,
@@ -16,13 +17,14 @@ import {
   isPrefixUsedByAnotherDevice,
   isValidPin,
   listCashiers,
+  ownerIds,
   removeCashier,
   resetDevice,
   unsyncedSummary,
   updateSettings,
   db,
 } from '@/lib/db';
-import type { WriteFailure } from '@/lib/db';
+import type { Cashier, WriteFailure } from '@/lib/db';
 import { backupFileName, buildBackup, downloadFile, salesCsv } from '@/lib/backup/export';
 import { useBilingual, useLang } from '@/lib/i18n';
 import { lockNow } from '@/lib/lock/lock';
@@ -396,8 +398,10 @@ function StorageSection() {
   );
 }
 
-function CashierSection({ cashiers }: { cashiers: { id: string; name: string }[] }) {
+function CashierSection({ cashiers }: { cashiers: Cashier[] }) {
   const { t, other } = useBilingual();
+  const owners = ownerIds(cashiers);
+  const [lastOwner, setLastOwner] = useState(false);
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string>();
@@ -440,12 +444,25 @@ function CashierSection({ cashiers }: { cashiers: { id: string; name: string }[]
         <ul className="flex flex-col divide-y divide-rule border-y border-rule">
           {cashiers.map((cashier) => (
             <li key={cashier.id} className="flex items-center justify-between gap-3 py-2">
-              <span className="ethiopic text-sm">{cashier.name}</span>
+              <span className="flex items-center gap-2">
+                <span className="ethiopic text-sm">{cashier.name}</span>
+                {owners.has(cashier.id) ? (
+                  <span className="ethiopic rounded-full bg-birr/10 px-2 py-0.5 text-xs font-medium text-birr-ink">
+                    {t.settings.ownerBadge}
+                  </span>
+                ) : null}
+              </span>
               <button
                 type="button"
                 onClick={() => {
                   setSaveError(undefined);
+                  setLastOwner(false);
                   removeCashier(cashier.id).catch((cause: unknown) => {
+                    // Nobody would be left to approve a void.
+                    if (cause instanceof LastOwnerError) {
+                      setLastOwner(true);
+                      return;
+                    }
                     console.error('[settings] cashier not removed', cause);
                     setSaveError(classifyWriteError(cause));
                   });
@@ -458,6 +475,12 @@ function CashierSection({ cashiers }: { cashiers: { id: string; name: string }[]
           ))}
         </ul>
       )}
+
+      {lastOwner ? (
+        <p data-testid="last-owner" className="ethiopic text-sm font-medium text-ochre-ink">
+          {t.settings.lastOwner}
+        </p>
+      ) : null}
 
       <form onSubmit={handleAdd} className="grid items-end gap-3 sm:grid-cols-[1fr_auto_auto]">
         <Field htmlFor="cashier-name" label={t.settings.cashierName} sublabel={other.settings.cashierName} error={error}>
