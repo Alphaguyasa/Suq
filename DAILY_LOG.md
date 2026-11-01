@@ -4,6 +4,51 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-11-01 — Run 20 (scheduled)
+
+**Start.** `master` @ `0517cb4`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page
+(platform.claude.com). Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+
+**Branch note.** As in run 19, this session could push only to `alpha/gifted-brown-d3x4wn`. I used it for all three PRs.
+After each squash merge I rebuilt the branch on `master` and merged the old head in with `-s ours`. That adds no content
+and avoids a force-push.
+
+**Item 32: owner PIN, split into two PRs.**
+- **[PR #63](https://github.com/Alphaguyasa/Suq/pull/63), merged (`0ff6376`):** owner role and the void gate.
+  - Setup's first cashier is saved with `role: 'owner'`.
+  - A till set up earlier has no marked owner, so its oldest cashier counts as the owner. This is read at run time, not
+    written by a Dexie upgrade, so old rows stay byte-for-byte (tested).
+  - `removeCashier()` refuses to remove the last owner, inside one transaction.
+  - `useOwnerApproval()` puts an inline owner-PIN field in the action's own form (no modal). It is shown only when
+    someone other than the owner is unlocked.
+- **[PR #64](https://github.com/Alphaguyasa/Suq/pull/64), merged (`1e0a182`):** the same gate on product price changes (compared in
+  cents), reset and adding/removing cashiers. An "Owner" checkbox adds a second owner.
+- PINs stay plain text. The item said to revisit that here, but my conclusion is the same as the comment in
+  `schema.ts`: anyone holding the tablet holds the database, so hashing would claim a protection the app cannot give.
+- Tests: `cashiers.test.ts` (7 new), `ProductForm.test.tsx` (2 new), `e2e/owner-approval.spec.ts` (3 tests).
+  Local: lint ✅ · typecheck ✅ · unit 423 ✅ · build ✅ · e2e 33/33 ✅.
+- **Gap logged as item 43:** if the only owner forgets the PIN, nothing on the till can approve a reset or a price
+  change.
+
+**Environment note.** Same Playwright mismatch as runs 12–19 (fixed locally with the `/opt/pw-browsers` symlinks).
+
+**Blocked:** release tags `v2026-11-01-1` and `v2026-11-01-2` (refused as before; SHAs in NEEDS_APPROVAL).
+
+### REPORT — 2026-11-01 (run 20)
+| Field | Content |
+|---|---|
+| Done | Item 32 (owner PIN): voids [PR #63](https://github.com/Alphaguyasa/Suq/pull/63); price edits, reset and cashier management [PR #64](https://github.com/Alphaguyasa/Suq/pull/64) |
+| Merged | PR #63: yes (`0ff6376`) · PR #64: yes (`1e0a182`) · tags NOT pushed (refused) |
+| Failed or blocked | Tag pushes; items 12/33 wait for alpha; items 13/27 wait for the migrations |
+| Roadmap | 6 open (12, 13, 27, 33, 42, new 43), 4 blocked; small replan added item 43 |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Yes/no on camera scanning and on a credit (ዱቤ) ledger; **apply the two migrations** (or reconnect Supabase to the Suq org); tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 43 (forgotten owner PIN), then item 42 (vitest 5 first) |
+
+---
+
 ## 2026-10-31 — Run 19 (scheduled)
 
 **Start.** `master` @ `56ee9f5`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
