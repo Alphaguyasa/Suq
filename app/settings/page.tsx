@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Field, Select, TextInput } from '@/components/ui/Field';
+import { useOwnerApproval } from '@/components/ui/OwnerApproval';
 import { SaveError } from '@/components/ui/SaveError';
 import {
   DuplicateCashierError,
@@ -402,6 +403,8 @@ function CashierSection({ cashiers }: { cashiers: Cashier[] }) {
   const { t, other } = useBilingual();
   const owners = ownerIds(cashiers);
   const [lastOwner, setLastOwner] = useState(false);
+  const [makeOwner, setMakeOwner] = useState(false);
+  const owner = useOwnerApproval('cashier-owner-pin');
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string>();
@@ -416,7 +419,9 @@ function CashierSection({ cashiers }: { cashiers: Cashier[] }) {
 
     setError(undefined);
     try {
-      await addCashier(name, pin);
+      // Who may sell is the owner's call (ROADMAP item 32).
+      if (!(await owner.approve())) return;
+      await addCashier(name, pin, { owner: makeOwner });
     } catch (cause) {
       // Name and PIN were checked above, so anything but a duplicate is the
       // storage refusing the write: say so in the cashier's language, never
@@ -432,6 +437,24 @@ function CashierSection({ cashiers }: { cashiers: Cashier[] }) {
 
     setName('');
     setPin('');
+    setMakeOwner(false);
+  }
+
+  async function handleRemove(id: string) {
+    setSaveError(undefined);
+    setLastOwner(false);
+    try {
+      if (!(await owner.approve())) return;
+      await removeCashier(id);
+    } catch (cause) {
+      // Nobody would be left to approve a void.
+      if (cause instanceof LastOwnerError) {
+        setLastOwner(true);
+        return;
+      }
+      console.error('[settings] cashier not removed', cause);
+      setSaveError(classifyWriteError(cause));
+    }
   }
 
   return (
@@ -454,19 +477,7 @@ function CashierSection({ cashiers }: { cashiers: Cashier[] }) {
               </span>
               <button
                 type="button"
-                onClick={() => {
-                  setSaveError(undefined);
-                  setLastOwner(false);
-                  removeCashier(cashier.id).catch((cause: unknown) => {
-                    // Nobody would be left to approve a void.
-                    if (cause instanceof LastOwnerError) {
-                      setLastOwner(true);
-                      return;
-                    }
-                    console.error('[settings] cashier not removed', cause);
-                    setSaveError(classifyWriteError(cause));
-                  });
-                }}
+                onClick={() => void handleRemove(cashier.id)}
                 className="ethiopic min-h-touch px-2 text-sm text-muted"
               >
                 {t.settings.removeCashier}
@@ -506,7 +517,24 @@ function CashierSection({ cashiers }: { cashiers: Cashier[] }) {
         <Button type="submit" variant="primary">
           <span className="ethiopic">{t.settings.addCashier}</span>
         </Button>
+
+        <label className="flex min-h-touch items-center gap-3 sm:col-span-3">
+          <input
+            id="cashier-owner"
+            type="checkbox"
+            checked={makeOwner}
+            onChange={(event) => setMakeOwner(event.target.checked)}
+            className="size-5 accent-[var(--color-ink)]"
+          />
+          <span className="flex flex-col leading-tight">
+            <span className="ethiopic text-sm font-medium">{t.settings.makeOwner}</span>
+            <span className="text-xs text-muted">{other.settings.makeOwner}</span>
+          </span>
+        </label>
       </form>
+
+      {/* One approval field for adding and removing: the owner types it, then taps. */}
+      {owner.field}
 
       <SaveError failure={saveError} testId="cashier-error" />
     </section>
@@ -524,6 +552,8 @@ function DangerSection({ shopName, onReset }: { shopName: string; onReset: () =>
   const backup = useBackupExport();
 
   const armed = typed.trim() === shopName.trim() && shopName.trim() !== '';
+  // A reset erases the till: a cashier needs the owner's PIN (ROADMAP item 32).
+  const owner = useOwnerApproval('reset-owner-pin');
 
   return (
     <section className="flex flex-col gap-3 rounded-xl border border-alarm/40 p-4">
@@ -581,6 +611,8 @@ function DangerSection({ shopName, onReset }: { shopName: string; onReset: () =>
         />
       </Field>
 
+      {owner.field}
+
       <Button
         type="button"
         variant="danger"
@@ -588,10 +620,13 @@ function DangerSection({ shopName, onReset }: { shopName: string; onReset: () =>
         onClick={() => {
           if (!armed) return setError(t.settings.resetMismatch);
           setSaveError(undefined);
-          onReset().catch((cause: unknown) => {
-            console.error('[settings] reset failed', cause);
-            setSaveError(classifyWriteError(cause));
-          });
+          owner
+            .approve()
+            .then((approved) => (approved ? onReset() : undefined))
+            .catch((cause: unknown) => {
+              console.error('[settings] reset failed', cause);
+              setSaveError(classifyWriteError(cause));
+            });
         }}
       >
         <span className="ethiopic">{t.settings.resetDevice}</span>

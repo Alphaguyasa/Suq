@@ -288,6 +288,7 @@ export const am = {
     duplicateCashier: 'ይህ ስም ቀድሞ ተይዟል',
     ownerBadge: 'ባለቤት',
     lastOwner: 'የመጨረሻውን ባለቤት ማስወገድ አይቻልም',
+    makeOwner: 'ባለቤት ይሁን (መሰረዝ፣ ዋጋ መቀየርና ማጽዳት ይፈቅዳል)',
     dangerSection: 'መሣሪያውን አጽዳ',
     resetWarning: 'ሁሉም ምርቶች፣ ሽያጮችና ክምችት ከዚህ መሣሪያ ይጠፋሉ። ያልተመሳሰለ መረጃ አይመለስም።',
     resetConfirmLabel: 'ለማረጋገጥ የሱቁን ስም ይተይቡ',
