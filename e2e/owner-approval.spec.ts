@@ -14,7 +14,7 @@ test('a cashier needs the owner PIN to void; the owner does not', async ({ page 
 
   // Client-side navigation throughout: a full page load would bring back the PIN lock.
   await page.getByRole('link', { name: t.nav.settings }).first().click();
-  await expect(page.getByText(t.settings.ownerBadge)).toHaveCount(1);
+  await expect(page.getByText(t.settings.ownerBadge, { exact: true })).toHaveCount(1);
   await page.locator('#cashier-name').fill(HELPER.name);
   await page.locator('#cashier-pin').fill(HELPER.pin);
   await page.getByRole('button', { name: t.settings.addCashier }).click();
