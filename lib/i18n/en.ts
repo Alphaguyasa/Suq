@@ -284,6 +284,7 @@ export const en: Dict = {
     duplicateCashier: 'That name is already taken',
     ownerBadge: 'Owner',
     lastOwner: 'The last owner cannot be removed',
+    makeOwner: 'Owner (may approve voids, price changes and a reset)',
     dangerSection: 'Reset device',
     resetWarning:
       'Every product, sale and movement on this device will be erased. Anything not yet synced cannot be recovered.',

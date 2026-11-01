@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Field, NumberInput, Select, TextInput } from '@/components/ui/Field';
+import { useOwnerApproval } from '@/components/ui/OwnerApproval';
 import { SaveError } from '@/components/ui/SaveError';
 import { classifyWriteError, ensureDevice, productsRepo, stockRepo } from '@/lib/db';
 import type { Product, Unit, WriteFailure } from '@/lib/db';
@@ -45,6 +46,16 @@ export function ProductForm({ product }: { product?: Product }) {
   const [errors, setErrors] = useState<Partial<Record<keyof FormValues, string>>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<WriteFailure>();
+  const owner = useOwnerApproval('f-owner-pin');
+
+  /* A cashier changing what a product sells or costs needs the owner's PIN
+     (ROADMAP item 32). Only on an edit, and only when a price was touched:
+     renaming or restocking stays with whoever is at the till. The field shows
+     as soon as either price text differs; the save compares in cents. */
+  const priceTouched =
+    product !== undefined &&
+    (values.cost_price !== formatETB(product.cost_price) ||
+      values.sell_price !== formatETB(product.sell_price));
 
   function set<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -129,6 +140,10 @@ export function ProductForm({ product }: { product?: Product }) {
 
     setSaving(true);
     try {
+      const priceChanged =
+        product !== undefined && (cost !== product.cost_price || sell !== product.sell_price);
+      if (priceChanged && !(await owner.approve())) return;
+
       await ensureDevice();
 
       const saved = await productsRepo.upsert({
@@ -327,6 +342,8 @@ export function ProductForm({ product }: { product?: Product }) {
           <span className="text-xs text-muted">{other.productForm.isActive}</span>
         </span>
       </label>
+
+      {priceTouched ? owner.field : null}
 
       <SaveError failure={saveError} />
 

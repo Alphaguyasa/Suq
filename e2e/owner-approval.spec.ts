@@ -14,7 +14,7 @@ test('a cashier needs the owner PIN to void; the owner does not', async ({ page 
 
   // Client-side navigation throughout: a full page load would bring back the PIN lock.
   await page.getByRole('link', { name: t.nav.settings }).first().click();
-  await expect(page.getByText(t.settings.ownerBadge)).toHaveCount(1);
+  await expect(page.getByText(t.settings.ownerBadge, { exact: true })).toHaveCount(1);
   await page.locator('#cashier-name').fill(HELPER.name);
   await page.locator('#cashier-pin').fill(HELPER.pin);
   await page.getByRole('button', { name: t.settings.addCashier }).click();
@@ -69,4 +69,48 @@ test('the owner voids without being asked for a PIN again', async ({ page }) => 
   await page.locator('#void-reason').fill('ስህተት');
   await page.getByRole('button', { name: t.sales.void }).click();
   await expect(page.getByText(t.sales.voidedAs)).toBeVisible();
+});
+
+test('a cashier needs the owner PIN to add a cashier or reset the till', async ({ page }) => {
+  await setupShop(page);
+  await page.getByRole('link', { name: t.nav.settings }).first().click();
+
+  // The owner adds a helper without being asked.
+  await expect(page.locator('#cashier-owner-pin')).toHaveCount(0);
+  await page.locator('#cashier-name').fill(HELPER.name);
+  await page.locator('#cashier-pin').fill(HELPER.pin);
+  await page.getByRole('button', { name: t.settings.addCashier }).click();
+  await expect(page.getByText(HELPER.name, { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: t.lock.lockNow }).first().click();
+  await page.getByRole('button', { name: HELPER.name }).click();
+  for (const digit of HELPER.pin) {
+    await page.getByRole('button', { name: digit, exact: true }).click();
+  }
+
+  // The helper cannot add a cashier on their own.
+  const cashierPin = page.locator('#cashier-owner-pin');
+  await expect(cashierPin).toBeVisible();
+  await page.locator('#cashier-name').fill('ቤዛ');
+  await page.locator('#cashier-pin').fill('4444');
+  await page.getByRole('button', { name: t.settings.addCashier }).click();
+  await expect(page.getByText(t.lock.wrongOwnerPin)).toBeVisible();
+  expect(await readLocal(page, 'cashiers')).toHaveLength(2);
+
+  await cashierPin.fill(CASHIER.pin);
+  await page.getByRole('button', { name: t.settings.addCashier }).click();
+  await expect(page.getByText('ቤዛ', { exact: true })).toBeVisible();
+  expect(await readLocal(page, 'cashiers')).toHaveLength(3);
+
+  // Nor reset the till.
+  await page.locator('#reset-confirm').fill('የሙከራ ሱቅ');
+  const resetPin = page.locator('#reset-owner-pin');
+  await resetPin.fill(HELPER.pin);
+  await page.getByRole('button', { name: t.settings.resetDevice }).click();
+  await expect(page.getByText(t.lock.wrongOwnerPin)).toBeVisible();
+  expect(await readLocal(page, 'products')).toHaveLength(PRODUCTS.length);
+
+  await resetPin.fill(CASHIER.pin);
+  await page.getByRole('button', { name: t.settings.resetDevice }).click();
+  await page.waitForURL('**/setup');
 });
