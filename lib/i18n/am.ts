@@ -261,6 +261,9 @@ export const am = {
     clearPin: 'ሁሉንም አጥፋ',
     deleteDigit: 'የመጨረሻውን ቁጥር አጥፋ',
     lockNow: 'ቆልፍ',
+    ownerPin: 'የባለቤቱ የይለፍ ቁጥር',
+    ownerNeeded: 'ይህን ባለቤቱ ብቻ ነው የሚፈቅደው። ባለቤቱ የይለፍ ቁጥራቸውን ያስገቡ።',
+    wrongOwnerPin: 'ይህ የባለቤቱ የይለፍ ቁጥር አይደለም',
   },
   settings: {
     title: 'ቅንብሮች',
@@ -283,6 +286,8 @@ export const am = {
     noCashiers: 'ገና ሻጭ አልተጨመረም',
     pinHint: 'አራት አሃዝ',
     duplicateCashier: 'ይህ ስም ቀድሞ ተይዟል',
+    ownerBadge: 'ባለቤት',
+    lastOwner: 'የመጨረሻውን ባለቤት ማስወገድ አይቻልም',
     dangerSection: 'መሣሪያውን አጽዳ',
     resetWarning: 'ሁሉም ምርቶች፣ ሽያጮችና ክምችት ከዚህ መሣሪያ ይጠፋሉ። ያልተመሳሰለ መረጃ አይመለስም።',
     resetConfirmLabel: 'ለማረጋገጥ የሱቁን ስም ይተይቡ',

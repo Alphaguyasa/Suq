@@ -194,6 +194,13 @@ export interface Cashier {
   name: string;
   /** Exactly four digits. */
   pin: string;
+  /**
+   * 'owner' may approve voids, price edits and a device reset. Absent on every
+   * cashier saved before owners existed, and on ordinary cashiers; see
+   * ownerIds() in cashiers.ts for how a till with no marked owner is read.
+   * Not indexed, so adding it changed no Dexie store.
+   */
+  role?: 'owner';
   created_at: string;
 }
 

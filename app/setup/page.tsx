@@ -119,7 +119,9 @@ export default function SetupPage() {
          first full page load (an offline tap on "Sale complete" in the demo)
          asked for the PIN at once, and the sales rung up before any unlock
          recorded no cashier at all. */
-      await unlockAs(await addCashier(cashierName, pin));
+      // Whoever sets the till up is the owner: voids, price edits and a reset
+      // need their PIN (ROADMAP item 32).
+      await unlockAs(await addCashier(cashierName, pin, { owner: true }));
       return setStep(4);
     }
 

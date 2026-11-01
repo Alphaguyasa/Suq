@@ -8,6 +8,7 @@ import { Receipt } from '@/components/Receipt';
 import { ShareReceiptButton } from '@/components/ShareReceiptButton';
 import { Button } from '@/components/ui/Button';
 import { Field, TextInput } from '@/components/ui/Field';
+import { useOwnerApproval } from '@/components/ui/OwnerApproval';
 import { SaveError } from '@/components/ui/SaveError';
 import { classifyWriteError, getSettings, salesRepo } from '@/lib/db';
 import type { WriteFailure } from '@/lib/db';
@@ -115,6 +116,7 @@ function VoidControl({ saleId }: { saleId: string }) {
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState<WriteFailure>();
+  const owner = useOwnerApproval('void-owner-pin');
 
   if (!open) {
     return (
@@ -134,6 +136,9 @@ function VoidControl({ saleId }: { saleId: string }) {
     setSaveError(undefined);
     setBusy(true);
     try {
+      // A void puts money back in the customer's hand, so a cashier needs the
+      // owner's PIN for it (ROADMAP item 32). Checked before anything is written.
+      if (!(await owner.approve())) return;
       await salesRepo.voidSale(saleId, reason.trim());
       setOpen(false);
       setReason('');
@@ -166,6 +171,8 @@ function VoidControl({ saleId }: { saleId: string }) {
           className="ethiopic"
         />
       </Field>
+
+      {owner.field}
 
       <SaveError failure={saveError} testId="void-error" />
 

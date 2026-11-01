@@ -256,6 +256,9 @@ export const en: Dict = {
     clearPin: 'Clear PIN',
     deleteDigit: 'Delete last digit',
     lockNow: 'Lock',
+    ownerPin: 'Owner PIN',
+    ownerNeeded: 'Only the owner can approve this. Ask the owner to enter their PIN.',
+    wrongOwnerPin: 'That is not the owner PIN',
   },
   settings: {
     title: 'Settings',
@@ -279,6 +282,8 @@ export const en: Dict = {
     noCashiers: 'No cashiers yet',
     pinHint: 'Four digits',
     duplicateCashier: 'That name is already taken',
+    ownerBadge: 'Owner',
+    lastOwner: 'The last owner cannot be removed',
     dangerSection: 'Reset device',
     resetWarning:
       'Every product, sale and movement on this device will be erased. Anything not yet synced cannot be recovered.',
