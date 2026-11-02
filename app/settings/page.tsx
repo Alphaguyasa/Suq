@@ -8,6 +8,7 @@ import { Button, ButtonLink } from '@/components/ui/Button';
 import { Field, Select, TextInput } from '@/components/ui/Field';
 import { useOwnerApproval } from '@/components/ui/OwnerApproval';
 import { SaveError } from '@/components/ui/SaveError';
+import { OwnerPinRecovery } from '@/components/OwnerPinRecovery';
 import {
   DuplicateCashierError,
   LastOwnerError,
@@ -535,6 +536,7 @@ function CashierSection({ cashiers }: { cashiers: Cashier[] }) {
 
       {/* One approval field for adding and removing: the owner types it, then taps. */}
       {owner.field}
+      {owner.needed ? <OwnerPinRecovery idPrefix="settings-recover" /> : null}
 
       <SaveError failure={saveError} testId="cashier-error" />
     </section>
