@@ -101,6 +101,15 @@ export class FakeSupabase {
 
   offline = false;
 
+  /** The only password a password sign-in accepts (owner-PIN recovery, ROADMAP item 43). */
+  password = 'owner-password';
+
+  /** This user's role in shop_members. */
+  memberRole: 'owner' | 'cashier' = 'owner';
+
+  /** Password sign-ins tried, right or wrong. */
+  passwordSignIns = 0;
+
   constructor(readonly supabaseUrl: string) {}
 
   rows(table: SyncedTable): Row[] {
@@ -142,7 +151,19 @@ export class FakeSupabase {
   private async handleAuth(route: Route, session: { user: Row }): Promise<void> {
     if (this.offline) return route.abort('internetdisconnected');
 
-    const path = new URL(route.request().url()).pathname;
+    const url = new URL(route.request().url());
+    const path = url.pathname;
+    if (path.endsWith('/token') && url.searchParams.get('grant_type') === 'password') {
+      this.passwordSignIns += 1;
+      const body = route.request().postDataJSON() as { password?: string };
+      if (body.password !== this.password) {
+        return route.fulfill({
+          status: 400,
+          json: { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' },
+        });
+      }
+      return route.fulfill({ status: 200, json: session });
+    }
     if (path.endsWith('/user')) {
       return route.fulfill({ status: 200, json: session.user });
     }
@@ -162,7 +183,10 @@ export class FakeSupabase {
     }
 
     if (resource === 'shop_members') {
-      return route.fulfill({ status: 200, json: [{ shop_id: E2E_SHOP_ID }] });
+      // RLS: a member reads only their own shop's roster.
+      const shop = url.searchParams.get('shop_id');
+      if (shop && shop !== `eq.${E2E_SHOP_ID}`) return route.fulfill({ status: 200, json: [] });
+      return route.fulfill({ status: 200, json: [{ shop_id: E2E_SHOP_ID, role: this.memberRole }] });
     }
 
     if (!(SYNCED_TABLES as readonly string[]).includes(resource)) {

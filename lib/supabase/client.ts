@@ -46,13 +46,7 @@ export function isSupabaseConfigured(): boolean {
 
 let client: SupabaseClient | null = null;
 
-/**
- * Lazy, so a build without env vars still succeeds and the offline-only paths
- * keep working. Sync (session 6) is the only caller.
- */
-export function getSupabase(): SupabaseClient {
-  if (client) return client;
-
+function checkedConfig(): { url: string; key: string } {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error(
       'Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.',
@@ -66,11 +60,40 @@ export function getSupabase(): SupabaseClient {
     );
   }
 
-  client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  return { url: SUPABASE_URL, key: SUPABASE_ANON_KEY };
+}
+
+/**
+ * Lazy, so a build without env vars still succeeds and the offline-only paths
+ * keep working. Sync (session 6) is the only caller.
+ */
+export function getSupabase(): SupabaseClient {
+  if (client) return client;
+
+  const { url, key } = checkedConfig();
+  client = createClient(url, key, {
     auth: { persistSession: true, autoRefreshToken: true },
     // The till is offline most of the time; realtime would just churn.
     realtime: { params: { eventsPerSecond: 1 } },
   });
 
   return client;
+}
+
+/**
+ * A client that signs in once and forgets it: no saved session, no refresh,
+ * its own storage key. The owner-PIN recovery (ROADMAP item 43) checks the
+ * owner's password with it, so the till's own sync session, which may be a
+ * different account, is never replaced. Same anon-key guard as above.
+ */
+export function createVerificationClient(): SupabaseClient {
+  const { url, key } = checkedConfig();
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      storageKey: 'suq-owner-check',
+    },
+  });
 }

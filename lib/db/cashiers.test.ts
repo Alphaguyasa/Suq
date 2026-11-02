@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   DuplicateCashierError,
   LastOwnerError,
+  NotAnOwnerError,
   addCashier,
   anyCashiers,
   isOwner,
@@ -10,6 +11,7 @@ import {
   ownerApprovalNeeded,
   ownerIds,
   removeCashier,
+  setOwnerPin,
   verifyOwnerPin,
   verifyPin,
 } from './cashiers';
@@ -159,5 +161,40 @@ describe('owners (ROADMAP item 32)', () => {
 
     await removeCashier(first.id);
     expect(ownerIds(await listCashiers())).toEqual(new Set([second.id]));
+  });
+});
+
+describe('setOwnerPin (ROADMAP item 43)', () => {
+  it('gives an owner a new PIN; the old one no longer approves', async () => {
+    const owner = await addCashier('አበበ', '1234', { owner: true });
+    const changed = await setOwnerPin(owner.id, '9876');
+    expect(changed.pin).toBe('9876');
+    expect(await verifyOwnerPin('1234')).toBeNull();
+    expect((await verifyOwnerPin('9876'))?.id).toBe(owner.id);
+    expect(await verifyPin(owner.id, '9876')).not.toBeNull();
+  });
+
+  it('works for the oldest cashier on a till set up before owners were marked', async () => {
+    await db.cashiers.put({ id: 'old', name: 'አበበ', pin: '1111', created_at: '2026-01-01T00:00:00.000Z' });
+    await db.cashiers.put({ id: 'new', name: 'ሰላም', pin: '2222', created_at: '2026-02-01T00:00:00.000Z' });
+    await setOwnerPin('old', '3333');
+    const row = await db.cashiers.get('old');
+    expect(row?.pin).toBe('3333');
+    // Still no role written: the row is otherwise unchanged.
+    expect(row?.role).toBeUndefined();
+  });
+
+  it('refuses a cashier who is not an owner, and a missing one', async () => {
+    await addCashier('አበበ', '1234', { owner: true });
+    const helper = await addCashier('ሰላም', '5678');
+    await expect(setOwnerPin(helper.id, '0000')).rejects.toBeInstanceOf(NotAnOwnerError);
+    await expect(setOwnerPin('nobody', '0000')).rejects.toBeInstanceOf(NotAnOwnerError);
+    expect((await db.cashiers.get(helper.id))?.pin).toBe('5678');
+  });
+
+  it('refuses a PIN that is not four digits', async () => {
+    const owner = await addCashier('አበበ', '1234', { owner: true });
+    await expect(setOwnerPin(owner.id, '12')).rejects.toThrow();
+    expect((await db.cashiers.get(owner.id))?.pin).toBe('1234');
   });
 });

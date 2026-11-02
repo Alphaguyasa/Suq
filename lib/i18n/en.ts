@@ -285,6 +285,13 @@ export const en: Dict = {
     ownerBadge: 'Owner',
     lastOwner: 'The last owner cannot be removed',
     makeOwner: 'Owner (may approve voids, price changes and a reset)',
+    forgotOwnerPin: 'Forgot the owner PIN?',
+    recoverHint: 'Sign in with the shop owner’s account to set a new owner PIN. Needs the internet.',
+    recoverOwner: 'Owner',
+    newOwnerPin: 'New owner PIN',
+    setOwnerPin: 'Set new PIN',
+    ownerPinChanged: (name: string) => `New PIN saved for ${name}`,
+    notShopOwner: 'This account is not the owner of this shop',
     dangerSection: 'Reset device',
     resetWarning:
       'Every product, sale and movement on this device will be erased. Anything not yet synced cannot be recovered.',

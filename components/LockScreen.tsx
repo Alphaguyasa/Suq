@@ -6,6 +6,7 @@ import type { Cashier } from '@/lib/db';
 import { listCashiers, verifyPin } from '@/lib/db';
 import { useT } from '@/lib/i18n';
 import { unlockAs } from '@/lib/lock/lock';
+import { OwnerPinRecovery } from './OwnerPinRecovery';
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'back'] as const;
 type Key = (typeof KEYS)[number];
@@ -106,7 +107,7 @@ export function LockScreen() {
   }, [selected, push, choose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-paper px-6">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 overflow-y-auto bg-paper px-6 py-6">
       <h1 className="ethiopic text-2xl font-semibold">{t.lock.title}</h1>
 
       {!selected ? (
@@ -125,6 +126,11 @@ export function LockScreen() {
             </li>
           ))}
         </ul>
+      ) : null}
+
+      {/* Only with the names showing: the PIN pad's key handler would eat what is typed here. */}
+      {!selected ? (
+        <OwnerPinRecovery idPrefix="lock-recover" />
       ) : (
         <div className="flex w-full max-w-xs flex-col items-center gap-5">
           <button

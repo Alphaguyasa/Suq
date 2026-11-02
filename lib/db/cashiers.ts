@@ -124,3 +124,29 @@ export async function verifyPin(cashierId: string, pin: string): Promise<Cashier
 export async function anyCashiers(): Promise<boolean> {
   return (await db.cashiers.count()) > 0;
 }
+
+export class NotAnOwnerError extends Error {
+  constructor() {
+    super('Only an owner’s PIN can be recovered this way.');
+    this.name = 'NotAnOwnerError';
+  }
+}
+
+/**
+ * Give an owner a new PIN without the old one (ROADMAP item 43).
+ *
+ * Only for the recovery path in Settings, after the shop owner's own Supabase
+ * account has proved itself online (lib/supabase/owner-recovery.ts). Read and
+ * write in one transaction, so a cashier removed or demoted meanwhile is
+ * refused instead of quietly given an owner's say.
+ */
+export async function setOwnerPin(ownerId: string, pin: string): Promise<Cashier> {
+  if (!isValidPin(pin)) throw new Error('A PIN must be exactly four digits.');
+  return db.transaction('rw', db.cashiers, async () => {
+    const cashiers = await db.cashiers.toArray();
+    const owner = cashiers.find((cashier) => cashier.id === ownerId);
+    if (!owner || !ownerIds(cashiers).has(ownerId)) throw new NotAnOwnerError();
+    await db.cashiers.update(ownerId, { pin });
+    return { ...owner, pin };
+  });
+}
