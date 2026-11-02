@@ -4,6 +4,60 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-11-02 — Run 21 (scheduled)
+
+**Start.** `master` @ `9292e86`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page
+(platform.claude.com). Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+The Supabase connector still sees only `not-alone-scripture` and `erko-staging`, not the Suq project, so the two
+migrations are still waiting for alpha.
+
+**Branch note.** This session could push only to `alpha/gifted-brown-nhm07i`, so all PRs used it. After each squash
+merge I rebuilt the branch on `master` with an `-s ours` merge of the old head. That adds no content and avoids a
+force-push.
+
+**Item 43: forgotten owner PIN → [PR #66](https://github.com/Alphaguyasa/Suq/pull/66), merged (`8f4ca2c`).**
+- A "Forgot the owner PIN?" button opens an inline form, no modal. It is on the lock screen's name list, because with
+  one owner a forgotten PIN locked them out of the whole till, not only reset and price changes. It is also in
+  Settings → Cashiers when someone other than the owner is unlocked.
+- The form takes the shop owner's email and password. `verifyShopOwner()` signs in with a throwaway client (no saved
+  session, own storage key), so the till's sync session stays as it is. It accepts only `role = 'owner'` in
+  `shop_members` for this till's `shop_id`, then signs that one session out (local scope). The saved session alone is
+  not trusted: whoever holds the tablet holds it.
+- `setOwnerPin()` sets the new PIN inside one transaction and refuses anyone who is not an owner. Older tills keep the
+  oldest-cashier fallback; no role is written.
+- Errors reuse the bilingual sign-in messages (wrong password, no internet). 7 new am/en strings. No new table, no
+  migration.
+- Tests: 4 in `cashiers.test.ts`, 6 in new `owner-recovery.test.ts`, and 2 in new `e2e/owner-pin-recovery.spec.ts`:
+  - The lock screen refuses a wrong password and a cashier account; the owner account works, the old PIN then
+    fails and the new one unlocks.
+  - Settings shows the offline message, then works online.
+  - The e2e fake Supabase now checks passwords and returns a member role.
+- Local: lint ✅ · typecheck ✅ · unit 433 ✅ · build ✅ · e2e 35/35 ✅. CI green on the first try.
+
+**Item 42, part 1: vitest 5 → [PR #67](https://github.com/Alphaguyasa/Suq/pull/67), merged (`a4fd70e`).**
+vitest 4.1.12 → 5.0.5. No config or test changes; 433 tests pass as before. Its peers (vite 8, jsdom) and Node engine
+(^22.12 / ^24) fit. Lockfile from npm 11. `npm audit` is unchanged: 18 moderate build-tooling advisories (item 41),
+and the `--omit=dev` gate is clean of high/critical. CI green on the first try.
+
+**Environment note.** Same Playwright mismatch as runs 12–20 (fixed locally with the `/opt/pw-browsers` symlinks).
+
+**Blocked:** release tags `v2026-11-02-1` and `v2026-11-02-2` (refused as before; SHAs in NEEDS_APPROVAL).
+
+### REPORT — 2026-11-02 (run 21)
+| Field | Content |
+|---|---|
+| Done | Item 43: a forgotten owner PIN can be reset from the lock screen or Settings with the shop owner's account — [PR #66](https://github.com/Alphaguyasa/Suq/pull/66). Item 42 part 1: vitest 5 — [PR #67](https://github.com/Alphaguyasa/Suq/pull/67) |
+| Merged | PR #66: yes (`8f4ca2c`) · PR #67: yes (`a4fd70e`) · tags NOT pushed (refused) |
+| Failed or blocked | Tag pushes; items 12/33 wait for alpha; items 13/27 wait for the migrations |
+| Roadmap | 5 open (12, 13, 27, 33, 42 with three parts left), 4 blocked; no replan needed (not below 5) |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Yes/no on camera scanning and on a credit (ዱቤ) ledger; **apply the two migrations** (or reconnect Supabase to the Suq org); tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 42 part 2 (typescript 7), then eslint 10. A replan is due once 42 closes |
+
+---
+
 ## 2026-11-01 — Run 20 (scheduled)
 
 **Start.** `master` @ `0517cb4`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.

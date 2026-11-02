@@ -13,9 +13,9 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-11-01 (run 20) that is item 43 (forgotten owner PIN), then item 42 (major
-upgrades, vitest 5 first). Item 27 needs a new `sale_items` column that production lacks until alpha applies the
-migrations, so it waits unless the push can leave the column out safely.
+"after the pending migrations". As of 2026-11-02 (run 21) that is item 42, part 2 (typescript 7). Item 27 needs a
+new `sale_items` column that production lacks until alpha applies the migrations, so it waits unless the push can
+leave the column out safely.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
 `docs/RULES.md` says "no camera scanning in v1 and no scanner library", and this item was written by a run, not
@@ -55,19 +55,21 @@ were read again.
 `npm audit` (dev included) now shows moderate advisories in build/lint tooling only; `npm audit --omit=dev` gate is
 clean. `npm outdated` shows only majors: next 16, eslint 10, typescript 7, vitest 5, eslint-config-next 16.
 
-### 42. [P3 · L] Major upgrades, one PR each: vitest 5, typescript 7, eslint 10 (+ eslint-config-next), Next 16
+### 42. [P3 · L] Major upgrades, one PR each: ~~vitest 5~~ (done), typescript 7, eslint 10 (+ eslint-config-next), Next 16
 Read each changelog first; Next 16 is last and largest (Serwist compatibility, App Router changes). Stop and log if
 any needs code changes beyond an S.
 
-## Replan 2026-11-01 (from item 32)
-
-### 43. [P2 · S] A forgotten owner PIN must not lock the shop out of reset and price changes
-Since item 32, voids, price edits, reset and cashier changes need an owner PIN. If the only owner forgets it, nothing
-on the till can approve them (PINs are local and never synced). Safe recovery: let a signed-in Supabase account (the
-shop owner's email login, already on Settings) approve as the owner, or show the owner's PIN to a signed-in owner.
-No new table. Unit + e2e.
-
 ## Done
+
+- **vitest 5 (item 42, part 1)** — vitest 5.0.5 with no config or test changes (433 tests pass as before).
+  [PR #67](https://github.com/Alphaguyasa/Suq/pull/67) · tag `v2026-11-02-2` not pushed (refused) — commit `a4fd70e`
+
+- **Forgotten owner PIN (item 43)** — "Forgot the owner PIN?" on the lock screen's name list and in Settings (when a
+  cashier is unlocked) asks for the shop owner's Supabase email and password. A throwaway client checks them online,
+  so the till's own session is untouched, and the account must have role `owner` in `shop_members` for this till's
+  shop. Then `setOwnerPin()` sets the new PIN in one transaction. The saved session alone is not trusted, because
+  whoever holds the tablet holds it. Without internet it says so. No new table. Unit + `e2e/owner-pin-recovery.spec.ts`.
+  [PR #66](https://github.com/Alphaguyasa/Suq/pull/66) · tag `v2026-11-02-1` not pushed (refused) — commit `8f4ca2c`
 
 - **Owner PIN for voids, price edits, reset and cashier management (item 32)** — setup's first cashier is the owner
   (`role: 'owner'`); tills set up earlier read their oldest cashier as the owner, so no Dexie upgrade rewrites rows.
