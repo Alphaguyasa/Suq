@@ -68,19 +68,20 @@ export function summarise(
 }
 
 /**
- * SUM((unit_price - cost_price) * qty), using the unit_price snapshotted on the
+ * SUM((unit_price - cost) * qty), using the unit_price snapshotted on the
  * line — never the product's current price, which has moved since.
  *
- * cost_price is the product's CURRENT cost, because sale_items does not
- * snapshot cost. Worth knowing: if a supplier's price changes, historical
- * profit shifts with it. Snapshotting cost on the line would fix that, and is
- * a schema change rather than a reporting one.
+ * cost is the line's cost_snapshot, the product's cost at the time of sale, so
+ * a supplier's later price change does not rewrite past profit. Lines without
+ * one (sold before snapshots existed, pulled from another till, or sold while
+ * the cost was blank) fall back to the product's CURRENT cost.
  *
- * Void rows carry negative qty, so they subtract here without special casing.
+ * Void rows carry negative qty and copy the sale's snapshot, so they subtract
+ * here without special casing.
  */
 export function grossProfit(items: SaleItem[], costByProduct: Map<string, number>): number {
   return items.reduce((sum, item) => {
-    const cost = costByProduct.get(item.product_id) ?? 0;
+    const cost = item.cost_snapshot ?? costByProduct.get(item.product_id) ?? 0;
     return sum + Math.round((item.unit_price - cost) * item.qty);
   }, 0);
 }

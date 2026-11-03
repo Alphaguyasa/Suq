@@ -720,6 +720,51 @@ describe('7. rows that reach the server late', () => {
   });
 });
 
+describe('7b. cost snapshots stay on the till until the server has the column', () => {
+  afterEach(() => resetEngineState());
+
+  it('pushes sale lines without cost_snapshot, and a pull does not wipe the local one', async () => {
+    const server = new FakeServer();
+    const client = server.client();
+
+    const a = await replica('suq-cost-snapshot-a', 'A1');
+    await clearAllTables();
+    await registerDevice({ shop_id: SHOP, device_prefix: 'B1', cashier_name: 'ሰላም' });
+    setAuthed(true);
+
+    const product = makeProduct({ cost_price: 2600 });
+    await localWrite('products', product);
+
+    const upsert = vi.spyOn(client, 'upsert');
+    const sale = await salesRepo.create(
+      [{ product_id: product.id, name_snapshot: product.name_am, unit_price: 3500, qty: 2 }],
+      { method: 'cash' },
+    );
+    await syncNow(client);
+
+    // Production's sale_items has no such column: naming it would fail the batch.
+    const sentLines = upsert.mock.calls
+      .filter(([table]) => table === 'sale_items')
+      .flatMap(([, rows]) => rows as Record<string, unknown>[]);
+    expect(sentLines).toHaveLength(1);
+    expect('cost_snapshot' in sentLines[0]!).toBe(false);
+    const [onServer] = [...server.tables.sale_items.values()];
+    expect(onServer && 'cost_snapshot' in onServer).toBe(false);
+
+    // Pull reads the till's own line back (overlap window); the local snapshot survives.
+    server.tick(10_000);
+    await syncNow(client);
+    const [local] = await db.sale_items.where('sale_id').equals(sale.id).toArray();
+    expect(local?.cost_snapshot).toBe(2600);
+
+    // Another till gets the line without one, so its reports fall back to current cost.
+    await pullOnce(client, a.db);
+    const [pulled] = await a.db.sale_items.where('sale_id').equals(sale.id).toArray();
+    expect(pulled).toBeDefined();
+    expect(pulled?.cost_snapshot ?? null).toBeNull();
+  });
+});
+
 /* ------------------------------------------------------------------ 8 ---- */
 
 describe('8. two tills void the same sale while offline', () => {

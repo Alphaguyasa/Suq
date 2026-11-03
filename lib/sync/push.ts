@@ -24,13 +24,23 @@ export function backoffMs(attempts: number): number {
  * synced_at is local bookkeeping and has no column in Postgres. received_at
  * belongs to the server (a trigger overwrites it anyway); it is never stored
  * locally, but a payload that somehow carried one must not pretend to set it.
+ *
+ * sale_items.cost_snapshot has no column in production yet, and PostgREST
+ * refuses a whole batch that names an unknown column — every sale would stop
+ * syncing. It stays on the till until the column exists (ROADMAP item 13).
  */
 function forWire(table: SyncedTable, payload: unknown): unknown {
   const { received_at: _server, ...rest } = payload as Record<string, unknown>;
-  if (table !== 'sales') return rest;
 
-  const { synced_at: _ignored, ...wire } = rest;
-  return wire;
+  if (table === 'sales') {
+    const { synced_at: _ignored, ...wire } = rest;
+    return wire;
+  }
+  if (table === 'sale_items') {
+    const { cost_snapshot: _localOnly, ...wire } = rest;
+    return wire;
+  }
+  return rest;
 }
 
 export interface PushResult {

@@ -193,6 +193,27 @@ describe('grossProfit', () => {
     expect(grossProfit(withoutVoid, COSTS)).toBe(4300 + 7000);
   });
 
+  it('uses the cost at the time of sale when the line carries one', () => {
+    // X costs 600 today; it cost 400 when this line was sold.
+    const costs = new Map([['x', 600]]);
+    const line = { ...item('S9', 'x', 'x', 1000, 2), cost_snapshot: 400 };
+    expect(grossProfit([line], costs)).toBe((1000 - 400) * 2);
+  });
+
+  it('falls back to the current cost for lines without a snapshot (old or pulled)', () => {
+    const costs = new Map([['x', 600]]);
+    const old = item('S9', 'x', 'x', 1000, 2); // written before snapshots existed: no field
+    const pulled = { ...item('S10', 'x', 'x', 1000, 1), cost_snapshot: null };
+    expect(grossProfit([old, pulled], costs)).toBe((1000 - 600) * 3);
+  });
+
+  it('nets a voided sale to zero with snapshots, even after the cost changed', () => {
+    const costs = new Map([['x', 900]]);
+    const sold = { ...item('S11', 'x', 'x', 1000, 2), cost_snapshot: 400 };
+    const reversed = { ...item('S12', 'x', 'x', 1000, -2), cost_snapshot: 400 };
+    expect(grossProfit([sold, reversed], costs)).toBe(0);
+  });
+
   it('treats an unknown product as zero cost rather than crashing', () => {
     expect(grossProfit([item('X', 'gone', 'x', 1000, 1)], COSTS)).toBe(1000);
   });
