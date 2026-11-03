@@ -15,7 +15,7 @@ migrations are still waiting for alpha.
 
 **Branch note.** This session could push `claude/<slug>` branches, so each PR has its own branch, as CLAUDE.md §6 asks.
 
-**Item 42, part 2: TypeScript → [PR #69](https://github.com/Alphaguyasa/Suq/pull/69), merged (`TS_SHA`).**
+**Item 42, part 2: TypeScript → [PR #69](https://github.com/Alphaguyasa/Suq/pull/69), merged (`9b8fb5a`).**
 - TypeScript 7 cannot be used yet. `typescript@7.0.2` exports only a version string and an `unstable/*` API, with no
   classic compiler API. Next's build type check and typescript-eslint need that API, and typescript-eslint 8.72.1
   allows only `<6.1.0`. I moved to **6.0.3**, the bridge release, which fits every peer range (Serwist `>=5`).
@@ -30,7 +30,7 @@ migrations are still waiting for alpha.
 eslint-plugin-import 2.32 and eslint-plugin-jsx-a11y 6.10 also stop at ^9, and they are the latest versions, used by
 eslint-config-next 16 too. Forcing it would need `--legacy-peer-deps`. Logged in item 42.
 
-**Item 27: gross profit at the time of sale → [PR #70](https://github.com/Alphaguyasa/Suq/pull/70), merged (`COST_SHA`).**
+**Item 27: gross profit at the time of sale → [PR #70](https://github.com/Alphaguyasa/Suq/pull/70), merged (`b0a13d7`).**
 - Each sale line records the product's cost when sold (`cost_snapshot`, cents), and a void copies it, so a voided sale
   still nets to zero after a cost change. Reports fall back to the current cost when a line has no snapshot (older
   lines, lines pulled from another till, or a blank cost of 0, so a cost filled in later still counts).
@@ -39,7 +39,7 @@ eslint-config-next 16 too. Forcing it would need `--legacy-peer-deps`. Logged in
   holds). Replicating it moves into item 13. No Dexie version (not indexed), no migration.
 - Tests: 3 in `sales.test.ts`, 3 in `compute.test.ts`, and sync test 7b (pushed line and server row have no field,
   the own line pulled back keeps it, another till gets none). All 5 test cases fail on the old code.
-- Local: lint ✅ · typecheck ✅ · unit 440 ✅ · build ✅ · e2e 35/35 ✅. COST_CI
+- Local: lint ✅ · typecheck ✅ · unit 440 ✅ · build ✅ · e2e 35/35 ✅. CI green after updating the branch onto TS 6.
 
 **Replan (4 items open, 3 waiting on alpha).** Short audit: `npm audit --omit=dev` clean, `npm outdated`, no
 TODO/FIXME markers, today's CI flake. New items: 44 self-host fonts (P2·S), 45 patch/minor bumps (P2·S), 46 restore a
@@ -54,7 +54,7 @@ JSON backup on a fresh till (P2·M), 47 share a reorder list as text (P3·S). It
 | Field | Content |
 |---|---|
 | Done | Item 42 part 2: TypeScript 6.0.3 — [PR #69](https://github.com/Alphaguyasa/Suq/pull/69). Item 27: gross profit uses the cost at the time of sale — [PR #70](https://github.com/Alphaguyasa/Suq/pull/70) |
-| Merged | PR #69: yes (`TS_SHA`) · PR #70: yes (`COST_SHA`) · tags NOT pushed (refused) |
+| Merged | PR #69: yes (`9b8fb5a`) · PR #70: yes (`b0a13d7`) · tags NOT pushed (refused) |
 | Failed or blocked | TypeScript 7 and ESLint 10 blocked upstream (their tools do not support them yet); tag pushes; items 12/33 wait for alpha; item 13 waits for the migrations |
 | Roadmap | Replanned: 8 open (12, 13, 33, 42 = Next 16 left, 44, 45, 46, 47), 3 waiting on alpha |
 | Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |

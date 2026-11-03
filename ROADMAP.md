@@ -100,11 +100,11 @@ level, in the UI language. Unit + offline e2e.
   one (older, pulled from another till, or sold with a blank cost) fall back to the current cost. The field stays on
   the till for now: push strips it (production has no column) and pull never overwrites it. No Dexie version, no
   migration. Unit + two-till sync test. [PR #70](https://github.com/Alphaguyasa/Suq/pull/70) · tag `v2026-11-03-2`
-  not pushed (refused) — commit `COST_SHA`
+  not pushed (refused) — commit `b0a13d7`
 
 - **typescript 6 (item 42, part 2)** — 6.0.3 instead of 7 (blocked, see item 42). `css.d.ts` declares plain `.css`
   imports, because TS 6 checks side-effect imports by default. 433 tests pass as before.
-  [PR #69](https://github.com/Alphaguyasa/Suq/pull/69) · tag `v2026-11-03-1` not pushed (refused) — commit `TS_SHA`
+  [PR #69](https://github.com/Alphaguyasa/Suq/pull/69) · tag `v2026-11-03-1` not pushed (refused) — commit `9b8fb5a`
 
 - **vitest 5 (item 42, part 1)** — vitest 5.0.5 with no config or test changes (433 tests pass as before).
   [PR #67](https://github.com/Alphaguyasa/Suq/pull/67) · tag `v2026-11-02-2` not pushed (refused) — commit `a4fd70e`
