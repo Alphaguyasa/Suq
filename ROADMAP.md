@@ -13,9 +13,8 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-11-02 (run 21) that is item 42, part 2 (typescript 7). Item 27 needs a
-new `sale_items` column that production lacks until alpha applies the migrations, so it waits unless the push can
-leave the column out safely.
+"after the pending migrations". As of 2026-11-03 (run 22) that is item 44 (self-host the fonts so CI stops failing
+on Google Fonts), then item 45.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
 `docs/RULES.md` says "no camera scanning in v1 and no scanner library", and this item was written by a run, not
@@ -33,14 +32,12 @@ exist in production yet, every push of it would fail and the sync pill would go 
 (item 30, local only today) in the same step: append-only table, RLS like `sales`.
 `shop_settings` is local-only; the owner view on a second device cannot show which shop it is looking at.
 Additive migration (new table, RLS like the others) + LWW sync like `products`. Migration file + test.
+Same step: an additive nullable `sale_items.cost_snapshot integer` column, then stop stripping it in
+`lib/sync/push.ts` `forWire()` (item 27 keeps it on the till until the column exists).
 
 ## Replan 2026-10-22 (audit: sync/db/pages, RLS, i18n, perf, tests, features)
 RLS is on for every table, append-only tables allow only SELECT/INSERT, no XSS sinks, and the only writes outside
 `localWrite()` are the sanctioned `lib/sync/apply.ts` and the dev-only demo seed. Items below are ordered by priority.
-
-### 27. [P2 · S] Gross profit uses today's cost, not the cost at the time of sale
-`lib/reports/compute.ts` says so in a comment. Fix: `cost_snapshot` on `sale_items` (Dexie v8 — v5/v6/v7 are taken by items 25, 34 and 30 — + upgrade test,
-additive nullable column migration); old lines fall back to current cost.
 
 ### 33. [P3 · L] Credit (ዱቤ) customer ledger — WAITING FOR ALPHA
 `credit` is already a payment method but records no customer. `docs/RULES.md` lists customer credit accounts as out
@@ -55,11 +52,59 @@ were read again.
 `npm audit` (dev included) now shows moderate advisories in build/lint tooling only; `npm audit --omit=dev` gate is
 clean. `npm outdated` shows only majors: next 16, eslint 10, typescript 7, vitest 5, eslint-config-next 16.
 
-### 42. [P3 · L] Major upgrades, one PR each: ~~vitest 5~~ (done), typescript 7, eslint 10 (+ eslint-config-next), Next 16
+### 42. [P3 · L] Major upgrades, one PR each: ~~vitest 5~~ (done), ~~typescript 6~~ (done), Next 16; typescript 7 and eslint 10 BLOCKED upstream
 Read each changelog first; Next 16 is last and largest (Serwist compatibility, App Router changes). Stop and log if
 any needs code changes beyond an S.
+- **typescript 7 — blocked.** `typescript@7.0.2` has no classic JS compiler API (it exports only a version and
+  `unstable/*`). Next's build type check and typescript-eslint need it, and typescript-eslint 8.72 allows only
+  `<6.1.0`. Run 22 moved to 6.0.3 (the bridge release) instead. Retry when typescript-eslint and Next support 7.
+- **eslint 10 — blocked.** eslint-config-next 15 allows eslint ≤9, and eslint-plugin-react 7.37, eslint-plugin-import
+  2.32 and eslint-plugin-jsx-a11y 6.10 (latest, also used by eslint-config-next 16) all stop at ^9. Forcing it would
+  need `--legacy-peer-deps`. Retry when those plugins list ^10.
+- **Next 16** — the only part that can be done now. Large: split it.
+
+## Replan 2026-11-03 (run 22: 4 open, 3 of them waiting on alpha; short audit)
+`npm audit --omit=dev` is clean; dev has the same moderate build-tooling advisories as item 41. `npm outdated` shows
+patch/minor updates (item 45) and the blocked majors above. No TODO/FIXME markers. Today's CI showed the build
+fetching Google Fonts over the network: one of two runs on the same commit failed in `next/font`.
+
+### 44. [P2 · S] Self-host the three fonts so the build never needs the network
+`app/layout.tsx` uses `next/font/google` (Archivo, IBM Plex Mono, Noto Sans Ethiopic). The build downloads them from
+Google, and on 2026-11-03 CI failed on that (`next/font` "Cannot read properties of null (reading '1')"); a re-run
+passed. Commit the woff2 files (all three are SIL OFL 1.1: free, redistributable; keep the licence text next to them)
+and use `next/font/local` with the same weights, subsets and CSS variables. Check that the Ethiopic glyphs still render
+(e2e screenshot of the Amharic sale screen) and that the fonts are precached for offline.
+
+### 45. [P2 · S] Patch/minor dependency bumps
+vitest 5.1.0, tailwindcss + @tailwindcss/postcss 4.3.4, @vitejs/plugin-react 6.2.1, @electric-sql/pglite 0.5.14.
+Lockfile from npm 11. Read the vitest 5.1 notes.
+
+### 46. [P2 · M] Restore a JSON backup on a fresh till
+Settings → Backup exports `suq-backup` v1 JSON, but nothing reads it back. A shop without internet that loses or
+replaces its phone cannot get its products and history onto the new one. Offer "Restore from backup" only on an
+empty till (setup's first step): validate the file (version, shop_id, integer cents, ids), write every row in one
+transaction, rebuild `stock_cache`, and queue the rows for push (idempotent upserts, so already-synced rows are
+no-ops). The restore path needs a design note on why it is not `localWrite()` per row, or uses `localWriteMany()`.
+Unit (bad files refused, nothing half-written) + e2e (export → reset → restore → same stock and reports).
+
+### 47. [P3 · S] Share a reorder list as text
+Reports already lists products at or below their reorder level. Add a Share button (same `ShareReceiptButton`, same
+plain-text pattern as items 31/37) that sends "what to order" to the supplier on Telegram/SMS: name, on hand, reorder
+level, in the UI language. Unit + offline e2e.
+
 
 ## Done
+
+- **Gross profit uses the cost at the time of sale (item 27)** — each sale line records the product's cost
+  (`cost_snapshot`, cents) and a void copies it, so a later price change no longer rewrites past profit; lines without
+  one (older, pulled from another till, or sold with a blank cost) fall back to the current cost. The field stays on
+  the till for now: push strips it (production has no column) and pull never overwrites it. No Dexie version, no
+  migration. Unit + two-till sync test. [PR #70](https://github.com/Alphaguyasa/Suq/pull/70) · tag `v2026-11-03-2`
+  not pushed (refused) — commit `b0a13d7`
+
+- **typescript 6 (item 42, part 2)** — 6.0.3 instead of 7 (blocked, see item 42). `css.d.ts` declares plain `.css`
+  imports, because TS 6 checks side-effect imports by default. 433 tests pass as before.
+  [PR #69](https://github.com/Alphaguyasa/Suq/pull/69) · tag `v2026-11-03-1` not pushed (refused) — commit `9b8fb5a`
 
 - **vitest 5 (item 42, part 1)** — vitest 5.0.5 with no config or test changes (433 tests pass as before).
   [PR #67](https://github.com/Alphaguyasa/Suq/pull/67) · tag `v2026-11-02-2` not pushed (refused) — commit `a4fd70e`

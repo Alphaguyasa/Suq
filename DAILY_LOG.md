@@ -4,6 +4,65 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-11-03 — Run 22 (scheduled)
+
+**Start.** `master` @ `7dbf4b0`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page
+(platform.claude.com). Fable 5.1 is still listed above Opus. That ACTION FOR ALPHA is unchanged and optional.
+The Supabase connector still sees only `not-alone-scripture` and `erko-staging`, not the Suq project, so the two
+migrations are still waiting for alpha.
+
+**Branch note.** This session could push `claude/<slug>` branches, so each PR has its own branch, as CLAUDE.md §6 asks.
+
+**Item 42, part 2: TypeScript → [PR #69](https://github.com/Alphaguyasa/Suq/pull/69), merged (`9b8fb5a`).**
+- TypeScript 7 cannot be used yet. `typescript@7.0.2` exports only a version string and an `unstable/*` API, with no
+  classic compiler API. Next's build type check and typescript-eslint need that API, and typescript-eslint 8.72.1
+  allows only `<6.1.0`. I moved to **6.0.3**, the bridge release, which fits every peer range (Serwist `>=5`).
+- TS 6 checks side-effect imports by default, so `import './globals.css'` failed. The new `css.d.ts` declares plain
+  `.css` modules only, so every other side-effect import is still checked.
+- Local: lint ✅ · typecheck ✅ · unit 433 ✅ · build ✅ (Next's type check passes on TS 6) · e2e 35/35 ✅.
+- CI: one of the two runs failed in `next/font` while fetching Google Fonts during the build (`Cannot read properties
+  of null (reading '1')`). That was a network flake: the other run on the same commit passed, and a re-run of the
+  failed job passed. New item 44 removes the build's dependency on the network.
+
+**ESLint 10: blocked, not attempted.** eslint-config-next 15 allows eslint ≤9. eslint-plugin-react 7.37,
+eslint-plugin-import 2.32 and eslint-plugin-jsx-a11y 6.10 also stop at ^9, and they are the latest versions, used by
+eslint-config-next 16 too. Forcing it would need `--legacy-peer-deps`. Logged in item 42.
+
+**Item 27: gross profit at the time of sale → [PR #70](https://github.com/Alphaguyasa/Suq/pull/70), merged (`b0a13d7`).**
+- Each sale line records the product's cost when sold (`cost_snapshot`, cents), and a void copies it, so a voided sale
+  still nets to zero after a cost change. Reports fall back to the current cost when a line has no snapshot (older
+  lines, lines pulled from another till, or a blank cost of 0, so a cost filled in later still counts).
+- It was waiting for the migrations. It ships now because the push leaves the field out (production has no column,
+  and PostgREST would refuse the whole batch), and pull never overwrites it (append-only apply skips rows it already
+  holds). Replicating it moves into item 13. No Dexie version (not indexed), no migration.
+- Tests: 3 in `sales.test.ts`, 3 in `compute.test.ts`, and sync test 7b (pushed line and server row have no field,
+  the own line pulled back keeps it, another till gets none). All 5 test cases fail on the old code.
+- Local: lint ✅ · typecheck ✅ · unit 440 ✅ · build ✅ · e2e 35/35 ✅. CI green after updating the branch onto TS 6.
+
+**Replan (4 items open, 3 waiting on alpha).** Short audit: `npm audit --omit=dev` clean, `npm outdated`, no
+TODO/FIXME markers, today's CI flake. New items: 44 self-host fonts (P2·S), 45 patch/minor bumps (P2·S), 46 restore a
+JSON backup on a fresh till (P2·M), 47 share a reorder list as text (P3·S). Item 42 now records why TS 7 and ESLint
+10 are blocked.
+
+**Environment note.** Same Playwright mismatch as runs 12–21 (fixed locally with the `/opt/pw-browsers` symlinks).
+
+**Blocked:** release tags `v2026-11-03-1` and `v2026-11-03-2` (refused as before; SHAs in NEEDS_APPROVAL).
+
+### REPORT — 2026-11-03 (run 22)
+| Field | Content |
+|---|---|
+| Done | Item 42 part 2: TypeScript 6.0.3 — [PR #69](https://github.com/Alphaguyasa/Suq/pull/69). Item 27: gross profit uses the cost at the time of sale — [PR #70](https://github.com/Alphaguyasa/Suq/pull/70) |
+| Merged | PR #69: yes (`9b8fb5a`) · PR #70: yes (`b0a13d7`) · tags NOT pushed (refused) |
+| Failed or blocked | TypeScript 7 and ESLint 10 blocked upstream (their tools do not support them yet); tag pushes; items 12/33 wait for alpha; item 13 waits for the migrations |
+| Roadmap | Replanned: 8 open (12, 13, 33, 42 = Next 16 left, 44, 45, 46, 47), 3 waiting on alpha |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Yes/no on camera scanning and on a credit (ዱቤ) ledger; **apply the two migrations** (or reconnect Supabase to the Suq org); tags; Fable 5.1; routine settings; branch protection; hosting costs |
+| Next | Item 44 (self-host the fonts), then item 45 (patch/minor bumps) |
+
+---
+
 ## 2026-11-02 — Run 21 (scheduled)
 
 **Start.** `master` @ `9292e86`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
