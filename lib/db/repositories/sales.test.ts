@@ -42,6 +42,49 @@ describe('sales.create', () => {
     expect(queued.filter((row) => row.table === 'stock_movements')).toHaveLength(1);
   });
 
+  it('snapshots the cost at the time of sale; a later cost change does not move it', async () => {
+    const product = await seedProduct({ cost_price: 1800 });
+    const sale = await salesRepo.create([cartLine(product, 2)], { method: 'cash' });
+
+    const { upsert } = await import('./products');
+    await upsert({
+      id: product.id,
+      name: product.name,
+      name_am: product.name_am,
+      cost_price: 2200,
+      sell_price: product.sell_price,
+    });
+
+    const detail = await salesRepo.getById(sale.id);
+    expect(detail?.items[0]?.cost_snapshot).toBe(1800);
+  });
+
+  it('records no cost snapshot while the cost is blank (0), so a cost filled in later still counts', async () => {
+    const product = await seedProduct({ cost_price: 0 });
+    const sale = await salesRepo.create([cartLine(product, 1)], { method: 'cash' });
+
+    const detail = await salesRepo.getById(sale.id);
+    expect(detail?.items[0]?.cost_snapshot).toBeNull();
+  });
+
+  it('a void copies the sale lines\' cost snapshot, even after the cost changed', async () => {
+    const product = await seedProduct({ cost_price: 1800 });
+    const sale = await salesRepo.create([cartLine(product, 3)], { method: 'cash' });
+
+    const { upsert } = await import('./products');
+    await upsert({
+      id: product.id,
+      name: product.name,
+      name_am: product.name_am,
+      cost_price: 2400,
+      sell_price: product.sell_price,
+    });
+
+    const voidRow = await salesRepo.voidSale(sale.id, 'wrong item');
+    const reversal = await salesRepo.itemsFor(voidRow.id);
+    expect(reversal[0]).toMatchObject({ qty: -3, cost_snapshot: 1800 });
+  });
+
   it('snapshots the name and price so later edits cannot rewrite history', async () => {
     const product = await seedProduct();
     const sale = await salesRepo.create([cartLine(product, 1)], { method: 'cash' });

@@ -93,6 +93,22 @@ export interface SaleItem {
   unit_price: number;
   qty: number;
   line_total: number;
+  /**
+   * The product's cost_price AT TIME OF SALE, integer cents, so gross profit
+   * does not move when a supplier's price changes later.
+   *
+   * null (or absent, on lines written before this existed, and on every line
+   * pulled from another till) means "not known": reports fall back to the
+   * product's current cost. A cost of 0 is stored as null too, because 0 is
+   * what the product form saves when the cost was left blank, and a cost filled
+   * in later should still reach those sales.
+   *
+   * Local only for now, stripped on push: production's sale_items has no such
+   * column yet (ROADMAP item 13 adds it with the pending migrations). Not
+   * indexed, so no Dexie version is needed. Pull never overwrites it, because
+   * append-only apply skips rows the till already holds.
+   */
+  cost_snapshot?: number | null;
   /** Copied from the parent sale. It is the watermark pull filters by. */
   created_at: string;
 }

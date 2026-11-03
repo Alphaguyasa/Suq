@@ -84,6 +84,7 @@ export async function create(cart: CartLine[], payment: PaymentInput): Promise<S
   const meta = await getDevice();
   const saleId = newId();
   const created_at = nowIso();
+  const costs = await costSnapshots(cart.map((line) => line.product_id));
 
   const items: SaleItem[] = cart.map((line) => ({
     id: newId(),
@@ -94,6 +95,7 @@ export async function create(cart: CartLine[], payment: PaymentInput): Promise<S
     unit_price: line.unit_price,
     qty: line.qty,
     line_total: lineTotal(line),
+    cost_snapshot: costs.get(line.product_id) ?? null,
     created_at,
   }));
 
@@ -144,6 +146,20 @@ export async function create(cart: CartLine[], payment: PaymentInput): Promise<S
   );
 
   return sale;
+}
+
+/**
+ * Each product's cost right now, for the lines of a sale being written.
+ * A cost of 0 means "left blank" in the product form, so it is not recorded
+ * (see SaleItem.cost_snapshot).
+ */
+async function costSnapshots(productIds: string[]): Promise<Map<string, number>> {
+  const costs = new Map<string, number>();
+
+  for (const product of await db.products.bulkGet([...new Set(productIds)])) {
+    if (product && product.cost_price > 0) costs.set(product.id, product.cost_price);
+  }
+  return costs;
 }
 
 export async function getById(id: string): Promise<SaleDetail | null> {
@@ -346,6 +362,9 @@ async function appendReversal(
     unit_price: item.unit_price,
     qty: -item.qty,
     line_total: -item.line_total,
+    // The reversal takes back exactly the profit the sale counted, so a voided
+    // sale nets to zero even if the product's cost changed in between.
+    cost_snapshot: item.cost_snapshot ?? null,
     created_at,
   }));
 
