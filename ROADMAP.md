@@ -93,7 +93,7 @@ fallback, if the precache build and the offline e2e still pass with it.
 
 - **Patch/minor dependency bumps (item 45)** — next + eslint-config-next 15.5.29, vitest 5.1.0, tailwindcss +
   @tailwindcss/postcss 4.3.4, @vitejs/plugin-react 6.2.1, @electric-sql/pglite 0.5.15. Lockfile from npm 11.
-  [PR #73](https://github.com/Alphaguyasa/Suq/pull/73) · PR73_TAG
+  [PR #73](https://github.com/Alphaguyasa/Suq/pull/73) · tag `v2026-11-04-2` not pushed (refused) — commit `4f90301`
 
 - **Self-hosted fonts (item 44)** — `next/font/local` with the committed woff2 files: Archivo and Noto Sans Ethiopic
   400–700, IBM Plex Mono 400–600 (Fontsource 5.3.0, SIL OFL 1.1, licences in `app/fonts/`). Same CSS variables. The

@@ -22,10 +22,10 @@ The two Supabase migrations are still waiting for alpha.
   Archivo faces from the precache, and no stylesheet points at Google.
 - Local: lint ✅ · typecheck ✅ · unit 440 ✅ · build ✅ · e2e 36/36 ✅. CI green.
 
-**Item 45: patch/minor bumps → [PR #73](https://github.com/Alphaguyasa/Suq/pull/73), PR73_RESULT.**
+**Item 45: patch/minor bumps → [PR #73](https://github.com/Alphaguyasa/Suq/pull/73), merged (`4f90301`).**
 - next + eslint-config-next 15.5.29, vitest 5.1.0, tailwindcss + @tailwindcss/postcss 4.3.4, @vitejs/plugin-react 6.2.1,
   @electric-sql/pglite 0.5.15. Lockfile from npm 11. No code changes.
-- Local: lint ✅ · typecheck ✅ · unit 440 ✅ · build ✅ · e2e 35/35 ✅ (before merging #72 into the branch).
+- Local: lint ✅ · typecheck ✅ · unit 440 ✅ · build ✅ · e2e 35/35 ✅ (before merging #72 into the branch). CI green after merging master in.
 - The branch name `claude/deps-patch-minor` already existed from PR #56, so this PR uses `claude/deps-bumps-2026-11-04`.
 
 **New audit finding → item 48.** `npm audit --omit=dev` now shows 5 moderate advisories in `glob`/`minimatch`, which
@@ -43,7 +43,7 @@ fix is a downgrade to @serwist/next 8, so the item is to watch for a Serwist rel
 | Field | Content |
 |---|---|
 | Done | Item 44: self-hosted fonts, the build no longer needs the network — [PR #72](https://github.com/Alphaguyasa/Suq/pull/72). Item 45: patch/minor dependency bumps — [PR #73](https://github.com/Alphaguyasa/Suq/pull/73) |
-| Merged | PR #72: yes (`d1a6511`) · PR #73: PR73_MERGED · tags NOT pushed (refused) |
+| Merged | PR #72: yes (`d1a6511`) · PR #73: yes (`4f90301`) · tags NOT pushed (refused) |
 | Failed or blocked | Tag pushes; items 12/33 wait for alpha; item 13 waits for the migrations; TS 7 / ESLint 10 blocked upstream |
 | Roadmap | 7 open (12, 13, 33, 42 = Next 16, 46, 47, new 48); no replan needed |
 | Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
