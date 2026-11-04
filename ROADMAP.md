@@ -13,8 +13,8 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-11-03 (run 22) that is item 44 (self-host the fonts so CI stops failing
-on Google Fonts), then item 45.
+"after the pending migrations". As of 2026-11-04 (run 23) that is item 46 (restore a JSON backup on a fresh
+till), then item 47.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
 `docs/RULES.md` says "no camera scanning in v1 and no scanner library", and this item was written by a run, not
@@ -68,17 +68,6 @@ any needs code changes beyond an S.
 patch/minor updates (item 45) and the blocked majors above. No TODO/FIXME markers. Today's CI showed the build
 fetching Google Fonts over the network: one of two runs on the same commit failed in `next/font`.
 
-### 44. [P2 · S] Self-host the three fonts so the build never needs the network
-`app/layout.tsx` uses `next/font/google` (Archivo, IBM Plex Mono, Noto Sans Ethiopic). The build downloads them from
-Google, and on 2026-11-03 CI failed on that (`next/font` "Cannot read properties of null (reading '1')"); a re-run
-passed. Commit the woff2 files (all three are SIL OFL 1.1: free, redistributable; keep the licence text next to them)
-and use `next/font/local` with the same weights, subsets and CSS variables. Check that the Ethiopic glyphs still render
-(e2e screenshot of the Amharic sale screen) and that the fonts are precached for offline.
-
-### 45. [P2 · S] Patch/minor dependency bumps
-vitest 5.1.0, tailwindcss + @tailwindcss/postcss 4.3.4, @vitejs/plugin-react 6.2.1, @electric-sql/pglite 0.5.14.
-Lockfile from npm 11. Read the vitest 5.1 notes.
-
 ### 46. [P2 · M] Restore a JSON backup on a fresh till
 Settings → Backup exports `suq-backup` v1 JSON, but nothing reads it back. A shop without internet that loses or
 replaces its phone cannot get its products and history onto the new one. Offer "Restore from backup" only on an
@@ -92,8 +81,24 @@ Reports already lists products at or below their reorder level. Add a Share butt
 plain-text pattern as items 31/37) that sends "what to order" to the supplier on Telegram/SMS: name, on hand, reorder
 level, in the UI language. Unit + offline e2e.
 
+### 48. [P2 · S] Watch @serwist/next for a release on glob ≥ 14.0.2
+Added 2026-11-04. `npm audit --omit=dev` reports 5 moderate advisories (GHSA-3g3m-2fjr-6pw4 in `glob` 13.0.6,
+GHSA-g3hv-75wg-m249 in `minimatch` 10.2.6). They come only through `@serwist/next` 9.5.13 → `@serwist/build`, which
+use them at build time to list files for the precache. The till does not ship them. The CI gate (`--audit-level=high`)
+passes. npm's only automatic fix is a downgrade to @serwist/next 8, which is not acceptable. Check `npm view
+@serwist/next version` each replan, and bump once a release depends on fixed versions. An `overrides` entry is the
+fallback, if the precache build and the offline e2e still pass with it.
 
 ## Done
+
+- **Patch/minor dependency bumps (item 45)** — next + eslint-config-next 15.5.29, vitest 5.1.0, tailwindcss +
+  @tailwindcss/postcss 4.3.4, @vitejs/plugin-react 6.2.1, @electric-sql/pglite 0.5.15. Lockfile from npm 11.
+  [PR #73](https://github.com/Alphaguyasa/Suq/pull/73) · PR73_TAG
+
+- **Self-hosted fonts (item 44)** — `next/font/local` with the committed woff2 files: Archivo and Noto Sans Ethiopic
+  400–700, IBM Plex Mono 400–600 (Fontsource 5.3.0, SIL OFL 1.1, licences in `app/fonts/`). Same CSS variables. The
+  build no longer fetches anything from Google. New e2e: a cold offline launch loads every font from the precache.
+  [PR #72](https://github.com/Alphaguyasa/Suq/pull/72) · tag `v2026-11-04-1` not pushed (refused) — commit `d1a6511`
 
 - **Gross profit uses the cost at the time of sale (item 27)** — each sale line records the product's cost
   (`cost_snapshot`, cents) and a void copies it, so a later price change no longer rewrites past profit; lines without

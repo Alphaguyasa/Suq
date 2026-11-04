@@ -4,6 +4,54 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-11-04 — Run 23 (scheduled)
+
+**Start.** `master` @ `defcce7`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page
+(platform.claude.com). Fable 5.1 is still listed above Opus, so the optional ACTION FOR ALPHA has not changed.
+The two Supabase migrations are still waiting for alpha.
+
+**Item 44: self-host the fonts → [PR #72](https://github.com/Alphaguyasa/Suq/pull/72), merged (`d1a6511`).**
+- `next/font/google` → `next/font/local` with 11 committed woff2 files (452 KB): Archivo and Noto Sans Ethiopic 400–700,
+  IBM Plex Mono 400–600. The files come from the Fontsource 5.3.0 packages, which are the Google Fonts builds split per
+  subset. All three are SIL OFL 1.1, and the licence texts sit in `app/fonts/`. Same CSS variables, `display: swap`.
+- The build no longer fetches anything for fonts. All 11 files are in the service worker's precache manifest. A
+  screenshot of the Amharic setup screen shows the Ethiopic glyphs in Noto Sans Ethiopic, as before.
+- New e2e test: after a cold launch in airplane mode, `document.fonts.load()` loads the Ethiopic (400 and 700), mono and
+  Archivo faces from the precache, and no stylesheet points at Google.
+- Local: lint ✅ · typecheck ✅ · unit 440 ✅ · build ✅ · e2e 36/36 ✅. CI green.
+
+**Item 45: patch/minor bumps → [PR #73](https://github.com/Alphaguyasa/Suq/pull/73), PR73_RESULT.**
+- next + eslint-config-next 15.5.29, vitest 5.1.0, tailwindcss + @tailwindcss/postcss 4.3.4, @vitejs/plugin-react 6.2.1,
+  @electric-sql/pglite 0.5.15. Lockfile from npm 11. No code changes.
+- Local: lint ✅ · typecheck ✅ · unit 440 ✅ · build ✅ · e2e 35/35 ✅ (before merging #72 into the branch).
+- The branch name `claude/deps-patch-minor` already existed from PR #56, so this PR uses `claude/deps-bumps-2026-11-04`.
+
+**New audit finding → item 48.** `npm audit --omit=dev` now shows 5 moderate advisories in `glob`/`minimatch`, which
+come only through `@serwist/next` (used at build time). The CI gate is set to high, so it passes. The only automatic
+fix is a downgrade to @serwist/next 8, so the item is to watch for a Serwist release instead.
+
+**Roadmap.** 7 open (12, 13, 33, 42 = Next 16, 46, 47, 48), 3 of them waiting on alpha or the migrations. That is
+5 or more, so no replan this run.
+
+**Environment note.** Same Playwright mismatch as runs 12–22 (fixed locally with the `/opt/pw-browsers` symlinks).
+
+**Blocked:** release tags `v2026-11-04-1` (refused again, `fatal: the remote end hung up`) and `-2`. SHAs are in NEEDS_APPROVAL.
+
+### REPORT — 2026-11-04 (run 23)
+| Field | Content |
+|---|---|
+| Done | Item 44: self-hosted fonts, the build no longer needs the network — [PR #72](https://github.com/Alphaguyasa/Suq/pull/72). Item 45: patch/minor dependency bumps — [PR #73](https://github.com/Alphaguyasa/Suq/pull/73) |
+| Merged | PR #72: yes (`d1a6511`) · PR #73: PR73_MERGED · tags NOT pushed (refused) |
+| Failed or blocked | Tag pushes; items 12/33 wait for alpha; item 13 waits for the migrations; TS 7 / ESLint 10 blocked upstream |
+| Roadmap | 7 open (12, 13, 33, 42 = Next 16, 46, 47, new 48); no replan needed |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Unchanged: camera scanning / credit ledger decisions, the 2 Supabase migrations + connector, routine settings, tag pushes, branch protection, hosting costs |
+| Next | Item 46 (restore a JSON backup on a fresh till), then item 47 (share the reorder list) |
+
+---
+
 ## 2026-11-03 — Run 22 (scheduled)
 
 **Start.** `master` @ `7dbf4b0`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
