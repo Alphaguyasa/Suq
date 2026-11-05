@@ -4,6 +4,74 @@ One entry per run, newest first. Each entry ends with the REPORT table (CLAUDE.m
 
 ---
 
+## 2026-11-05 — Run 24 (scheduled)
+
+**Start.** `master` @ `971ec89`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
+
+**Model check.** Running on Claude Opus 5.5 (`claude-opus-5-5`), still the newest Opus on the models page
+(platform.claude.com). Fable 5.1 is still listed above Opus, so the optional ACTION FOR ALPHA has not changed.
+The two Supabase migrations are still waiting for alpha.
+
+**Branch note.** This session could push only to `alpha/gifted-brown-9tqm6j`, so every PR used it. After each squash
+merge I rebuilt the branch on `master` with an `-s ours` merge of the old head (as in run 21), which avoids a force-push.
+
+**Item 46: restore a JSON backup on a fresh till → [PR #75](https://github.com/Alphaguyasa/Suq/pull/75), merged (`e073d6c`).**
+- Setup step 1 shows "Restore from backup (JSON)" while the till is empty. A restore fills in the shop details, and the
+  owner then picks a device code and creates the owner cashier as on any new till (the backup holds no PINs).
+- `lib/backup/restore.ts`:
+  - `parseBackup()` checks the whole file before anything is written: format and version (a newer file is refused),
+    integer cents, ids, unique ids, one shop_id, every sale line's sale present, no zero movement, valid timestamps
+    (stored in the canonical form).
+  - Rows are rebuilt from known columns only. An unknown key in a pushed payload would make PostgREST refuse the
+    whole batch.
+- `restoreBackup()` writes everything in one transaction, and checks again inside it that the till is empty.
+  - The synced tables go through `localWriteMany()`, so every row is queued for push. A re-push is safe: rows keep
+    their uuids, the append-only tables ignore duplicates, and products are last-write-wins.
+  - Rows the server never saw get recovered.
+  - It rebuilds `stock_cache` and adopts the backup's shop_id. The till keeps its own device_id and counter, so new
+    receipts continue past the restored ones.
+- Open risk: until alpha applies the LWW migration, a restored product can overwrite a newer edit made on another
+  till. That is the same exposure as any late offline edit today.
+- Found while testing: a void row with no discount stores `discount: -0`. JSON writes it as `0`. It is harmless today,
+  but logged as new item 49.
+- Tests: 17 unit tests and a new e2e `backup-restore.spec.ts`. The e2e runs export, then a new browser context offline:
+  a bad file is refused, the restore runs, ids, stock and outbox count match, setup finishes as B1, and the next sale is
+  `B1-000001`.
+- Local: lint ✅ · typecheck ✅ · unit 464 ✅ · build ✅ · e2e 37/37 ✅. CI green.
+
+**Item 47: share the reorder list as text → [PR #76](https://github.com/Alphaguyasa/Suq/pull/76), merged (`318850a`).**
+- Reports → Low stock has a "Share order list" button (same `ShareReceiptButton`). The text has the shop name and
+  phone, then one line per low product, furthest below its level first: name in the UI language, on hand with unit,
+  reorder level.
+- Tests: 3 unit tests, plus an offline e2e in `share-receipt.spec.ts`.
+- Local: lint ✅ · typecheck ✅ · unit 467 ✅ · build ✅ · e2e 38/38 ✅. CI green.
+
+**Roadmap.** 5 open after this run (12, 13, 33, 42 = Next 16, 48). Four of them are blocked, so I did a short audit:
+- `npm audit --omit=dev`: same 5 moderate advisories from Serwist (item 48).
+- `@serwist/next` is still 9.5.13.
+- typescript-eslint still allows only TS `<6.1.0`, and eslint-plugin-react still stops at eslint ^9.
+- No TODO/FIXME markers.
+
+New items: 49 (void `-0` discount, P3·S), 50 (setup warns about a prefix the restored receipts already use,
+P2·S), 51 (supabase-js 2.119 patch bump, P3·S).
+
+**Environment note.** Same Playwright mismatch as runs 12–23 (fixed locally with the `/opt/pw-browsers` symlinks).
+
+**Blocked:** release tags `v2026-11-05-1` (refused again, `fatal: the remote end hung up`) and `-2`. SHAs are in NEEDS_APPROVAL.
+
+### REPORT — 2026-11-05 (run 24)
+| Field | Content |
+|---|---|
+| Done | Item 46: restore a JSON backup on a fresh till — [PR #75](https://github.com/Alphaguyasa/Suq/pull/75). Item 47: share the reorder list as text — [PR #76](https://github.com/Alphaguyasa/Suq/pull/76) |
+| Merged | PR #75: yes (`e073d6c`) · PR #76: yes (`318850a`) · tags NOT pushed (refused) |
+| Failed or blocked | Tag pushes; items 12/33 wait for alpha; item 13 waits for the migrations; TS 7 / ESLint 10 blocked upstream |
+| Roadmap | 8 open (12, 13, 33, 42 = Next 16, 48, new 49, 50, 51); short audit, 3 new items |
+| Model | Opus 5.5. ACTION FOR ALPHA (optional): Fable 5.1 is a higher tier |
+| Needs approval | Unchanged: camera scanning / credit ledger decisions, the 2 Supabase migrations + connector, routine settings, tag pushes, branch protection, hosting costs |
+| Next | Item 50 (setup prefix warning after a restore), then item 49 (void `-0` discount) |
+
+---
+
 ## 2026-11-04 — Run 23 (scheduled)
 
 **Start.** `master` @ `defcce7`, CI green, no open PRs. I read CLAUDE.md, ROADMAP, DAILY_LOG and NEEDS_APPROVAL.
