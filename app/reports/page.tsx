@@ -13,8 +13,9 @@ import { NumberInput } from '@/components/ui/Field';
 import { getSettings, productsRepo, salesRepo, stockRepo } from '@/lib/db';
 import type { PaymentMethod, Sale, SaleItem } from '@/lib/db';
 import { formatETB, formatQty, parseETBOrZero } from '@/lib/format';
-import { useT } from '@/lib/i18n';
+import { useLang, useT } from '@/lib/i18n';
 import { cashUpText } from '@/lib/reports/cashup-text';
+import { reorderText } from '@/lib/reports/reorder-text';
 import { productStockHref } from '@/lib/routes';
 import {
   cashUp,
@@ -35,6 +36,7 @@ const EMPTY_ITEMS: SaleItem[] = [];
 
 export default function ReportsPage() {
   const t = useT();
+  const { lang } = useLang();
   const [periodKey, setPeriodKey] = useState<PeriodKey>('today');
   const [rankBy, setRankBy] = useState<'revenue' | 'units'>('revenue');
   const [floatInput, setFloatInput] = useState('');
@@ -250,6 +252,17 @@ export default function ReportsPage() {
             ))}
           </ul>
         )}
+
+        {low.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <ShareReceiptButton
+              title={t.reports.reorderTitle}
+              text={reorderText({ rows: low, settings, t, lang, date: new Date().toISOString() })}
+              label={t.reports.shareReorder}
+              copiedMessage={t.reports.reorderCopied}
+            />
+          </div>
+        ) : null}
       </section>
 
       <section className="flex flex-col gap-4">
