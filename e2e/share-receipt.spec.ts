@@ -82,3 +82,46 @@ test('offline, the cash-up is shared as text', async ({ context, page }) => {
   expect(text).toContain(`${t.reports.expectedDrawer}: 645.00`);
   expect(text).toContain(`${t.reports.variance}: 5.00 ${t.reports.short}`);
 });
+
+/**
+ * What to order goes to the supplier the same way: the products at or below
+ * their reorder level, with what is on hand, offline.
+ */
+test('offline, the reorder list is shared as text', async ({ context, page }) => {
+  await context.addInitScript(() => {
+    const shared: ShareData[] = [];
+    (window as unknown as { __shared: ShareData[] }).__shared = shared;
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: async (data: ShareData) => {
+        shared.push(data);
+      },
+    });
+  });
+
+  await setupShop(page);
+  await waitForServiceWorker(page);
+  await goOffline(context);
+  await coldLaunch(page);
+  await unlock(page);
+
+  // Sugar opens at 10 with a reorder level of 5: selling 6 leaves 4.
+  const sugar = PRODUCTS[2];
+  await scan(page, Array(6).fill(sugar.barcode));
+  await pay(page);
+
+  await page.goto('/reports');
+  await page.getByRole('button', { name: t.reports.shareReorder }).click();
+
+  const shared = await page.evaluate(() => (window as unknown as { __shared: ShareData[] }).__shared);
+  expect(shared).toHaveLength(1);
+  expect(shared[0]?.title).toBe(t.reports.reorderTitle);
+  const text = shared[0]?.text ?? '';
+  expect(text).toContain('የሙከራ ሱቅ');
+  expect(text).toContain(
+    `${sugar.name_am}: ${t.products.onHand} 4 ${t.units.pcs} · ${t.productForm.reorderLevel} 5`,
+  );
+  // Water and bread are well stocked.
+  expect(text).not.toContain(PRODUCTS[0].name_am);
+  expect(text).not.toContain(PRODUCTS[1].name_am);
+});
