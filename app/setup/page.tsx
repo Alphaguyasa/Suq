@@ -13,11 +13,14 @@ import {
   DuplicateCashierError,
   ensureDevice,
   ensureSettings,
+  getSettings,
   isValidPin,
   suggestDevicePrefix,
   updateSettings,
 } from '@/lib/db';
 import type { WriteFailure } from '@/lib/db';
+import { RestoreError, canRestore, parseBackup, restoreBackup } from '@/lib/backup/restore';
+import type { RestoreErrorCode, RestoreSummary } from '@/lib/backup/restore';
 import { useBilingual } from '@/lib/i18n';
 import type { Dict } from '@/lib/i18n';
 import { unlockAs } from '@/lib/lock/lock';
@@ -58,10 +61,20 @@ export default function SetupPage() {
      both added the first cashier. A ref is set before the first await. */
   const inFlight = useRef(false);
   const [saveError, setSaveError] = useState<WriteFailure>();
+  /* Restore is offered only while the till is empty (lib/backup/restore.ts). */
+  const [restoreOffered, setRestoreOffered] = useState(false);
+  const [restoreSummary, setRestoreSummary] = useState<RestoreSummary>();
+  const [restoreError, setRestoreError] = useState<RestoreErrorCode | 'failed'>();
 
   // Random, so it can't match the server-rendered HTML: filled in after mount.
   useEffect(() => {
     setPrefix((current) => current || suggestDevicePrefix());
+  }, []);
+
+  useEffect(() => {
+    void canRestore()
+      .then(setRestoreOffered)
+      .catch(() => setRestoreOffered(false));
   }, []);
 
   /* Each step writes to IndexedDB. A failed write keeps the owner on the same
@@ -126,6 +139,40 @@ export default function SetupPage() {
     }
 
     router.push('/');
+  }
+
+  /*
+   * A phone lost or replaced: put the old till's backup on this one before
+   * anything else is entered. The file is checked whole and written in one
+   * transaction, so a bad file changes nothing. The shop details it carried
+   * fill step 1, and the owner continues with the device code and cashier as
+   * on any new till (the backup holds no PINs).
+   */
+  async function handleRestore(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || inFlight.current) return;
+
+    inFlight.current = true;
+    setBusy(true);
+    setRestoreError(undefined);
+    try {
+      const summary = await restoreBackup(parseBackup(await file.text()));
+      const settings = await getSettings();
+      setShopNameAm(settings.shop_name_am);
+      setShopName(settings.shop_name);
+      setPhone(settings.phone);
+      setAddress(settings.address);
+      setRestoreSummary(summary);
+      setRestoreOffered(false);
+    } catch (cause) {
+      console.error('[setup] restore refused', cause);
+      setRestoreError(cause instanceof RestoreError ? cause.code : 'failed');
+      // The same file can be chosen again after, say, freeing up storage.
+      event.target.value = '';
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
   }
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
@@ -201,6 +248,35 @@ export default function SetupPage() {
               className="ethiopic"
             />
           </Field>
+
+          {restoreSummary ? (
+            <p data-testid="restore-summary" role="status" className="ethiopic text-sm font-medium text-birr-ink">
+              {t.setup.restored(restoreSummary.products, restoreSummary.sales)}
+            </p>
+          ) : null}
+
+          {restoreOffered ? (
+            <div className="flex flex-col gap-2 border-t border-rule pt-5">
+              <h3 className="ethiopic text-base font-semibold">{t.setup.restoreTitle}</h3>
+              <p className="ethiopic text-sm text-muted">{t.setup.restoreHint}</p>
+              <label htmlFor="s-restore" className="ethiopic text-sm font-medium">
+                {t.setup.restoreFile}
+              </label>
+              <input
+                id="s-restore"
+                type="file"
+                accept=".json,application/json"
+                onChange={(event) => void handleRestore(event)}
+                disabled={busy}
+                className="ethiopic min-h-touch w-full rounded-lg border border-rule p-3 text-sm"
+              />
+              {restoreError ? (
+                <p role="alert" data-testid="restore-error" className="ethiopic text-sm font-medium text-ochre-ink">
+                  {t.setup.restoreErrors[restoreError]}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </section>
       ) : null}
 
