@@ -13,8 +13,8 @@ and the unit test suite).
 ## Open
 
 Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-11-04 (run 23) that is item 46 (restore a JSON backup on a fresh
-till), then item 47.
+"after the pending migrations". As of 2026-11-05 (run 24) that is item 50 (setup warns about a device code the
+restored receipts use), then item 49.
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
 `docs/RULES.md` says "no camera scanning in v1 and no scanner library", and this item was written by a run, not
@@ -68,19 +68,6 @@ any needs code changes beyond an S.
 patch/minor updates (item 45) and the blocked majors above. No TODO/FIXME markers. Today's CI showed the build
 fetching Google Fonts over the network: one of two runs on the same commit failed in `next/font`.
 
-### 46. [P2 · M] Restore a JSON backup on a fresh till
-Settings → Backup exports `suq-backup` v1 JSON, but nothing reads it back. A shop without internet that loses or
-replaces its phone cannot get its products and history onto the new one. Offer "Restore from backup" only on an
-empty till (setup's first step): validate the file (version, shop_id, integer cents, ids), write every row in one
-transaction, rebuild `stock_cache`, and queue the rows for push (idempotent upserts, so already-synced rows are
-no-ops). The restore path needs a design note on why it is not `localWrite()` per row, or uses `localWriteMany()`.
-Unit (bad files refused, nothing half-written) + e2e (export → reset → restore → same stock and reports).
-
-### 47. [P3 · S] Share a reorder list as text
-Reports already lists products at or below their reorder level. Add a Share button (same `ShareReceiptButton`, same
-plain-text pattern as items 31/37) that sends "what to order" to the supplier on Telegram/SMS: name, on hand, reorder
-level, in the UI language. Unit + offline e2e.
-
 ### 48. [P2 · S] Watch @serwist/next for a release on glob ≥ 14.0.2
 Added 2026-11-04. `npm audit --omit=dev` reports 5 moderate advisories (GHSA-3g3m-2fjr-6pw4 in `glob` 13.0.6,
 GHSA-g3hv-75wg-m249 in `minimatch` 10.2.6). They come only through `@serwist/next` 9.5.13 → `@serwist/build`, which
@@ -89,7 +76,38 @@ passes. npm's only automatic fix is a downgrade to @serwist/next 8, which is not
 @serwist/next version` each replan, and bump once a release depends on fixed versions. An `overrides` entry is the
 fallback, if the precache build and the offline e2e still pass with it.
 
+## Replan 2026-11-05 (run 24: 5 open, 4 of them blocked; short audit)
+`npm audit --omit=dev` shows the same 5 moderate Serwist advisories as item 48 (`@serwist/next` still 9.5.13).
+typescript-eslint still allows only TypeScript `<6.1.0`, and eslint-plugin-react still stops at eslint ^9. No TODO/FIXME
+markers. Two findings came from building item 46.
+
+### 50. [P2 · S] Setup warns when the device code is already on restored receipts
+After a restore (item 46), step 2 of setup offers a random code, but the owner may type the old phone's code. That is
+right when the old phone is gone: receipts continue past the restored ones. But if the old phone still works and sells
+offline, both phones hand out the same numbers. Settings already warns with `isPrefixUsedByAnotherDevice()`. Setup does
+not. Show the same ochre warning under the code field in setup, without blocking. Unit + e2e (restore, type A1, warning
+shows; type B1, it goes away).
+
+### 49. [P3 · S] A void with no discount stores `discount: -0`
+`voidSale()` writes `discount: -target.discount`, which is `-0` when the sale had no discount. Money is still an integer
+and every sum is right, but `-0` is not the "0" the rest of the code expects (`Object.is`, `toEqual`, and JSON turns it
+into 0 anyway, so a restored void differs from the original). Write `0 - x` or normalise with `|| 0` for every negated
+money and quantity field of a void, plus a test.
+
+### 51. [P3 · S] Patch bump: @supabase/supabase-js 2.119
+`npm outdated` shows 2.118.0 → 2.119.0 (minor, within the current major). Lockfile from npm 11, as in item 45. Read the
+release notes for auth or realtime changes first. Full suite, including the e2e fake Supabase.
+
 ## Done
+
+- **Share the reorder list as text (item 47)** — Reports → Low stock → "Share order list": shop name and phone, one
+  line per low product (name in the UI language, on hand with unit, reorder level), offline through the share sheet.
+  [PR #76](https://github.com/Alphaguyasa/Suq/pull/76) · tag `v2026-11-05-2` not pushed (refused) — commit `318850a`
+
+- **Restore a JSON backup on a fresh till (item 46)** — setup step 1, empty till only. The whole file is checked first,
+  then written in one transaction through `localWriteMany()` (rows queued for push), `stock_cache` is rebuilt and the
+  shop_id adopted; the till keeps its own device_id and counter. Unit + offline e2e.
+  [PR #75](https://github.com/Alphaguyasa/Suq/pull/75) · tag `v2026-11-05-1` not pushed (refused) — commit `e073d6c`
 
 - **Patch/minor dependency bumps (item 45)** — next + eslint-config-next 15.5.29, vitest 5.1.0, tailwindcss +
   @tailwindcss/postcss 4.3.4, @vitejs/plugin-react 6.2.1, @electric-sql/pglite 0.5.15. Lockfile from npm 11.
