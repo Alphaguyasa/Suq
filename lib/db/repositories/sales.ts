@@ -335,6 +335,16 @@ export async function voidSale(saleId: string, reason: string): Promise<Sale> {
   });
 }
 
+/*
+ * Unary minus turns 0 into -0. Every sum still comes out right, but -0 is not
+ * the 0 the rest of the code (and the tests' toEqual/Object.is) expects, and
+ * JSON writes it as 0, so a void restored from a backup differed from the
+ * original row. A sale with no discount, or a free line, must reverse to 0.
+ */
+export function negate(value: number): number {
+  return value === 0 ? 0 : -value;
+}
+
 /**
  * Writes a mirror image of `target` (negated totals and lines) and the stock
  * movements that undo its movements, in one transaction.
@@ -360,8 +370,8 @@ async function appendReversal(
     product_id: item.product_id,
     name_snapshot: item.name_snapshot,
     unit_price: item.unit_price,
-    qty: -item.qty,
-    line_total: -item.line_total,
+    qty: negate(item.qty),
+    line_total: negate(item.line_total),
     // The reversal takes back exactly the profit the sale counted, so a voided
     // sale nets to zero even if the product's cost changed in between.
     cost_snapshot: item.cost_snapshot ?? null,
@@ -395,9 +405,9 @@ async function appendReversal(
         shop_id: target.shop_id,
         device_id: meta.device_id,
         receipt_no: await nextReceiptNo(),
-        subtotal: -target.subtotal,
-        discount: -target.discount,
-        total: -target.total,
+        subtotal: negate(target.subtotal),
+        discount: negate(target.discount),
+        total: negate(target.total),
         payment_method: target.payment_method,
         cashier_name: meta.cashier_name,
         voided_by: null,
