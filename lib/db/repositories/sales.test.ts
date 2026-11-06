@@ -11,6 +11,34 @@ beforeEach(async () => {
   await freshDatabase();
 });
 
+describe('negate', () => {
+  it('never returns -0', () => {
+    expect(Object.is(salesRepo.negate(0), 0)).toBe(true);
+    expect(Object.is(salesRepo.negate(-0), 0)).toBe(true);
+    expect(salesRepo.negate(250)).toBe(-250);
+    expect(salesRepo.negate(-3)).toBe(3);
+  });
+});
+
+describe('void money fields', () => {
+  it('a void of a sale with no discount stores discount 0, not -0, and survives JSON unchanged', async () => {
+    const product = await seedProduct();
+    const sale = await salesRepo.create([cartLine(product, 2)], { method: 'cash' });
+    expect(sale.discount).toBe(0);
+
+    const voidRow = await salesRepo.voidSale(sale.id, 'wrong item');
+    expect(Object.is(voidRow.discount, 0)).toBe(true);
+    expect(voidRow).toMatchObject({ subtotal: -5000, total: -5000 });
+
+    const stored = (await db.sales.get(voidRow.id))!;
+    expect(Object.is(stored.discount, 0)).toBe(true);
+    expect(JSON.parse(JSON.stringify(stored))).toEqual(stored);
+    for (const item of await salesRepo.itemsFor(voidRow.id)) {
+      expect(JSON.parse(JSON.stringify(item))).toEqual(item);
+    }
+  });
+});
+
 describe('sales.create', () => {
   it('writes the sale, its items and its movements together', async () => {
     const product = await seedProduct();
