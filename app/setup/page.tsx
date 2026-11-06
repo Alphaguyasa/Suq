@@ -1,5 +1,6 @@
 'use client';
 
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
@@ -13,7 +14,9 @@ import {
   DuplicateCashierError,
   ensureDevice,
   ensureSettings,
+  getDevice,
   getSettings,
+  isPrefixUsedByAnotherDevice,
   isValidPin,
   suggestDevicePrefix,
   updateSettings,
@@ -65,6 +68,24 @@ export default function SetupPage() {
   const [restoreOffered, setRestoreOffered] = useState(false);
   const [restoreSummary, setRestoreSummary] = useState<RestoreSummary>();
   const [restoreError, setRestoreError] = useState<RestoreErrorCode | 'failed'>();
+
+  /*
+   * After a restore the old phone's receipts are on this till. Typing the old
+   * phone's code is right when that phone is gone (numbering continues past
+   * the restored receipts), but if it still sells offline both phones hand out
+   * the same numbers. Settings warns about this; setup must too. Warn, don't
+   * block. Before step 2 is saved this till may have no device row yet, so
+   * every receipt with the code belongs to another device ('' matches no id).
+   */
+  const cleanedPrefix = prefix.trim().toUpperCase();
+  const prefixInUse = useLiveQuery(async () => {
+    if (step !== 2 || !cleanedPrefix) return false;
+    const deviceId = await getDevice().then(
+      (device) => device.device_id,
+      () => '',
+    );
+    return isPrefixUsedByAnotherDevice(cleanedPrefix, deviceId);
+  }, [step, cleanedPrefix]);
 
   // Random, so it can't match the server-rendered HTML: filled in after mount.
   useEffect(() => {
@@ -289,7 +310,7 @@ export default function SetupPage() {
             label={t.settings.devicePrefix}
             sublabel={other.settings.devicePrefix}
             hint={t.settings.devicePrefixHint}
-            error={error}
+            error={error ?? (prefixInUse ? t.settings.devicePrefixInUse : undefined)}
           >
             <TextInput
               id="s-prefix"

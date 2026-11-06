@@ -1,6 +1,7 @@
 import { fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db, getDevice } from '@/lib/db';
+import type { Sale } from '@/lib/db';
 import { I18nProvider } from '@/lib/i18n';
 import { am } from '@/lib/i18n/am';
 import { SESSION_KEY, initialiseLock, resetLockState, useLock } from '@/lib/lock/lock';
@@ -55,5 +56,49 @@ describe('setup', () => {
     resetLockState();
     await initialiseLock();
     expect(lockState()).toMatchObject({ locked: false, cashier: { id: cashier!.id } });
+  });
+
+  it('warns, without blocking, when restored receipts already use the device code', async () => {
+    // What a restore leaves behind: the old phone's receipts, under its own device_id.
+    const restored: Sale = {
+      id: 'sale-restored-1',
+      shop_id: 'shop-test',
+      device_id: 'old-phone',
+      receipt_no: 'A1-000007',
+      subtotal: 100,
+      discount: 0,
+      total: 100,
+      payment_method: 'cash',
+      cashier_name: '',
+      voided_by: null,
+      voids_sale_id: null,
+      cash_received: null,
+      created_at: '2026-10-01T08:00:00.000Z',
+      synced_at: null,
+    };
+    await db.sales.put(restored);
+
+    render(
+      <I18nProvider initialLang="am">
+        <SetupPage />
+      </I18nProvider>,
+    );
+    const next = () => fireEvent.click(screen.getByRole('button', { name: am.setup.next }));
+    fireEvent.change(document.querySelector('#s-name-am')!, { target: { value: 'የሙከራ ሱቅ' } });
+    next();
+    await waitFor(() => expect(document.querySelector('#s-prefix')).not.toBeNull());
+
+    fireEvent.change(document.querySelector('#s-prefix')!, { target: { value: 'a1' } });
+    await waitFor(() => expect(screen.queryByText(am.settings.devicePrefixInUse)).not.toBeNull());
+
+    fireEvent.change(document.querySelector('#s-prefix')!, { target: { value: 'B1' } });
+    await waitFor(() => expect(screen.queryByText(am.settings.devicePrefixInUse)).toBeNull());
+
+    // The owner may keep the old code (the old phone is gone): setup goes on.
+    fireEvent.change(document.querySelector('#s-prefix')!, { target: { value: 'A1' } });
+    await waitFor(() => expect(screen.queryByText(am.settings.devicePrefixInUse)).not.toBeNull());
+    next();
+    await waitFor(() => expect(document.querySelector('#s-cashier')).not.toBeNull());
+    expect((await getDevice()).device_prefix).toBe('A1');
   });
 });
