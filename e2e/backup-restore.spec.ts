@@ -83,7 +83,13 @@ test('a JSON backup restores onto a fresh till, offline, and the till sells on',
 
   // The rest of setup as on any new till: its own code, the owner again.
   await fresh.getByRole('button', { name: t.setup.next }).click();
+  // The old phone's code is on the restored receipts: setup warns, so a phone
+  // that still sells offline does not end up sharing numbers with this one.
+  const oldPrefix = firstReceipt.split('-')[0]!;
+  await fresh.locator('#s-prefix').fill(oldPrefix);
+  await expect(fresh.getByText(t.settings.devicePrefixInUse)).toBeVisible();
   await fresh.locator('#s-prefix').fill('B1');
+  await expect(fresh.getByText(t.settings.devicePrefixInUse)).toHaveCount(0);
   await fresh.getByRole('button', { name: t.setup.next }).click();
   await fresh.locator('#s-cashier').fill(CASHIER.name);
   await fresh.locator('#s-pin').fill(CASHIER.pin);
