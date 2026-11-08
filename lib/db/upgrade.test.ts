@@ -17,7 +17,7 @@ import type {
 import { openAtVersion } from './test-helpers';
 
 /**
- * PROJECT RULE (CLAUDE.md §5): every Dexie schema change needs a versioned
+ * PROJECT RULE (the engineering handbook §5): every Dexie schema change needs a versioned
  * upgrade plus a test that old data survives it.
  *
  * For every historical version this opens a database exactly as that build

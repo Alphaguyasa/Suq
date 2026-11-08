@@ -4,7 +4,7 @@ import { E2E_SHOP_ID, FakeSupabase, SYNCED_TABLES } from './fake-supabase';
 import { PRODUCTS, goOffline, goOnline, pay, readLocal, scan, setupShop, syncPill } from './helpers';
 
 /**
- * PROJECT RULE (CLAUDE.md §5): keep a Playwright test that goes offline
+ * PROJECT RULE (the engineering handbook §5): keep a Playwright test that goes offline
  * (context.setOffline), completes sales, reconnects, and asserts sync with no
  * lost and no duplicated records.
  *

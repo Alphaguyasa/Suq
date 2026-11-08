@@ -5,7 +5,7 @@ violation, **P1** = real user or demo impact, **P2** = quality/UX/perf, **P3** =
 Effort: **S** < 2h, **M** half a day, **L** a day or more (split L items into smaller PRs).
 
 When an item merges, move it to **Done** with its PR link and release tag. When fewer than 5 items are open,
-REPLAN (see CLAUDE.md §6).
+REPLAN (see the engineering handbook §6).
 
 Built from the Phase 0 audit on 2026-10-14 (full read of the codebase, docs, `npm audit`, a production build,
 and the unit test suite).
@@ -16,7 +16,7 @@ Next run: take the highest-priority open item (P1 before P2), skipping anything 
 "after the pending migrations". As of 2026-11-06 (run 25) that is item 51 (supabase-js 2.119 patch bump); item 48
 waits for a Serwist release (still 9.5.13).
 
-### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see NEEDS_APPROVAL)
+### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see the decision log)
 `docs/RULES.md` says "no camera scanning in v1 and no scanner library", and this item was written by a run, not
 approved by alpha. Not started until alpha decides. If yes: prefer the browser's built-in `BarcodeDetector`
 (Chrome on Android has it, no dependency), with @zxing/browser only as an optional fallback.
@@ -27,7 +27,7 @@ Many shops have no USB scanner. Add a camera scan button on the sale screen and 
 optional. MIT-licensed, Apache-2.0 for zxing core.)
 
 ### 13. [P3 · M] Replicate shop settings so the owner dashboard shows the shop name — after the pending migrations are applied
-Do not ship before the Supabase migrations in NEEDS_APPROVAL are applied: tills would push to a table that does not
+Do not ship before the Supabase migrations in the decision log are applied: tills would push to a table that does not
 exist in production yet, every push of it would fail and the sync pill would go to "blocked". Replicate `cash_closes`
 (item 30, local only today) in the same step: append-only table, RLS like `sales`.
 `shop_settings` is local-only; the owner view on a second device cannot show which shop it is looking at.
@@ -41,7 +41,7 @@ RLS is on for every table, append-only tables allow only SELECT/INSERT, no XSS s
 
 ### 33. [P3 · L] Credit (ዱቤ) customer ledger — WAITING FOR ALPHA
 `credit` is already a payment method but records no customer. `docs/RULES.md` lists customer credit accounts as out
-of scope for v1, so this needs alpha's decision (see NEEDS_APPROVAL).
+of scope for v1, so this needs alpha's decision (see the decision log).
 
 ## Replan 2026-10-29 (6 open, 4 of them waiting on alpha or the migrations)
 Short audit: `npm audit` (dev included) is clean after PR #49, there are no TODO/FIXME markers, and `npm outdated`
@@ -171,7 +171,7 @@ release notes for auth or realtime changes first. Full suite, including the e2e 
 
 - **Patch/minor dependency bumps (item 38)** — supabase-js 2.118, dexie 4.4.7, react/react-dom 19.3.1, jsdom 30.1.3,
   @vitejs/plugin-react 6.1.2, testing-library, types, @axe-core/playwright 4.14.0, pglite 0.5.13. Lockfile from npm 11
-  (CLAUDE.md §3 says why). The newer axe found a real WCAG 2.5.3 gap: the sync pill's aria-label did not contain its
+  (the engineering handbook §3 says why). The newer axe found a real WCAG 2.5.3 gap: the sync pill's aria-label did not contain its
   visible text, so it is now named by its own text with an sr-only "Sync status:" prefix. New `SyncPill.test.tsx`.
   [PR #56](https://github.com/Alphaguyasa/Suq/pull/56) · tag `v2026-10-30-2` not pushed (refused) — commit `0d222b4`
 
@@ -315,7 +315,7 @@ release notes for auth or realtime changes first. Full suite, including the e2e 
 - **Server-side last-write-wins on products (item 15)** — additive migration `20261020000000_products_last_write_wins.sql`:
   a BEFORE UPDATE trigger skips a product update whose `updated_at` is not newer (so a late offline edit no longer
   overwrites a newer one, and a refused edit is not re-stamped `received_at`). Fake server mirrors it; PGlite + two-till
-  sync tests. **Migration still to be applied to the Suq project** (see NEEDS_APPROVAL).
+  sync tests. **Migration still to be applied to the Suq project** (see the decision log).
   [PR #19](https://github.com/Alphaguyasa/Suq/pull/19) · tag `v2026-10-20-2` not pushed (refused) — commit `d3af6bd`
 
 - **Secret scanner actually runs (item 17)** — `.githooks/pre-commit` committed executable (git had been skipping it);
@@ -355,16 +355,16 @@ release notes for auth or realtime changes first. Full suite, including the e2e 
   filters on `received_at` with a 2-minute overlap, strips it from local rows and pushes, re-reads from the
   beginning once on switching (recovers rows already lost), and falls back to `created_at`/`updated_at` while
   the migration is not applied. Migration tested on real Postgres (PGlite). **Migration still to be applied
-  to the Suq project** (see NEEDS_APPROVAL). [PR #9](https://github.com/Alphaguyasa/Suq/pull/9) · tag `v2026-10-16-1` not pushed (403) — commit `2c92d3b`
+  to the Suq project** (see the decision log). [PR #9](https://github.com/Alphaguyasa/Suq/pull/9) · tag `v2026-10-16-1` not pushed (403) — commit `2c92d3b`
 
 - **Pull pagination** — keyset pages of 500 on (watermark, id) until a short page; the watermark commits only
   after every page of every table landed; fake server enforces a 1000-row cap. Supabase `max_rows` must stay
-  ≥ 500. [PR #4](https://github.com/Alphaguyasa/Suq/pull/4) · tag `v2026-10-15-2` not pushed (see NEEDS_APPROVAL) — commit `ad3de63`
+  ≥ 500. [PR #4](https://github.com/Alphaguyasa/Suq/pull/4) · tag `v2026-10-15-2` not pushed (see the decision log) — commit `ad3de63`
 
 - **Patch vulnerable production dependencies** — Next 15.5.22 → 15.5.28 (critical RCE + cache-poisoning
   advisories), `postcss` forced to ^8.5.30 via `overrides` (Next pins a vulnerable 8.4.31), sharp/nanoid/
   brace-expansion/source-map-js/browserslist bumped by `npm audit fix`; CI now fails on any new high/critical
-  production advisory. [PR #3](https://github.com/Alphaguyasa/Suq/pull/3) · tag `v2026-10-15-1` not pushed (see NEEDS_APPROVAL) — commit `c75669a`
+  production advisory. [PR #3](https://github.com/Alphaguyasa/Suq/pull/3) · tag `v2026-10-15-1` not pushed (see the decision log) — commit `c75669a`
 
-- **Project setup** — CLAUDE.md/ROADMAP/logs, ESLint, Playwright offline e2e + fake Supabase, CI; fixed offline
+- **Project setup** — the engineering handbook/ROADMAP/logs, ESLint, Playwright offline e2e + fake Supabase, CI; fixed offline
   cold launch (page HTML not precached) and shop adoption race on fresh devices. [PR #1](https://github.com/Alphaguyasa/Suq/pull/1) · `v2026-10-14-1`
