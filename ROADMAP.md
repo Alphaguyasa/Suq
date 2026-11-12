@@ -12,9 +12,24 @@ and the unit test suite).
 
 ## Open
 
-Next run: take the highest-priority open item (P1 before P2), skipping anything marked WAITING or
-"after the pending migrations". As of 2026-11-06 (run 25) that is item 51 (supabase-js 2.119 patch bump); item 48
-waits for a Serwist release (still 9.5.13).
+Next run: build the **M-next** milestone below first, skipping anything marked WAITING or "after the pending
+migrations", then the numbered items (P1 before P2). Item 48 waits for a Serwist release (still 9.5.13).
+
+### M-next: Earn the owner dashboard
+The multi-till owner view is what a paying shop owner looks at every day. This milestone makes it worth paying for.
+- [ ] The two pending Supabase migrations are applied (owner action, see the decision log); verify the pull
+      watermark switches over to `received_at`
+- [ ] Item 13 step 1: `shop_settings` replication (migration + last-write-wins sync + test)
+- [ ] Item 13 step 2: `cash_closes` replication (append-only + RLS + test)
+- [ ] Item 13 step 3: `sale_items.cost_snapshot` column; stop stripping it in `forWire()`
+- [ ] Owner dashboard: shop name + today's totals per till from the replica
+- [ ] Item 51: supabase-js patch bump, with the release notes read
+- [ ] Decision memo: where Suq ends and the Galmee vertical tills begin (one page, for the owner)
+- [ ] If item 12 is approved: `BarcodeDetector` spike behind feature detection
+
+### Later
+Credit ledger (33) · camera scanning rollout + fallback · end-of-day summary share · price-change audit view ·
+multi-shop onboarding · Next 16 major (last of item 42).
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see the decision log)
 `docs/RULES.md` says "no camera scanning in v1 and no scanner library", and this item was written by a run, not
