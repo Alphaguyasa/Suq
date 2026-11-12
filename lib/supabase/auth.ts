@@ -19,9 +19,20 @@ export async function signUp(email: string, password: string): Promise<AuthUser 
   return data.user ? { id: data.user.id, email: data.user.email ?? null } : null;
 }
 
+/**
+ * Signs this till out, even with no network.
+ *
+ * The default (`global`) scope revokes every session of the user on the server, and since
+ * supabase-js 2.119 it keeps the local session when that request fails. A till is often
+ * offline, so a failed global sign-out falls back to the `local` scope, which always clears
+ * this device's session first. Its best-effort revoke may still fail; the refresh token then
+ * expires on its own, and nothing about it is something the cashier can act on.
+ */
 export async function signOut(): Promise<void> {
-  const { error } = await getSupabase().auth.signOut();
-  if (error) throw new Error(error.message);
+  const auth = getSupabase().auth;
+  const { error } = await auth.signOut();
+  if (!error) return;
+  await auth.signOut({ scope: 'local' }).catch(() => undefined);
 }
 
 export async function currentUser(): Promise<AuthUser | null> {

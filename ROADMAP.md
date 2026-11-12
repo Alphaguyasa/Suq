@@ -23,7 +23,7 @@ The multi-till owner view is what a paying shop owner looks at every day. This m
 - [ ] Item 13 step 2: `cash_closes` replication (append-only + RLS + test)
 - [ ] Item 13 step 3: `sale_items.cost_snapshot` column; stop stripping it in `forWire()`
 - [ ] Owner dashboard: shop name + today's totals per till from the replica
-- [ ] Item 51: supabase-js patch bump, with the release notes read
+- [x] Item 51: supabase-js patch bump, with the release notes read (2026-11-12)
 - [ ] Decision memo: where Suq ends and the Galmee vertical tills begin (one page, for the owner)
 - [ ] If item 12 is approved: `BarcodeDetector` spike behind feature detection
 
@@ -96,12 +96,11 @@ fallback, if the precache build and the offline e2e still pass with it.
 typescript-eslint still allows only TypeScript `<6.1.0`, and eslint-plugin-react still stops at eslint ^9. No TODO/FIXME
 markers. Two findings came from building item 46.
 
-### 51. [P3 · S] Patch bump: @supabase/supabase-js 2.119
-`npm outdated` shows 2.118.0 → 2.119.0 (minor, within the current major). Lockfile from npm 11, as in item 45. Read the
-release notes for auth or realtime changes first. Full suite, including the e2e fake Supabase.
-
 ## Done
 
+- **supabase-js 2.119 (item 51)** — patch bump. Its changelog says a default (global) `signOut()` now keeps the
+  local session when the server request fails, so an offline till could no longer sign out. `signOut()` now falls
+  back to the `local` scope, which always clears this device's session. Unit tests; sync and owner e2e pass.
 - **A void stores 0, not -0 (item 49)** — reversals negate money and quantity with `negate()`, which returns 0 for 0,
   so a void of a sale with no discount stores `discount: 0` and a JSON round trip leaves it unchanged. Unit tests.
   [PR #79](https://github.com/Alphaguyasa/Suq/pull/79) · tag `v2026-11-06-2` not pushed (refused) — commit `bf65a05`
