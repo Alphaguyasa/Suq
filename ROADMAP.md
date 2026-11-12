@@ -24,7 +24,7 @@ The multi-till owner view is what a paying shop owner looks at every day. This m
 - [ ] Item 13 step 3: `sale_items.cost_snapshot` column; stop stripping it in `forWire()`
 - [ ] Owner dashboard: shop name + today's totals per till from the replica
 - [x] Item 51: supabase-js patch bump, with the release notes read (2026-11-12)
-- [ ] Decision memo: where Suq ends and the Galmee vertical tills begin (one page, for the owner)
+- [x] Decision memo: where Suq ends and the Galmee vertical tills begin (one page, for the owner; 2026-11-12, waiting for the decision)
 - [ ] If item 12 is approved: `BarcodeDetector` spike behind feature detection
 
 ### Later
