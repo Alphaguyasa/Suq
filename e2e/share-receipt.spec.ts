@@ -84,6 +84,46 @@ test('offline, the cash-up is shared as text', async ({ context, page }) => {
 });
 
 /**
+ * The day's sales summary goes to the owner's own Telegram the same way, so
+ * they see how the shop did without opening the till.
+ */
+test('offline, the sales summary is shared as text', async ({ context, page }) => {
+  await context.addInitScript(() => {
+    const shared: ShareData[] = [];
+    (window as unknown as { __shared: ShareData[] }).__shared = shared;
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: async (data: ShareData) => {
+        shared.push(data);
+      },
+    });
+  });
+
+  await setupShop(page);
+  await waitForServiceWorker(page);
+  await goOffline(context);
+  await coldLaunch(page);
+  await unlock(page);
+
+  await scan(page, [PRODUCTS[0].barcode, PRODUCTS[2].barcode]);
+  await pay(page);
+
+  await page.goto('/reports');
+  await page.getByRole('button', { name: t.reports.shareSummary }).click();
+
+  const shared = await page.evaluate(() => (window as unknown as { __shared: ShareData[] }).__shared);
+  expect(shared).toHaveLength(1);
+  expect(shared[0]?.title).toBe(`${t.reports.summaryTitle} · ${t.reports.today}`);
+  const text = shared[0]?.text ?? '';
+  expect(text).toContain('የሙከራ ሱቅ');
+  expect(text).toContain(`${t.reports.netSales}: 145.00 ${t.money.currency}`);
+  expect(text).toContain(`${t.reports.transactions}: 1`);
+  expect(text).toContain(
+    `${t.reports.topProducts}\n1. ${PRODUCTS[2].name_am}: 120.00\n2. ${PRODUCTS[0].name_am}: 25.00`,
+  );
+});
+
+/**
  * What to order goes to the supplier the same way: the products at or below
  * their reorder level, with what is on hand, offline.
  */

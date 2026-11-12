@@ -16,6 +16,7 @@ import { formatETB, formatQty, parseETBOrZero } from '@/lib/format';
 import { useLang, useT } from '@/lib/i18n';
 import { cashUpText } from '@/lib/reports/cashup-text';
 import { reorderText } from '@/lib/reports/reorder-text';
+import { summaryText } from '@/lib/reports/summary-text';
 import { productStockHref } from '@/lib/routes';
 import {
   cashUp,
@@ -82,6 +83,8 @@ export default function ReportsPage() {
     [products, onHand],
   );
   const ranked = useMemo(() => topProducts(periodItems, rankBy), [periodItems, rankBy]);
+  // The shared summary always names best sellers by revenue, whatever the list is sorted by.
+  const topByRevenue = useMemo(() => topProducts(periodItems, 'revenue'), [periodItems]);
 
   const drawer = useMemo(
     () =>
@@ -130,6 +133,24 @@ export default function ReportsPage() {
         <Stat label={t.reports.averageBasket} value={formatETB(summary.averageBasket)} />
         <Stat label={t.reports.grossProfit} value={formatETB(summary.grossProfit)} />
       </section>
+
+      <div data-print-hide="" className="-mt-4 flex flex-wrap items-center gap-3">
+        <ShareReceiptButton
+          title={`${t.reports.summaryTitle} · ${t.reports[periodKey]}`}
+          text={summaryText({
+            summary,
+            change,
+            top: topByRevenue,
+            lowStockCount: low.length,
+            settings,
+            t,
+            periodLabel: t.reports[periodKey],
+            date: period.from,
+          })}
+          label={t.reports.shareSummary}
+          copiedMessage={t.reports.summaryCopied}
+        />
+      </div>
 
       <section data-print-hide="" className="grid gap-8 lg:grid-cols-2">
         <div className="flex flex-col gap-2">

@@ -28,7 +28,7 @@ The multi-till owner view is what a paying shop owner looks at every day. This m
 - [ ] If item 12 is approved: `BarcodeDetector` spike behind feature detection
 
 ### Later
-Credit ledger (33) · camera scanning rollout + fallback · end-of-day summary share · price-change audit view ·
+Credit ledger (33) · camera scanning rollout + fallback · ~~end-of-day summary share~~ (done) · price-change audit view ·
 multi-shop onboarding · Next 16 major (last of item 42).
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see the decision log)
@@ -98,6 +98,9 @@ markers. Two findings came from building item 46.
 
 ## Done
 
+- **Share the sales summary** — Reports has a "Share summary" button under the totals. It sends the period's net
+  sales (with the change against the previous period), transactions, average basket, gross profit, the three best
+  sellers by revenue and the low-stock count through the share sheet, or copies it. Works offline. Unit tests + e2e.
 - **supabase-js 2.119 (item 51)** — patch bump. Its changelog says a default (global) `signOut()` now keeps the
   local session when the server request fails, so an offline till could no longer sign out. `signOut()` now falls
   back to the `local` scope, which always clears this device's session. Unit tests; sync and owner e2e pass.
