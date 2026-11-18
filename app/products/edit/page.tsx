@@ -3,6 +3,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { PriceHistory } from '@/components/products/PriceHistory';
 import { ProductForm } from '@/components/products/ProductForm';
 import { ButtonLink } from '@/components/ui/Button';
 import { productsRepo, stockRepo } from '@/lib/db';
@@ -54,6 +55,8 @@ function EditProduct({ id }: { id: string }) {
       </header>
 
       <ProductForm product={product} />
+
+      <PriceHistory productId={id} />
     </div>
   );
 }

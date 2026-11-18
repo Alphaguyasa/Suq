@@ -246,6 +246,32 @@ export interface CashClose {
   created_at: string;
 }
 
+/**
+ * Local only: one row each time a product's sell or cost price changed, as
+ * seen by this till. Append-only, like sales: the owner reads it to answer
+ * "who changed the price of sugar, and when?".
+ *
+ * Products are last-write-wins, so the products table only ever holds the
+ * latest price; this is the only place the earlier ones survive. Written in
+ * the same transaction as the product edit (repositories/products.ts), and by
+ * the pull when a newer edit arrives from another till (sync/apply.ts), so a
+ * multi-till shop sees every till's changes. Money in integer cents.
+ */
+export interface PriceChange {
+  id: string;
+  shop_id: string;
+  product_id: string;
+  old_sell_price: number;
+  new_sell_price: number;
+  old_cost_price: number;
+  new_cost_price: number;
+  /** Who was unlocked on this till; '' when the change came from another till. */
+  cashier_name: string;
+  source: 'this_till' | 'other_till';
+  /** The product's updated_at for the edit that set the new price. */
+  changed_at: string;
+}
+
 export class SuqDatabase extends Dexie {
   products!: EntityTable<Product, 'id'>;
   sales!: EntityTable<Sale, 'id'>;
@@ -257,6 +283,7 @@ export class SuqDatabase extends Dexie {
   shop_settings!: EntityTable<ShopSettings, 'id'>;
   cashiers!: EntityTable<Cashier, 'id'>;
   cash_closes!: EntityTable<CashClose, 'id'>;
+  price_changes!: EntityTable<PriceChange, 'id'>;
 
   constructor(name = 'suq') {
     super(name);
@@ -329,6 +356,8 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
   { version: 6, stores: {}, upgrade: canonicaliseTimestamps },
   // v7 adds saved end-of-day drawer counts, newest first by created_at.
   { version: 7, stores: { cash_closes: 'id, created_at' } },
+  // v8 adds the price-change log, read per product, newest first.
+  { version: 8, stores: { price_changes: 'id, product_id, changed_at, [product_id+changed_at]' } },
 ];
 
 async function canonicaliseTimestamps(tx: Transaction): Promise<void> {

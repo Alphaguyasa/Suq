@@ -87,6 +87,14 @@ export const am = {
     invalidNumber: 'ቁጥሩ ትክክል አይደለም',
     duplicateBarcode: 'ይህ ባርኮድ በሌላ ምርት ተይዟል',
   },
+  priceHistory: {
+    title: 'የዋጋ ለውጥ ታሪክ',
+    empty: 'ዋጋው እስካሁን አልተቀየረም',
+    sell: 'የመሸጫ ዋጋ',
+    cost: 'የግዢ ዋጋ',
+    byOtherTill: 'በሌላ መሣሪያ',
+    by: (name: string) => `በ${name}`,
+  },
   stock: {
     title: 'ክምችት',
     history: 'የክምችት እንቅስቃሴ',

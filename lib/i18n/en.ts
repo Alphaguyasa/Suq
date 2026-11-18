@@ -82,6 +82,14 @@ export const en: Dict = {
     invalidNumber: 'That number is not valid',
     duplicateBarcode: 'Another product already uses this barcode',
   },
+  priceHistory: {
+    title: 'Price history',
+    empty: 'The price has not changed yet',
+    sell: 'Sell price',
+    cost: 'Cost price',
+    byOtherTill: 'On another till',
+    by: (name: string) => `By ${name}`,
+  },
   stock: {
     title: 'Stock',
     history: 'Movement history',

@@ -4,6 +4,7 @@ import { recomputeCacheFor } from '@/lib/db/repositories/stock';
 import { db } from '@/lib/db/schema';
 import type {
   CashClose,
+  PriceChange,
   MovementReason,
   PaymentMethod,
   Product,
@@ -88,6 +89,7 @@ export interface ValidBackup {
   sale_items: SaleItem[];
   stock_movements: StockMovement[];
   cash_closes: CashClose[];
+  price_changes: PriceChange[];
 }
 
 export interface RestoreSummary {
@@ -194,7 +196,7 @@ function isRecord(value: unknown): value is Row {
 
 function rowsOf(file: Row, table: string, required: boolean): Row[] {
   const value = file[table];
-  // cash_closes arrived after v1 shipped: an older file has none.
+  // cash_closes and price_changes arrived after v1 shipped: an older file has none.
   if (value === undefined && !required) return [];
   if (!Array.isArray(value)) throw new RestoreError('invalid', table);
   return value.map((row, index) => {
@@ -303,6 +305,25 @@ export function parseBackup(text: string): ValidBackup {
     created_at: r.time('created_at'),
   }));
 
+  const priceChanges = read(file, 'price_changes', false, (r): PriceChange => {
+    const source = r.text('source');
+    if (source !== 'this_till' && source !== 'other_till') {
+      throw new RestoreError('invalid', 'price_changes.source');
+    }
+    return {
+      id: r.id('id'),
+      shop_id: r.id('shop_id'),
+      product_id: r.id('product_id'),
+      old_sell_price: r.cents('old_sell_price'),
+      new_sell_price: r.cents('new_sell_price'),
+      old_cost_price: r.cents('old_cost_price'),
+      new_cost_price: r.cents('new_cost_price'),
+      cashier_name: r.text('cashier_name'),
+      source,
+      changed_at: r.time('changed_at'),
+    };
+  });
+
   let shopSettings: ValidBackup['shop_settings'] = null;
   if (file.shop_settings !== null && file.shop_settings !== undefined) {
     if (!isRecord(file.shop_settings)) throw new RestoreError('invalid', 'shop_settings');
@@ -338,6 +359,7 @@ export function parseBackup(text: string): ValidBackup {
     ['sale_items', saleItems],
     ['stock_movements', movements],
     ['cash_closes', cashCloses],
+    ['price_changes', priceChanges],
   ] as const) {
     const stray = rows.findIndex((row) => row.shop_id !== shopId);
     if (stray !== -1) throw new RestoreError('invalid', `${table}[${stray}].shop_id`);
@@ -361,6 +383,7 @@ export function parseBackup(text: string): ValidBackup {
     sale_items: saleItems,
     stock_movements: movements,
     cash_closes: cashCloses,
+    price_changes: priceChanges,
   };
 }
 
@@ -373,6 +396,7 @@ export async function canRestore(database: SuqDatabase = db): Promise<boolean> {
       database.sale_items,
       database.stock_movements,
       database.cash_closes,
+      database.price_changes,
       database.outbox,
     ].map((table) => table.count()),
   );
@@ -395,6 +419,7 @@ export async function restoreBackup(
       database.sale_items,
       database.stock_movements,
       database.cash_closes,
+      database.price_changes,
       database.outbox,
       database.stock_cache,
       database.device_meta,
@@ -433,6 +458,9 @@ export async function restoreBackup(
 
       // Local only (until ROADMAP item 13 replicates it): nothing to queue.
       if (backup.cash_closes.length > 0) await database.cash_closes.bulkAdd(backup.cash_closes);
+      if (backup.price_changes.length > 0) {
+        await database.price_changes.bulkAdd(backup.price_changes);
+      }
 
       await recomputeCacheFor(
         backup.stock_movements.map((movement) => movement.product_id),

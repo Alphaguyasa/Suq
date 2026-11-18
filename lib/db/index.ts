@@ -6,6 +6,7 @@ export * from './settings';
 export * from './cashiers';
 export * from './reset';
 export * from './cash-closes';
+export * from './price-changes';
 export * from './id';
 export * from './timestamps';
 

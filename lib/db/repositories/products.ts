@@ -1,5 +1,6 @@
 import { getDevice } from '../device';
 import { newId, nowIso } from '../id';
+import { priceChangeFor } from '../price-changes';
 import { db } from '../schema';
 import type { Product, Unit } from '../schema';
 import { localWrite } from '../write';
@@ -56,7 +57,20 @@ export async function upsert(input: ProductInput): Promise<Product> {
     deleted_at: existing?.deleted_at ?? null,
   };
 
-  await localWrite('products', product);
+  const change = priceChangeFor(existing, product, 'this_till', meta.cashier_name);
+  if (!change) {
+    // Creates and price-free edits touch only products and the outbox, so
+    // callers that wrap upsert in their own transaction (the CSV import)
+    // need not list the price log.
+    await localWrite('products', product);
+    return product;
+  }
+
+  // The product row, its outbox entry and the price log row land together.
+  await db.transaction('rw', db.products, db.outbox, db.price_changes, async () => {
+    await localWrite('products', product);
+    await db.price_changes.add(change);
+  });
   return product;
 }
 

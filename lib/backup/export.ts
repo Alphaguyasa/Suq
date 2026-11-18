@@ -1,6 +1,7 @@
 import { db } from '@/lib/db/schema';
 import type {
   CashClose,
+  PriceChange,
   Product,
   Sale,
   SaleItem,
@@ -16,8 +17,8 @@ import type {
  * - JSON: everything that defines the shop's history (products, sales, sale
  *   lines, stock movements, shop details, saved drawer counts), exactly as
  *   stored, so a future import can restore it. Money stays integer cents.
- *   cash_closes was added after v1 shipped; it is additive, so the version
- *   stays 1 and an older file simply has no counts.
+ *   cash_closes and price_changes were added after v1 shipped; they are
+ *   additive, so the version stays 1 and an older file simply has none.
  * - CSV: one row per sale line, for an owner or accountant opening it in a
  *   spreadsheet. Money is written in birr ("25.00"), formatted from integer
  *   cents without touching a float.
@@ -42,6 +43,8 @@ export interface Backup {
   stock_movements: StockMovement[];
   /** Local-only until it replicates, so this file is its only copy off the till. */
   cash_closes: CashClose[];
+  /** Local only too: the earlier prices exist nowhere else. */
+  price_changes: PriceChange[];
 }
 
 /** One read transaction, so the files are a consistent snapshot even mid-sale. */
@@ -56,6 +59,7 @@ export async function buildBackup(database: SuqDatabase = db, now = new Date()):
       database.sale_items,
       database.stock_movements,
       database.cash_closes,
+      database.price_changes,
     ],
     async () => {
       const [meta] = await database.device_meta.toArray();
@@ -74,6 +78,7 @@ export async function buildBackup(database: SuqDatabase = db, now = new Date()):
         sale_items: await database.sale_items.toArray(),
         stock_movements: await database.stock_movements.orderBy('created_at').toArray(),
         cash_closes: await database.cash_closes.orderBy('created_at').toArray(),
+        price_changes: await database.price_changes.orderBy('changed_at').toArray(),
       };
     },
   );

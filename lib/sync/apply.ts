@@ -1,6 +1,6 @@
 import type { EntityTable } from 'dexie';
-import type { Product, SuqDatabase, SyncedTable } from '@/lib/db';
-import { db as defaultDb, stockRepo, withCanonicalTimestamps } from '@/lib/db';
+import type { PriceChange, Product, SuqDatabase, SyncedTable } from '@/lib/db';
+import { db as defaultDb, priceChangeFor, stockRepo, withCanonicalTimestamps } from '@/lib/db';
 
 /**
  * ============================================================================
@@ -90,7 +90,7 @@ export async function applyProducts(
   // Same reason as above, and before the updated_at comparison below.
   rows = rows.map((row) => withCanonicalTimestamps('products', row));
 
-  await db.transaction('rw', db.products, async () => {
+  await db.transaction('rw', db.products, db.price_changes, async () => {
     const ids = rows.map((row) => row.id as string);
     const locals = await db.products.bulkGet(ids);
     const localById = new Map<string, Product>();
@@ -100,6 +100,7 @@ export async function applyProducts(
     }
 
     const toWrite: Product[] = [];
+    const changes: PriceChange[] = [];
 
     for (const row of rows) {
       const incoming = row as unknown as Product;
@@ -111,12 +112,16 @@ export async function applyProducts(
       } else if (incoming.updated_at > local.updated_at) {
         toWrite.push(incoming);
         result.updated += 1;
+        // Another till's edit: keep the price it replaced in the log.
+        const change = priceChangeFor(local, incoming, 'other_till', '');
+        if (change) changes.push(change);
       } else {
         result.skipped += 1;
       }
     }
 
     if (toWrite.length > 0) await db.products.bulkPut(toWrite);
+    if (changes.length > 0) await db.price_changes.bulkAdd(changes);
   });
 
   return result;
