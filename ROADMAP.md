@@ -28,7 +28,7 @@ The multi-till owner view is what a paying shop owner looks at every day. This m
 - [ ] If item 12 is approved: `BarcodeDetector` spike behind feature detection
 
 ### Later
-Credit ledger (33) · camera scanning rollout + fallback · ~~end-of-day summary share~~ (done) · price-change audit view ·
+Credit ledger (33) · camera scanning rollout + fallback · ~~end-of-day summary share~~ (done) · ~~price-change audit view~~ (done 2026-11-18) ·
 multi-shop onboarding · Next 16 major (last of item 42).
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see the decision log)
