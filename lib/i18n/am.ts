@@ -259,6 +259,8 @@ export const am = {
     reorderTitle: 'የሚታዘዙ ዕቃዎች',
     reorderCopied: 'የሚታዘዙ ዕቃዎች ዝርዝር ተቀድቷል። ወደ ቴሌግራም ወይም መልእክት ይለጥፉት።',
     nothingLow: 'ሁሉም ክምችት በቂ ነው',
+    priceChanges: 'የዋጋ ለውጦች',
+    noPriceChanges: 'በዚህ ጊዜ ውስጥ ምንም ዋጋ አልተቀየረም',
     printCashUp: 'የቀን መዝጊያ አትም',
     shareCashUp: 'የቀን መዝጊያ አጋራ',
     cashUpCopied: 'የቀን መዝጊያው ተቀድቷል። ወደ ቴሌግራም ወይም መልእክት ይለጥፉት።',

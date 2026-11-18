@@ -29,6 +29,14 @@ test('a price edit shows up in the product price history', async ({ page }, test
   const log = await readLocal<{ old_sell_price: number; new_sell_price: number }>(page, 'price_changes');
   expect(log).toEqual([expect.objectContaining({ old_sell_price: 12000, new_sell_price: 12500 })]);
 
+  await page.goto('/reports');
+  const period = page.getByTestId('period-price-changes');
+  await expect(period).toContainText(PRODUCTS[2].name_am);
+  await expect(period).toContainText('125.00');
+  await page.setViewportSize({ width: 360, height: 900 });
+  await period.screenshot({ path: testInfo.outputPath('reports-price-changes-360.png') });
+
+  await page.goto(`/products/edit?id=${sugar.id}`);
   await page.setViewportSize({ width: 360, height: 900 });
   await history.scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('price-history-360.png'), fullPage: true });

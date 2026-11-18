@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react';
 import { BarChart } from '@/components/reports/BarChart';
 import { PastCashCloses, SaveCashClose } from '@/components/reports/CashCloses';
 import { CashUpSheet } from '@/components/reports/CashUpSheet';
+import { PeriodPriceChanges } from '@/components/reports/PeriodPriceChanges';
 import { LineChart } from '@/components/reports/LineChart';
 import { ShareReceiptButton } from '@/components/ShareReceiptButton';
 import { Button } from '@/components/ui/Button';
@@ -285,6 +286,8 @@ export default function ReportsPage() {
           </div>
         ) : null}
       </section>
+
+      <PeriodPriceChanges from={period.from} to={period.to} />
 
       <section className="flex flex-col gap-4">
         <h2 data-print-hide="" className="ethiopic text-lg font-semibold">

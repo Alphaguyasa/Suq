@@ -3,7 +3,7 @@ import { buildBackup } from '@/lib/backup/export';
 import { parseBackup, restoreBackup } from '@/lib/backup/restore';
 import { applyProducts } from '@/lib/sync/apply';
 import { DEVICE_META_ID } from './device';
-import { listPriceChanges } from './price-changes';
+import { listPriceChanges, priceChangesBetween } from './price-changes';
 import * as productsRepo from './repositories/products';
 import { clearAllTables, db } from './schema';
 import { TEST_SHOP, freshDatabase } from './test-helpers';
@@ -118,5 +118,21 @@ describe('the price-change log', () => {
     await freshDatabase();
 
     expect(parseBackup(JSON.stringify(file)).price_changes).toEqual([]);
+  });
+
+  it('lists every product changed in a half-open period, newest first', async () => {
+    const product = await sugar();
+    const salt = await productsRepo.upsert({ name: 'Salt', name_am: 'ጨው', cost_price: 1000, sell_price: 1500 });
+    await productsRepo.upsert({ ...product, sell_price: 12000 });
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    await productsRepo.upsert({ ...salt, sell_price: 1600 });
+    const [newest, oldest] = await db.price_changes.orderBy('changed_at').reverse().toArray();
+
+    expect((await priceChangesBetween('2000-01-01T00:00:00.000Z', '2999-01-01T00:00:00.000Z')).map((c) => c.product_id)).toEqual([
+      salt.id,
+      product.id,
+    ]);
+    // The end is exclusive, the start inclusive.
+    expect(await priceChangesBetween(oldest!.changed_at, newest!.changed_at)).toEqual([oldest]);
   });
 });

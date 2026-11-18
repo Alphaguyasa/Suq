@@ -254,6 +254,8 @@ export const en: Dict = {
     reorderTitle: 'To order',
     reorderCopied: 'Order list copied. Paste it into Telegram or a message.',
     nothingLow: 'Everything is above its reorder level',
+    priceChanges: 'Price changes',
+    noPriceChanges: 'No prices changed in this period',
     printCashUp: 'Print cash-up',
     shareCashUp: 'Share cash-up',
     cashUpCopied: 'Cash-up copied. Paste it into Telegram or a message.',

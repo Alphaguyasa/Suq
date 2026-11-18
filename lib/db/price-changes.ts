@@ -48,3 +48,12 @@ export async function listPriceChanges(
     .reverse()
     .toArray();
 }
+
+/** Every product's price changes in [from, to), newest first: the period's audit list. */
+export async function priceChangesBetween(
+  from: string,
+  to: string,
+  database: SuqDatabase = db,
+): Promise<PriceChange[]> {
+  return database.price_changes.where('changed_at').between(from, to, true, false).reverse().toArray();
+}
