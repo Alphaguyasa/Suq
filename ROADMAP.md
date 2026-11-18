@@ -83,7 +83,10 @@ any needs code changes beyond an S.
 patch/minor updates (item 45) and the blocked majors above. No TODO/FIXME markers. Today's CI showed the build
 fetching Google Fonts over the network: one of two runs on the same commit failed in `next/font`.
 
-### 48. [P2 · S] Watch @serwist/next for a release on glob ≥ 14.0.2
+### 48. [P2 · S] Watch @serwist/next for a release on glob ≥ 14.0.2 — DONE 2026-11-18
+Done: @serwist/next and serwist 9.5.15 depend on glob 14.0.6; `npm audit --omit=dev` now reports 0 advisories.
+Precache build and the offline e2e specs pass.
+
 Added 2026-11-04. `npm audit --omit=dev` reports 5 moderate advisories (GHSA-3g3m-2fjr-6pw4 in `glob` 13.0.6,
 GHSA-g3hv-75wg-m249 in `minimatch` 10.2.6). They come only through `@serwist/next` 9.5.13 → `@serwist/build`, which
 use them at build time to list files for the precache. The till does not ship them. The CI gate (`--audit-level=high`)
