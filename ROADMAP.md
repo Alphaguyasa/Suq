@@ -13,7 +13,7 @@ and the unit test suite).
 ## Open
 
 Next run: build the **M-next** milestone below first, skipping anything marked WAITING or "after the pending
-migrations", then the numbered items (P1 before P2). Item 48 waits for a Serwist release (still 9.5.13).
+migrations", then the numbered items (P1 before P2).
 
 ### M-next: Earn the owner dashboard
 The multi-till owner view is what a paying shop owner looks at every day. This milestone makes it worth paying for.
@@ -28,7 +28,7 @@ The multi-till owner view is what a paying shop owner looks at every day. This m
 - [ ] If item 12 is approved: `BarcodeDetector` spike behind feature detection
 
 ### Later
-Credit ledger (33) · camera scanning rollout + fallback · ~~end-of-day summary share~~ (done) · ~~price-change audit view~~ (done 2026-11-18) ·
+Credit ledger (33) · camera scanning rollout + fallback · ~~end-of-day summary share~~ (done) · ~~price-change audit view~~ (done 2026-11-18, per product and per Reports period) ·
 multi-shop onboarding · Next 16 major (last of item 42).
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see the decision log)
