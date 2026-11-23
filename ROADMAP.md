@@ -109,7 +109,8 @@ Settings → Backup: "Download products and stock (CSV)". Same columns as the se
 `opening_qty`, negatives as 0, archived/deleted left out), so it is also a count sheet and a way to move the catalogue
 to a second till. The import now skips a byte-order mark and undoes the export's formula guard. Unit + e2e tests.
 
-### 53. [P2 · S] Patch/minor dependency updates within the current majors
+### 53. [P2 · S] Patch/minor dependency updates within the current majors — DONE 2026-11-23 (except Playwright)
+Done: everything below except @playwright/test, which moves to its own step with the CI browser revision check.
 supabase-js 2.119.2, vitest 5.1.1, @vitejs/plugin-react 6.3.0, tailwindcss + @tailwindcss/postcss 4.3.5,
 fake-indexeddb 6.2.8, @electric-sql/pglite 0.5.17, @playwright/test 1.65.1 (check the browser revision CI installs).
 Read each release note; lockfile via npm@11.
