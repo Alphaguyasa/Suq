@@ -28,7 +28,7 @@ The multi-till owner view is what a paying shop owner looks at every day. This m
 - [ ] If item 12 is approved: `BarcodeDetector` spike behind feature detection
 
 ### Later
-Credit ledger (33) · camera scanning rollout + fallback · ~~end-of-day summary share~~ (done) · ~~price-change audit view~~ (done 2026-11-18, per product and per Reports period) ·
+Credit ledger (33) · camera scanning rollout + fallback · ~~product list CSV~~ (done 2026-11-23, item 52) · ~~end-of-day summary share~~ (done) · ~~price-change audit view~~ (done 2026-11-18, per product and per Reports period) ·
 multi-shop onboarding · Next 16 major (last of item 42).
 
 ### 12. [P3 · M] Optional camera barcode scanning — WAITING FOR ALPHA (see the decision log)
@@ -98,6 +98,37 @@ fallback, if the precache build and the offline e2e still pass with it.
 `npm audit --omit=dev` shows the same 5 moderate Serwist advisories as item 48 (`@serwist/next` still 9.5.13).
 typescript-eslint still allows only TypeScript `<6.1.0`, and eslint-plugin-react still stops at eslint ^9. No TODO/FIXME
 markers. Two findings came from building item 46.
+
+## Replan 2026-11-23 (run 28: 2 unblocked items left; short audit)
+`npm audit --omit=dev` reports 0 advisories. `npm outdated` shows patch/minor updates within the current majors, two
+test-only majors (@testing-library/jest-dom 8, jsdom 31) and the blocked majors of item 42. No TODO/FIXME markers.
+Product import exists only in first-run setup, and the till has no stock value figure anywhere.
+
+### 52. [P2 · S] Product list with on-hand stock as CSV — DONE 2026-11-23
+Settings → Backup: "Download products and stock (CSV)". Same columns as the setup import (on-hand written as
+`opening_qty`, negatives as 0, archived/deleted left out), so it is also a count sheet and a way to move the catalogue
+to a second till. The import now skips a byte-order mark and undoes the export's formula guard. Unit + e2e tests.
+
+### 53. [P2 · S] Patch/minor dependency updates within the current majors
+supabase-js 2.119.2, vitest 5.1.1, @vitejs/plugin-react 6.3.0, tailwindcss + @tailwindcss/postcss 4.3.5,
+fake-indexeddb 6.2.8, @electric-sql/pglite 0.5.17, @playwright/test 1.65.1 (check the browser revision CI installs).
+Read each release note; lockfile via npm@11.
+
+### 54. [P2 · S] Import more products after setup
+The CSV import is only offered on first run. Offer it on the Products screen too: new rows are added with their
+opening stock as a `purchase` movement, rows whose barcode already exists are reported and skipped (never overwrite
+prices or stock silently). Reuse `parseProductCsv` and the setup error messages. Unit + e2e test.
+
+### 55. [P3 · S] Stock value in Reports
+On-hand × cost price and on-hand × sell price across active products, from the movements (never a stored quantity),
+shown under the Reports totals with the count of products that have no cost price. Integer cents throughout.
+
+### 56. [P2 · S] Test-only majors: @testing-library/jest-dom 8, jsdom 31
+Read the changelogs, bump one at a time, keep the unit suite green.
+
+### 57. [P3 · M] Next 16, step 1 of item 42
+Read the Next 16 upgrade guide; confirm @serwist/next and eslint-config-next 16 support (eslint-config-next 16 with
+eslint 9); write the steps here, then upgrade in a separate change.
 
 ## Done
 
