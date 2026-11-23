@@ -254,6 +254,11 @@ export const en: Dict = {
     reorderTitle: 'To order',
     reorderCopied: 'Order list copied. Paste it into Telegram or a message.',
     nothingLow: 'Everything is above its reorder level',
+    stockValue: 'Stock value',
+    stockAtCost: 'At cost',
+    stockAtSell: 'At selling price',
+    stockMissingCost: (n: number) =>
+      `${n} ${n === 1 ? 'product has' : 'products have'} no cost price, so the cost total reads low.`,
     priceChanges: 'Price changes',
     noPriceChanges: 'No prices changed in this period',
     printCashUp: 'Print cash-up',

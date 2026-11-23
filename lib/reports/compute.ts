@@ -167,6 +167,37 @@ export function lowStock(products: Product[], onHand: Map<string, number>): LowS
     .sort((a, b) => b.deficit - a.deficit);
 }
 
+export interface StockValue {
+  /** integer cents: what the goods on the shelf cost the shop */
+  atCost: number;
+  /** integer cents: what they bring in if every unit sells at today's price */
+  atSell: number;
+  /** Products with stock but no cost price, which make atCost read low. */
+  missingCost: number;
+}
+
+/**
+ * What the stock on the shelf is worth, from on-hand (the SUM of movements,
+ * via the stock cache) times the current prices. A product sold below zero
+ * counts as empty, not as negative value. Each line is rounded to whole cents
+ * before summing, so a fractional kilo never leaves a float in the total.
+ */
+export function stockValue(products: Product[], onHand: Map<string, number>): StockValue {
+  let atCost = 0;
+  let atSell = 0;
+  let missingCost = 0;
+
+  for (const product of products) {
+    const qty = Math.max(0, onHand.get(product.id) ?? 0);
+    if (qty === 0) continue;
+    if (product.cost_price === 0) missingCost += 1;
+    atCost += Math.round(qty * product.cost_price);
+    atSell += Math.round(qty * product.sell_price);
+  }
+
+  return { atCost, atSell, missingCost };
+}
+
 export interface CashUp {
   openingFloat: number;
   cashSales: number;

@@ -11,6 +11,7 @@ import {
   summarise,
   topProducts,
   voidedSaleIds,
+  stockValue,
 } from './compute';
 
 /*
@@ -313,5 +314,38 @@ describe('changeVsPrevious', () => {
 
   it('is null with no baseline, rather than infinity', () => {
     expect(changeVsPrevious(15000, 0)).toBeNull();
+  });
+});
+
+describe('stockValue', () => {
+  const priced = (id: string, cost: number, sell: number): Product => ({
+    ...product(id, 0),
+    cost_price: cost,
+    sell_price: sell,
+  });
+
+  it('multiplies on-hand by cost and by selling price, in whole cents', () => {
+    const value = stockValue(
+      [priced('water', 1800, 2500), priced('sugar', 9050, 11000)],
+      new Map([
+        ['water', 24],
+        ['sugar', 0.3],
+      ]),
+    );
+    expect(value).toEqual({ atCost: 24 * 1800 + 2715, atSell: 24 * 2500 + 3300, missingCost: 0 });
+    expect(Number.isInteger(value.atCost)).toBe(true);
+  });
+
+  it('treats stock sold below zero as empty and skips products with none', () => {
+    const value = stockValue(
+      [priced('oversold', 1000, 1500), priced('empty', 0, 900)],
+      new Map([['oversold', -4]]),
+    );
+    expect(value).toEqual({ atCost: 0, atSell: 0, missingCost: 0 });
+  });
+
+  it('counts products on the shelf with no cost price', () => {
+    const value = stockValue([priced('gift', 0, 5000)], new Map([['gift', 2]]));
+    expect(value).toEqual({ atCost: 0, atSell: 10000, missingCost: 1 });
   });
 });

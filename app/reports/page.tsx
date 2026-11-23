@@ -25,6 +25,7 @@ import {
   dailyTotals,
   hourlyTotals,
   lowStock,
+  stockValue,
   summarise,
   topProducts,
 } from '@/lib/reports/compute';
@@ -83,6 +84,7 @@ export default function ReportsPage() {
     () => lowStock(products ?? [], onHand ?? new Map()),
     [products, onHand],
   );
+  const worth = useMemo(() => stockValue(products ?? [], onHand ?? new Map()), [products, onHand]);
   const ranked = useMemo(() => topProducts(periodItems, rankBy), [periodItems, rankBy]);
   // The shared summary always names best sellers by revenue, whatever the list is sorted by.
   const topByRevenue = useMemo(() => topProducts(periodItems, 'revenue'), [periodItems]);
@@ -246,6 +248,19 @@ export default function ReportsPage() {
             })}
           </ul>
         )}
+      </section>
+
+      <section data-print-hide="" className="flex flex-col gap-3" aria-labelledby="stock-value-heading">
+        <h2 id="stock-value-heading" className="ethiopic text-lg font-semibold">
+          {t.reports.stockValue}
+        </h2>
+        <div className="grid grid-cols-2 gap-3">
+          <Stat label={t.reports.stockAtCost} value={formatETB(worth.atCost)} />
+          <Stat label={t.reports.stockAtSell} value={formatETB(worth.atSell)} />
+        </div>
+        {worth.missingCost > 0 ? (
+          <p className="ethiopic text-sm text-muted">{t.reports.stockMissingCost(worth.missingCost)}</p>
+        ) : null}
       </section>
 
       <section data-print-hide="" className="flex flex-col gap-3">
