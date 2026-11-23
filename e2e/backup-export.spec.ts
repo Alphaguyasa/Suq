@@ -7,7 +7,7 @@ import { PRODUCTS, pay, scan, setupShop, t } from './helpers';
  * till. Settings must hand over that copy offline, as files a phone can save
  * and a spreadsheet can open.
  */
-test('Settings exports a JSON backup and a sales CSV, offline', async ({ context, page }) => {
+test('Settings exports a JSON backup, a sales CSV and a product CSV, offline', async ({ context, page }) => {
   await setupShop(page);
   const [water, bread] = PRODUCTS;
   await scan(page, [water.barcode, bread.barcode]);
@@ -47,4 +47,20 @@ test('Settings exports a JSON backup and a sales CSV, offline', async ({ context
   expect(lines[1]).toContain(receiptNo);
   expect(csv).toContain(water.name_am);
   expect(csv).toContain('25.00');
+
+  // The product list with what is left on the shelf: the sale took one of
+  // each, and the file reads straight back into setup on another till.
+  const [productsDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: t.settings.backupProducts }).click(),
+  ]);
+  expect(productsDownload.suggestedFilename()).toMatch(/^suq-A1-\d{4}-\d{2}-\d{2}-products\.csv$/);
+  const productsFile = await readFile((await productsDownload.path())!, 'utf8');
+  const productLines = productsFile.slice(1).trim().split('\r\n');
+  expect(productLines[0]).toBe('name,name_am,barcode,unit,cost_price,sell_price,reorder_level,opening_qty');
+  expect(productLines).toHaveLength(PRODUCTS.length + 1);
+  const waterLine = productLines.find((line) => line.includes(water.barcode));
+  expect(waterLine).toBeDefined();
+  expect(waterLine).toContain(water.name_am);
+  expect(waterLine?.split(',').at(-1)).toBe(String(water.opening - 1));
 });

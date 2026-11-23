@@ -27,7 +27,7 @@ import {
   db,
 } from '@/lib/db';
 import type { Cashier, WriteFailure } from '@/lib/db';
-import { backupFileName, buildBackup, downloadFile, salesCsv } from '@/lib/backup/export';
+import { backupFileName, buildBackup, downloadFile, productsCsv, salesCsv } from '@/lib/backup/export';
 import { useBilingual, useLang } from '@/lib/i18n';
 import { lockNow } from '@/lib/lock/lock';
 import { persistState, requestAndRecord } from '@/lib/storage/persist';
@@ -270,15 +270,17 @@ function useBackupExport() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<BackupResult>();
 
-  async function exportBackup(kind: 'json' | 'csv') {
+  async function exportBackup(kind: 'json' | 'csv' | 'products') {
     setBusy(true);
     setResult(undefined);
     try {
       const backup = await buildBackup();
       if (kind === 'json') {
         downloadFile(backupFileName(backup, 'json'), JSON.stringify(backup, null, 2), 'application/json');
-      } else {
+      } else if (kind === 'csv') {
         downloadFile(backupFileName(backup, 'csv'), salesCsv(backup), 'text/csv;charset=utf-8');
+      } else {
+        downloadFile(backupFileName(backup, 'csv', 'products'), productsCsv(backup), 'text/csv;charset=utf-8');
       }
       // Void rows are sales too, but not ones the owner would count.
       const sales = backup.sales.filter((sale) => !sale.voids_sale_id).length;
@@ -321,6 +323,9 @@ function BackupSection() {
         </Button>
         <Button type="button" variant="quiet" disabled={busy} onClick={() => void exportBackup('csv')}>
           <span className="ethiopic">{t.settings.backupCsv}</span>
+        </Button>
+        <Button type="button" variant="quiet" disabled={busy} onClick={() => void exportBackup('products')}>
+          <span className="ethiopic">{t.settings.backupProducts}</span>
         </Button>
       </div>
       <p role="status" data-testid="backup-result" className="ethiopic text-sm empty:hidden">

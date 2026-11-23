@@ -101,13 +101,26 @@ function toQuantity(raw: string, label: string, row: number): number {
   return parsed;
 }
 
+/*
+ * Undo the formula guard our own exports add (lib/backup/export.ts): a text
+ * cell starting with =, +, -, @, tab or CR is written with a leading
+ * apostrophe so a spreadsheet does not run it. Without this, a product named
+ * "-50% bag" would come back from a round trip as "'-50% bag".
+ */
+function unguard(value: string): string {
+  return /^'[=+\-@\t\r]/.test(value) ? value.slice(1) : value;
+}
+
 /**
  * Parses a product CSV. A bad row is reported and skipped rather than
  * aborting the import: a shopkeeper with one malformed line out of two
  * hundred should still get the other hundred and ninety-nine.
  */
 export function parseProductCsv(text: string): CsvParseResult {
+  // Excel's "CSV UTF-8" and our own exports start with a byte-order mark;
+  // left in, it glues itself to the first header and hides the name column.
   const lines = text
+    .replace(/^\uFEFF/, '')
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
@@ -140,8 +153,8 @@ export function parseProductCsv(text: string): CsvParseResult {
     const rowNumber = i + 1;
 
     try {
-      const name = at(nameAt);
-      const nameAm = at(nameAmAt);
+      const name = unguard(at(nameAt));
+      const nameAm = unguard(at(nameAmAt));
 
       if (!name && !nameAm) {
         errors.push({ code: 'noName', row: rowNumber });
@@ -157,7 +170,7 @@ export function parseProductCsv(text: string): CsvParseResult {
         // renders blank on a receipt.
         name: name || nameAm,
         name_am: nameAm || name,
-        barcode: at(barcodeAt) || null,
+        barcode: unguard(at(barcodeAt)) || null,
         unit,
         cost_price: toCents(at(costAt), 'cost_price', rowNumber),
         sell_price: toCents(at(sellAt), 'sell_price', rowNumber),

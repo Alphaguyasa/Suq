@@ -168,13 +168,75 @@ export function salesCsv(backup: Pick<Backup, 'sales' | 'sale_items'>): string {
   return '﻿' + rows.map((row) => row.map(quote).join(',')).join('\r\n') + '\r\n';
 }
 
+/**
+ * The columns the product import reads (lib/seed/csv.ts), in the same
+ * spelling, so this file goes straight back into setup on another till.
+ */
+export const PRODUCTS_CSV_COLUMNS = [
+  'name',
+  'name_am',
+  'barcode',
+  'unit',
+  'cost_price',
+  'sell_price',
+  'reorder_level',
+  'opening_qty',
+] as const;
+
+/**
+ * The product list with what is on the shelf right now, for three jobs: a
+ * printed count sheet, a price list for a supplier or accountant, and moving
+ * the catalogue to a second till through setup's CSV import.
+ *
+ * - Deleted and archived products are left out: the import has no notion of
+ *   either, and would bring them back as active products.
+ * - On-hand is the SUM of the movements (never a stored number), rounded to
+ *   three decimals so 0.1 + 0.2 kg reads "0.3".
+ * - It is written as `opening_qty`, the column the import reads. A product
+ *   sold below zero is written as 0: an opening count cannot be negative and
+ *   the import would reject the whole row.
+ * - Rows are sorted by name so a count sheet can be walked shelf by shelf.
+ */
+export function productsCsv(backup: Pick<Backup, 'products' | 'stock_movements'>): string {
+  const onHand = new Map<string, number>();
+  for (const movement of backup.stock_movements) {
+    onHand.set(movement.product_id, (onHand.get(movement.product_id) ?? 0) + movement.qty_delta);
+  }
+
+  const products = backup.products
+    .filter((product) => product.is_active && !product.deleted_at)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const rows: string[][] = [[...PRODUCTS_CSV_COLUMNS]];
+  for (const product of products) {
+    const qty = Math.max(0, Number((onHand.get(product.id) ?? 0).toFixed(3)));
+    rows.push([
+      textCell(product.name),
+      textCell(product.name_am),
+      textCell(product.barcode ?? ''),
+      product.unit,
+      centsToDecimal(product.cost_price),
+      centsToDecimal(product.sell_price),
+      String(product.reorder_level),
+      // `+ 0` turns -0 (from rounding a tiny negative) into a plain 0.
+      String(qty + 0),
+    ]);
+  }
+
+  return '\uFEFF' + rows.map((row) => row.map(quote).join(',')).join('\r\n') + '\r\n';
+}
+
 /** "suq-A1-2026-10-22.json" — the device prefix tells two tills' backups apart. */
-export function backupFileName(backup: Pick<Backup, 'device' | 'exported_at'>, ext: 'json' | 'csv'): string {
+export function backupFileName(
+  backup: Pick<Backup, 'device' | 'exported_at'>,
+  ext: 'json' | 'csv',
+  contents: 'sales' | 'products' = 'sales',
+): string {
   const date = new Date(backup.exported_at);
   const pad = (value: number) => String(value).padStart(2, '0');
   const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   const prefix = (backup.device?.device_prefix ?? 'device').replace(/[^A-Za-z0-9-]/g, '');
-  return `suq-${prefix || 'device'}-${day}${ext === 'csv' ? '-sales' : ''}.${ext}`;
+  return `suq-${prefix || 'device'}-${day}${ext === 'csv' ? `-${contents}` : ''}.${ext}`;
 }
 
 /** Hand a file to the browser's download, offline, no server involved. */

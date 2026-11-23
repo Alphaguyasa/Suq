@@ -324,6 +324,7 @@ export const en: Dict = {
     backupHint: 'Download a copy of the sales and stock records to this device. No internet needed. Keep the copy somewhere other than this phone (a computer, a flash drive).',
     backupJson: 'Download full backup (JSON)',
     backupCsv: 'Download sales (CSV)',
+    backupProducts: 'Download products and stock (CSV)',
     backupDone: (sales: number, products: number) => `${sales} sales and ${products} products exported`,
     backupFailed: 'The backup could not be created. Try again.',
     storageSection: 'Data storage',

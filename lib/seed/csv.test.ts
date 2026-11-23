@@ -111,3 +111,19 @@ describe('parseProductCsv', () => {
     expect(products).toHaveLength(1);
   });
 });
+
+describe('parseProductCsv: files from spreadsheets and our own export', () => {
+  it('ignores a byte-order mark before the header', () => {
+    const { products, errors } = parseProductCsv('﻿name,sell_price\r\nBread,15\r\n');
+    expect(errors).toEqual([]);
+    expect(products[0]?.name).toBe('Bread');
+  });
+
+  it('removes the apostrophe that guards a formula-like name', () => {
+    const { products } = parseProductCsv("name,barcode\n'=Gift card,'+251\nO'Brien tea,\n");
+    expect(products.map((p) => [p.name, p.barcode])).toEqual([
+      ['=Gift card', '+251'],
+      ["O'Brien tea", null],
+    ]);
+  });
+});

@@ -327,6 +327,7 @@ export const am = {
     backupHint: 'የሽያጭና የክምችት መረጃ ቅጂ ወደዚህ መሣሪያ ያውርዱ። ኢንተርኔት አያስፈልግም። ቅጂውን ከስልኩ ውጭ (ኮምፒውተር፣ ፍላሽ) ያስቀምጡ።',
     backupJson: 'ሙሉ ምትኬ አውርድ (JSON)',
     backupCsv: 'ሽያጮችን አውርድ (CSV)',
+    backupProducts: 'ዕቃዎችንና ክምችትን አውርድ (CSV)',
     backupDone: (sales: number, products: number) => `${sales} ሽያጮችና ${products} ምርቶች ወጥተዋል`,
     backupFailed: 'ምትኬውን መፍጠር አልተቻለም። እንደገና ይሞክሩ።',
     storageSection: 'የመረጃ ማከማቻ',
