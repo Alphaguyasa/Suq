@@ -120,7 +120,8 @@ The CSV import is only offered on first run. Offer it on the Products screen too
 opening stock as a `purchase` movement, rows whose barcode already exists are reported and skipped (never overwrite
 prices or stock silently). Reuse `parseProductCsv` and the setup error messages. Unit + e2e test.
 
-### 55. [P3 · S] Stock value in Reports
+### 55. [P3 · S] Stock value in Reports — DONE 2026-11-23
+Done: "Stock value" section above Low stock (at cost, at selling price, note when products have no cost). Unit + e2e.
 On-hand × cost price and on-hand × sell price across active products, from the movements (never a stored quantity),
 shown under the Reports totals with the count of products that have no cost price. Integer cents throughout.
 
